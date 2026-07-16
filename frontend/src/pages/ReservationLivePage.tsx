@@ -279,7 +279,7 @@ function ReservationLivePage() {
           <Button
             variant="destructive"
             size="lg"
-            onClick={() => navigate("/reservation")}
+            onClick={() => navigate("/reservations")}
           >
             <PhoneOff />
             나가기

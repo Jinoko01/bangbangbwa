@@ -2,13 +2,7 @@ import { Heart } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice, toPyeong } from "@/lib/format";
 import type { Property } from "@/types";
 
@@ -35,7 +29,7 @@ function PropertyCard({ property, onToggleSave, onOpen }: PropertyCardProps) {
 
   return (
     <Card
-      className="cursor-pointer gap-4 py-5 transition-shadow hover:shadow-md"
+      className="group cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
       role="link"
       tabIndex={0}
       aria-label={`${title} 상세 보기`}
@@ -46,32 +40,38 @@ function PropertyCard({ property, onToggleSave, onOpen }: PropertyCardProps) {
         }
       }}
     >
-      <CardHeader className="px-5">
+      <div className="relative h-44 overflow-hidden bg-muted">
+        <img
+          src={property.imageUrl}
+          alt={`${title} 매물 사진`}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+        <Button
+          variant="secondary"
+          size="icon"
+          className="absolute right-3 top-3 bg-white/95 shadow-sm"
+          aria-label={saved ? "매물 저장 취소" : "매물 저장"}
+          aria-pressed={saved}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSave(property.id);
+          }}
+        >
+          <Heart
+            className={
+              saved ? "fill-primary text-primary" : "text-muted-foreground"
+            }
+          />
+        </Button>
+      </div>
+      <CardHeader className="px-5 pt-5">
         <div className="flex items-center gap-1.5">
           <Badge>{dealType}</Badge>
           <Badge variant="secondary">{buildingType}</Badge>
         </div>
         <CardTitle className="text-base">{title}</CardTitle>
-        <CardAction>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={saved ? "매물 저장 취소" : "매물 저장"}
-            aria-pressed={saved}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSave(property.id);
-            }}
-          >
-            <Heart
-              className={
-                saved ? "fill-primary text-primary" : "text-muted-foreground"
-              }
-            />
-          </Button>
-        </CardAction>
       </CardHeader>
-      <CardContent className="px-5">
+      <CardContent className="px-5 pb-5">
         <p className="text-xl font-bold text-primary">
           {formatPrice(property)}
           <span className="ml-1 text-xs font-normal text-muted-foreground">

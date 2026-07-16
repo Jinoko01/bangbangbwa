@@ -190,6 +190,7 @@ interface PropertyDetailPageProps {
   loading: boolean;
   onBack: () => void;
   onToggleSave: (id: number) => void;
+  onReserve: (id: number) => void;
   memos: Memo[];
   onAddMemo: (text: string) => void;
   onUpdateMemo: (memoId: number, text: string) => void;
@@ -202,6 +203,7 @@ function PropertyDetailPage({
   loading,
   onBack,
   onToggleSave,
+  onReserve,
   memos,
   onAddMemo,
   onUpdateMemo,
@@ -242,7 +244,12 @@ function PropertyDetailPage({
           </div>
         ) : (
           <>
-            <Card className="gap-4">
+            <Card className="gap-0 overflow-hidden py-0">
+              <img
+                src={property.imageUrl}
+                alt={`${property.title} 매물 사진`}
+                className="h-64 w-full object-cover"
+              />
               <CardHeader>
                 <div className="flex items-center gap-1.5">
                   <Badge>{property.dealType}</Badge>
@@ -250,7 +257,7 @@ function PropertyDetailPage({
                 </div>
                 <CardTitle className="text-xl">{property.title}</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pb-6">
                 <p className="text-3xl font-bold text-primary">
                   {formatPrice(property)}
                   <span className="ml-1 text-sm font-normal text-muted-foreground">
@@ -291,14 +298,14 @@ function PropertyDetailPage({
                 />
                 {property.saved ? "저장됨" : "저장"}
               </Button>
-              <Button className="h-11 flex-1">
+              <Button
+                className="h-11 flex-1"
+                onClick={() => onReserve(property.id)}
+              >
                 <CalendarPlus />
-                회의 예약 요청
+                미팅 예약
               </Button>
             </div>
-            <p className="-mt-2 text-center text-xs text-muted-foreground">
-              예약 요청 화면(PAGE-08)은 다음 섹션에서 연결됩니다.
-            </p>
 
             <MemoSection
               memos={memos}

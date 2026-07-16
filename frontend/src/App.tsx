@@ -9,8 +9,10 @@ import PropertyDetailPage from "@/pages/PropertyDetailPage";
 import PropertyListPage from "@/pages/PropertyListPage";
 import ReservationLivePage from "@/pages/ReservationLivePage";
 import ReservationPage from "@/pages/ReservationPage";
+import BookingPage from "@/pages/BookingPage";
+import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
 import { PROPERTIES } from "@/data/properties";
-import type { Memo, Property } from "@/types";
+import type { Memo, Property, Reservation } from "@/types";
 
 // API 연동 전 목데이터 로딩 시뮬레이션 시간(ms)
 const MOCK_LOADING_MS = 600;
@@ -26,6 +28,7 @@ interface DetailRouteProps {
   properties: Property[];
   memos: Record<number, Memo[]>;
   onToggleSave: (id: number) => void;
+  onReserve: (id: number) => void;
   memoActions: MemoActions;
 }
 
@@ -34,6 +37,7 @@ function DetailRoute({
   properties,
   memos,
   onToggleSave,
+  onReserve,
   memoActions,
 }: DetailRouteProps) {
   const { id: idParam } = useParams();
@@ -47,6 +51,7 @@ function DetailRoute({
       loading={loading}
       onBack={() => navigate("/properties")}
       onToggleSave={onToggleSave}
+      onReserve={onReserve}
       memos={memos[id] ?? []}
       onAddMemo={(text) => memoActions.add(id, text)}
       onUpdateMemo={(memoId, text) => memoActions.update(id, memoId, text)}
@@ -59,6 +64,24 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [properties, setProperties] = useState<Property[]>([]);
   const [memos, setMemos] = useState<Record<number, Memo[]>>({});
+  const [reservations, setReservations] = useState<Reservation[]>([
+    {
+      id: "reservation-demo-0918",
+      propertyId: 2,
+      date: "2026-07-19",
+      time: "10:00, 13:00, 16:00",
+      status: "예약 대기",
+      direction: "sent",
+    },
+    {
+      id: "reservation-demo-1024",
+      propertyId: 1,
+      date: "2026-07-18",
+      time: "14:00",
+      status: "예약 확정",
+      direction: "received",
+    },
+  ]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -105,7 +128,35 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/reservation" element={<ReservationPage />} />
+        <Route
+          path="/reservations"
+          element={
+            <ReservationPage
+              reservations={reservations}
+              properties={properties}
+            />
+          }
+        />
+        <Route
+          path="/booking/:id"
+          element={
+            <BookingPage
+              properties={properties}
+              onConfirm={(reservation) =>
+                setReservations((previous) => [reservation, ...previous])
+              }
+            />
+          }
+        />
+        <Route
+          path="/saved"
+          element={
+            <SavedPropertiesPage
+              properties={properties}
+              onToggleSave={toggleSave}
+            />
+          }
+        />
         <Route path="/reservation/:slug" element={<ReservationLivePage />} />
         <Route
           path="/properties"
@@ -126,6 +177,7 @@ function App() {
               properties={properties}
               memos={memos}
               onToggleSave={toggleSave}
+              onReserve={(id) => navigate(`/booking/${id}`)}
               memoActions={memoActions}
             />
           }
