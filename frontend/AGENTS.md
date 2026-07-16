@@ -52,6 +52,7 @@ frontend/
 - 스타일링은 무조건 Tailwind CSS 방식으로
 - 모든 프론트엔드 코드 작성/수정/리뷰 시 docs/frontend-code-quality의 4가지 기준에 충족하도록 할 것
 - 파일 삭제 전 확인 요청
+- 커스텀 훅, 함수, 파일 내 컴포넌트 구분을 위한 용도를 제외하고 주석을 달지 말 것
 - 리포트에 가정치 금지. 실측 데이터만, 모르면 TBD 표시
 - 상태를 `useState`로 직접 관리하기 전에, 같은 문제를 해결하는 React 최신 hook이 있는지 먼저 검토한다. 있으면 그쪽을 우선한다
   - 폼 제출 중 로딩 상태: `useState`로 `isLoading` 플래그를 만들지 말고 `useActionState`가 반환하는 `isPending`, 또는 폼 하위 컴포넌트라면 `useFormStatus`의 `pending`을 사용
@@ -73,3 +74,4 @@ frontend/
 - 금지: 그라데이션 남발, 3색 이상 포인트 컬러, 이모지 아이콘(lucide-react 아이콘 사용)
 - 레이아웃: 랜딩 섹션은 인접 섹션과 다른 패턴 사용(3등분 균일 카드 금지 — Bento·타임라인 등). 상세 원칙은 supanova-design-skill/redesign-skill/SKILL.md 참조
 - UI 작업 시작 전 frontend-design 스킬(설치돼 있다면)을 로드해 미적 방향을 적용할 것
+
