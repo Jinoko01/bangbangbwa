@@ -233,19 +233,17 @@ function ReservationLivePage() {
           </p>
         )}
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="relative overflow-hidden rounded-xl bg-muted">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="aspect-video w-full object-cover"
-            />
-            <span className="absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-0.5 text-sm text-foreground">
-              상대방
-            </span>
-          </div>
-          <div className="relative overflow-hidden rounded-xl bg-muted">
+        <div className="relative mt-6 overflow-hidden rounded-xl bg-muted">
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="h-[calc(100svh-18rem)] min-h-80 w-full object-cover"
+          />
+          <span className="absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-0.5 text-sm text-foreground">
+            상대방
+          </span>
+          <div className="absolute top-4 right-4 w-36 overflow-hidden rounded-xl border bg-muted shadow-sm md:w-52">
             <video
               ref={localVideoRef}
               autoPlay
@@ -253,7 +251,7 @@ function ReservationLivePage() {
               muted
               className="aspect-video w-full object-cover"
             />
-            <span className="absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-0.5 text-sm text-foreground">
+            <span className="absolute bottom-1 left-1 rounded-md bg-background/80 px-1.5 py-0.5 text-sm text-foreground">
               나
             </span>
           </div>
