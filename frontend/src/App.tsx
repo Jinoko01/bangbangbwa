@@ -7,6 +7,8 @@ import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import PropertyDetailPage from "@/pages/PropertyDetailPage";
 import PropertyListPage from "@/pages/PropertyListPage";
+import ReservationLivePage from "@/pages/ReservationLivePage";
+import ReservationPage from "@/pages/ReservationPage";
 import { PROPERTIES } from "@/data/properties";
 import type { Memo, Property } from "@/types";
 
@@ -103,6 +105,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reservation" element={<ReservationPage />} />
+        <Route path="/reservation/:slug" element={<ReservationLivePage />} />
         <Route
           path="/properties"
           element={
