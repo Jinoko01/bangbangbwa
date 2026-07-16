@@ -1,4 +1,6 @@
+import { useRef, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   CalendarCheck,
@@ -12,12 +14,14 @@ import {
   Play,
   ShieldCheck,
   Video,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import HeroSearch from "@/components/HeroSearch";
 import { PROPERTIES } from "@/data/properties";
+import { cn } from "@/lib/utils";
 
 const FLOW_STEPS = [
   [CalendarCheck, "예약", "원하는 매물의 화상 투어 일정을 잡아요"],
@@ -25,6 +29,213 @@ const FLOW_STEPS = [
   [ClipboardCheck, "체크리스트", "점검 항목을 하나씩 확인하며 기록해요"],
   [FileText, "리포트", "캡처와 요약이 담긴 리포트를 받아요"],
 ] as const;
+
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+function subscribeToDesktopQuery(onChange: () => void) {
+  const media = window.matchMedia(DESKTOP_QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+// lg 이상에서만 스크롤텔링을 켜기 위한 뷰포트 구독
+function useIsDesktop() {
+  return useSyncExternalStore(
+    subscribeToDesktopQuery,
+    () => window.matchMedia(DESKTOP_QUERY).matches,
+  );
+}
+
+function subscribeToWindowScroll(onChange: () => void) {
+  window.addEventListener("scroll", onChange, { passive: true });
+  window.addEventListener("resize", onChange);
+  return () => {
+    window.removeEventListener("scroll", onChange);
+    window.removeEventListener("resize", onChange);
+  };
+}
+
+function getActiveStep(runway: HTMLElement | null) {
+  if (!runway) {
+    return 0;
+  }
+  const range = runway.offsetHeight - window.innerHeight;
+  if (range <= 0) {
+    return 0;
+  }
+  const progress = Math.min(
+    1,
+    Math.max(0, -runway.getBoundingClientRect().top / range),
+  );
+  return Math.min(
+    FLOW_STEPS.length - 1,
+    Math.floor(progress * FLOW_STEPS.length),
+  );
+}
+
+type FlowStepState = "static" | "done" | "active" | "todo";
+
+function getStepState(index: number, activeStep: number): FlowStepState {
+  if (index < activeStep) {
+    return "done";
+  }
+  return index === activeStep ? "active" : "todo";
+}
+
+interface FlowStepProps {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  index: number;
+  isLast: boolean;
+  state: FlowStepState;
+}
+
+// 이용 흐름의 한 단계 — 활성이면 확대 + 번호 글로우, 완료면 체크로 전환
+function FlowStep({
+  icon: Icon,
+  title,
+  description,
+  index,
+  isLast,
+  state,
+}: FlowStepProps) {
+  const isActive = state === "active";
+  const isDone = state === "done";
+  const isTodo = state === "todo";
+
+  return (
+    <motion.li
+      className="flex origin-left gap-4"
+      animate={{ scale: isActive ? 1.04 : 1, opacity: isTodo ? 0.4 : 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 24 }}
+    >
+      <div className="flex flex-col items-center">
+        <motion.span
+          className={cn(
+            "grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold",
+            isTodo
+              ? "bg-muted text-muted-foreground"
+              : "bg-primary text-primary-foreground",
+          )}
+          animate={
+            isActive
+              ? {
+                  boxShadow: [
+                    "0 0 0 0 rgba(22,93,252,0.45)",
+                    "0 0 0 12px rgba(22,93,252,0)",
+                  ],
+                }
+              : { boxShadow: "0 0 0 0 rgba(22,93,252,0)" }
+          }
+          transition={
+            isActive
+              ? { duration: 1.4, repeat: Infinity, ease: "easeOut" }
+              : { duration: 0.2 }
+          }
+        >
+          {isDone ? <Check className="size-4" /> : index + 1}
+        </motion.span>
+        {!isLast && (
+          <span className="relative w-0.5 flex-1 overflow-hidden bg-border">
+            <motion.span
+              className="absolute inset-0 origin-top bg-primary"
+              animate={{ scaleY: isDone ? 1 : 0 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+            />
+          </span>
+        )}
+      </div>
+      <div className={isLast ? "" : "pb-7"}>
+        <div className="flex items-center gap-2">
+          <Icon className="size-4 text-primary" />
+          <h3 className={cn("font-semibold", isActive && "text-primary")}>
+            {title}
+          </h3>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+    </motion.li>
+  );
+}
+
+// 스크롤 진행에 따라 단계가 순차 하이라이트되는 이용 흐름 섹션 (lg 이상 sticky 스크롤텔링)
+function FlowSection() {
+  const runwayRef = useRef<HTMLElement>(null);
+  const isDesktop = useIsDesktop();
+  const reducedMotion = useReducedMotion();
+  const animated = isDesktop && !reducedMotion;
+  const activeStep = useSyncExternalStore(subscribeToWindowScroll, () =>
+    getActiveStep(runwayRef.current),
+  );
+
+  return (
+    <section
+      id="how"
+      ref={runwayRef}
+      className="border-y bg-muted/40 lg:h-[400vh]"
+    >
+      <div className="lg:sticky lg:top-14 lg:flex lg:h-[calc(100svh-3.5rem)] lg:items-center">
+        <div className="mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-0">
+          <div className="mb-14">
+            <p className="text-sm font-bold tracking-wider text-primary">
+              이용 흐름
+            </p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+              네 단계면 충분해요
+            </h2>
+          </div>
+
+          <div className="grid gap-16 lg:grid-cols-[1fr_420px] lg:items-start">
+            <ol>
+              {FLOW_STEPS.map(([Icon, title, description], index) => (
+                <FlowStep
+                  key={title}
+                  icon={Icon}
+                  title={title}
+                  description={description}
+                  index={index}
+                  isLast={index === FLOW_STEPS.length - 1}
+                  state={animated ? getStepState(index, activeStep) : "static"}
+                />
+              ))}
+            </ol>
+
+            <div className="rounded-2xl border bg-card p-6 shadow-[0_16px_40px_-8px_rgba(22,93,252,0.15)]">
+              <div className="flex items-center justify-between gap-3">
+                <strong className="text-[15px] font-semibold">
+                  AI 검수 리포트 — 역삼 래미안
+                </strong>
+                <Badge variant="secondary">자동 생성</Badge>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="grid h-[72px] place-items-center rounded-md bg-muted"
+                  >
+                    <ImageIcon className="size-[18px] text-muted-foreground" />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="h-2.5 rounded-full bg-muted" />
+                <div className="h-2.5 rounded-full bg-muted" />
+                <div className="h-2.5 w-3/5 rounded-full bg-muted" />
+              </div>
+              <div className="mt-4 flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-primary" />
+                <span className="text-sm font-medium">
+                  하자 2건 · 확인 요청 5건 기록됨
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function LandingPage() {
   return (
@@ -199,75 +410,7 @@ function LandingPage() {
         </div>
       </section>
 
-      <section id="how" className="border-y bg-muted/40">
-        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-          <div className="mb-14">
-            <p className="text-sm font-bold tracking-wider text-primary">
-              이용 흐름
-            </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-              네 단계면 충분해요
-            </h2>
-          </div>
-
-          <div className="grid gap-16 lg:grid-cols-[1fr_420px] lg:items-start">
-            <ol>
-              {FLOW_STEPS.map(([Icon, title, description], index) => {
-                const isLast = index === FLOW_STEPS.length - 1;
-                return (
-                  <li key={title} className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                        {index + 1}
-                      </span>
-                      {!isLast && <span className="w-0.5 flex-1 bg-border" />}
-                    </div>
-                    <div className={isLast ? "" : "pb-7"}>
-                      <div className="flex items-center gap-2">
-                        <Icon className="size-4 text-primary" />
-                        <h3 className="font-semibold">{title}</h3>
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {description}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-
-            <div className="rounded-2xl border bg-card p-6 shadow-[0_16px_40px_-8px_rgba(22,93,252,0.15)]">
-              <div className="flex items-center justify-between gap-3">
-                <strong className="text-[15px] font-semibold">
-                  AI 검수 리포트 — 역삼 래미안
-                </strong>
-                <Badge variant="secondary">자동 생성</Badge>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="grid h-[72px] place-items-center rounded-md bg-muted"
-                  >
-                    <ImageIcon className="size-[18px] text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 space-y-2">
-                <div className="h-2.5 rounded-full bg-muted" />
-                <div className="h-2.5 rounded-full bg-muted" />
-                <div className="h-2.5 w-3/5 rounded-full bg-muted" />
-              </div>
-              <div className="mt-4 flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-primary" />
-                <span className="text-sm font-medium">
-                  하자 2건 · 확인 요청 5건 기록됨
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <FlowSection />
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-16 text-center text-primary-foreground sm:px-12">
