@@ -30,6 +30,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.59.0",
     "@typescript-eslint/parser": "^8.59.0",
     "@vitejs/plugin-react": "^6.0.3",
@@ -42,6 +43,7 @@
     "prettier": "^3.6.2",
     "tailwindcss": "^4.3.2",
     "typescript": "^5.9.3",
-    "vite": "^8.1.4"
+    "vite": "^8.1.4",
+    "ws": "^8.21.1"
   }
 }
