@@ -138,15 +138,6 @@ function App() {
           }
         />
         <Route
-          path="/reservation"
-          element={
-            <ReservationPage
-              reservations={reservations}
-              properties={properties}
-            />
-          }
-        />
-        <Route
           path="/booking/:id"
           element={
             <BookingPage
