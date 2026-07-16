@@ -247,5 +247,17 @@ export const PROPERTIES: Property[] = [
   },
 ];
 
+const PROPERTY_IMAGES = [
+  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=80",
+];
+
+PROPERTIES.forEach((property, index) => {
+  property.imageUrl = PROPERTY_IMAGES[index % PROPERTY_IMAGES.length];
+});
+
 // 지역 필터 옵션은 데이터에서 파생 (등장 순서 유지)
 export const REGIONS = [...new Set(PROPERTIES.map((p) => p.region))];

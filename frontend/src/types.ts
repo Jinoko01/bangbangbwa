@@ -15,6 +15,16 @@ export interface Property {
   totalFloors: number;
   rooms: number;
   saved: boolean;
+  imageUrl?: string;
+}
+
+export interface Reservation {
+  id: string;
+  propertyId: number;
+  date: string;
+  time: string;
+  status: "예약 확정" | "예약 대기";
+  direction: "sent" | "received";
 }
 
 export interface PriceBand {

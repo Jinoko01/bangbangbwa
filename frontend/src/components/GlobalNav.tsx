@@ -13,8 +13,8 @@ interface NavItemConfig {
 
 const NAV_ITEMS: NavItemConfig[] = [
   { label: "매물 목록", to: "/properties" },
-  { label: "저장 매물", to: null }, // 추후 /saved
-  { label: "예약", to: null }, // 추후 /reservations
+  { label: "관심 매물", to: "/saved" },
+  { label: "예약 확인", to: "/reservations" },
 ];
 
 function NavItem({
