@@ -17696,6 +17696,574 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "nNi2A",
+      "x": 9360,
+      "y": 1587,
+      "name": "My Page",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$background",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "ZixUI",
+          "type": "ref",
+          "ref": "PBh4e",
+          "name": "GNB",
+          "width": "fill_container",
+          "descendants": {
+            "dPq9v/eNLRf": {
+              "content": "로그아웃"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "qftPQ",
+          "name": "Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$muted-40",
+          "layout": "vertical",
+          "padding": [
+            40,
+            0
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "q3YE5",
+              "name": "Content Column",
+              "width": 640,
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QFyKQ",
+                  "name": "Page Header",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jKBbc",
+                      "name": "Page Title",
+                      "fill": "$foreground",
+                      "content": "마이페이지",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 24,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "R1t8q",
+                      "name": "Page Subtitle",
+                      "fill": "$muted-foreground",
+                      "content": "내 정보를 확인하고 계정을 관리하세요.",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "zjjZJ",
+                  "name": "Profile Card",
+                  "width": "fill_container",
+                  "fill": "$card",
+                  "cornerRadius": "$radius-xl",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#0000000D",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "blur": 2
+                  },
+                  "gap": 16,
+                  "padding": 24,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "GARMw",
+                      "name": "Avatar",
+                      "width": 64,
+                      "height": 64,
+                      "fill": "$accent",
+                      "cornerRadius": 32,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "oeu8X",
+                          "name": "Avatar Initial",
+                          "fill": "$accent-foreground",
+                          "content": "김",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 24,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Frhlq",
+                      "name": "Profile Info",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "sfSxy",
+                          "name": "Name Row",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "BSPwV",
+                              "name": "User Name",
+                              "fill": "$foreground",
+                              "content": "김방방",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "id": "GCwrp",
+                              "type": "ref",
+                              "ref": "q5hEwA",
+                              "name": "Role Badge",
+                              "descendants": {
+                                "jVHBg": {
+                                  "content": "세입자"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "PO4Gr",
+                          "name": "User Email",
+                          "fill": "$muted-foreground",
+                          "content": "bangbang@example.com",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lgIT4",
+                  "name": "Info Card",
+                  "width": "fill_container",
+                  "fill": "$card",
+                  "cornerRadius": "$radius-xl",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#0000000D",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "blur": 2
+                  },
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ihBnr",
+                      "name": "Info Header",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "MVt9v",
+                          "name": "Info Title",
+                          "fill": "$foreground",
+                          "content": "내 정보",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 16,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "id": "t3nHx",
+                          "type": "ref",
+                          "ref": "EL2gE",
+                          "name": "Edit Button",
+                          "height": 32,
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "descendants": {
+                            "eNLRf": {
+                              "content": "수정"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dpcN9",
+                      "name": "Info List",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "wDAMa",
+                          "name": "이름 Row",
+                          "width": "fill_container",
+                          "padding": [
+                            12,
+                            0
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Wxzng",
+                              "name": "이름 Label",
+                              "fill": "$muted-foreground",
+                              "content": "이름",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "r1WzOs",
+                              "name": "이름 Value",
+                              "fill": "$foreground",
+                              "content": "김방방",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "cL9e3",
+                          "name": "Divider 1",
+                          "fill": "$border",
+                          "width": "fill_container",
+                          "height": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "kd1Vz",
+                          "name": "닉네임 Row",
+                          "width": "fill_container",
+                          "padding": [
+                            12,
+                            0
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "cMx0U",
+                              "name": "닉네임 Label",
+                              "fill": "$muted-foreground",
+                              "content": "닉네임",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "kJTom",
+                              "name": "닉네임 Value",
+                              "fill": "$foreground",
+                              "content": "방방이",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "bvfCp",
+                          "name": "Divider 2",
+                          "fill": "$border",
+                          "width": "fill_container",
+                          "height": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "f3Ou05",
+                          "name": "이메일 Row",
+                          "width": "fill_container",
+                          "padding": [
+                            12,
+                            0
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Ly6he",
+                              "name": "이메일 Label",
+                              "fill": "$muted-foreground",
+                              "content": "이메일",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "UHSZt",
+                              "name": "이메일 Value",
+                              "fill": "$foreground",
+                              "content": "bangbang@example.com",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "gzjeI",
+                          "name": "Divider 3",
+                          "fill": "$border",
+                          "width": "fill_container",
+                          "height": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "B8oAp",
+                          "name": "연락처 Row",
+                          "width": "fill_container",
+                          "padding": [
+                            12,
+                            0
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ncqJ4",
+                              "name": "연락처 Label",
+                              "fill": "$muted-foreground",
+                              "content": "연락처",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "i34rzF",
+                              "name": "연락처 Value",
+                              "fill": "$foreground",
+                              "content": "010-1234-5678",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "x0GGU",
+                  "name": "Account Card",
+                  "width": "fill_container",
+                  "fill": "$card",
+                  "cornerRadius": "$radius-xl",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#0000000D",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "blur": 2
+                  },
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Vlz7i",
+                      "name": "Account Title",
+                      "fill": "$foreground",
+                      "content": "계정 관리",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jP1hD",
+                      "name": "Logout Row",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "yHOsY",
+                          "name": "Logout Text",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "G3FaV",
+                              "name": "Logout Label",
+                              "fill": "$foreground",
+                              "content": "로그아웃",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "p1Bjy",
+                              "name": "Logout Desc",
+                              "fill": "$muted-foreground",
+                              "content": "현재 기기에서 로그아웃합니다.",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "id": "KvUiT",
+                          "type": "ref",
+                          "ref": "EL2gE",
+                          "name": "Logout Button",
+                          "height": 32,
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "descendants": {
+                            "eNLRf": {
+                              "content": "로그아웃"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "M1b1m",
+                      "name": "Account Divider",
+                      "fill": "$border",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PtPRA",
+                      "name": "Withdraw Row",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "FjtKp",
+                          "name": "Withdraw Text",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "teqKj",
+                              "name": "Withdraw Label",
+                              "fill": "$destructive",
+                              "content": "회원 탈퇴",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "uAAp2",
+                              "name": "Withdraw Desc",
+                              "fill": "$muted-foreground",
+                              "content": "탈퇴 시 저장한 매물과 리포트가 모두 삭제되며 복구할 수 없습니다.",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "id": "Aa4gG",
+                          "type": "ref",
+                          "ref": "EL2gE",
+                          "name": "Withdraw Button",
+                          "height": 32,
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "stroke": "$destructive",
+                          "descendants": {
+                            "eNLRf": {
+                              "content": "탈퇴하기",
+                              "fill": "$destructive"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
