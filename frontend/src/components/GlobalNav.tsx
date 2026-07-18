@@ -80,13 +80,20 @@ function AuthArea({
 
   return (
     <div className={cn("flex items-center", compact ? "gap-3" : "gap-2")}>
-      <span
-        aria-hidden
-        className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+      <Link
+        to="/mypage"
+        onClick={onNavigate}
+        className="flex items-center gap-2 rounded-md p-1 pr-2 transition-colors hover:bg-muted"
+        aria-label="마이페이지"
       >
-        {user.name[0]}
-      </span>
-      <span className="text-sm font-medium">{user.name}</span>
+        <span
+          aria-hidden
+          className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+        >
+          {user.name[0]}
+        </span>
+        <span className="text-sm font-medium">{user.name}</span>
+      </Link>
       <Button
         variant="ghost"
         size="sm"

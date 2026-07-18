@@ -5,6 +5,7 @@ import GlobalNav from "@/components/GlobalNav";
 import { AuthProvider } from "@/context/AuthContext";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
+import MyPage from "@/pages/MyPage";
 import PropertyDetailPage from "@/pages/PropertyDetailPage";
 import PropertyListPage from "@/pages/PropertyListPage";
 import ReservationLivePage from "@/pages/ReservationLivePage";
@@ -128,6 +129,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/mypage" element={<MyPage />} />
         <Route
           path="/reservations"
           element={
