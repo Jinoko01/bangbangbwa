@@ -49,7 +49,15 @@ export interface Filters {
 
 export type AuthProvider = "kakao" | "google";
 
+export type UserRole = "세입자" | "중개사";
+
 export interface User {
   name: string;
+  nickname: string;
+  email: string;
+  phone: string;
+  role: UserRole;
   provider: AuthProvider;
 }
+
+export type UserProfileChanges = Pick<User, "nickname" | "phone">;
