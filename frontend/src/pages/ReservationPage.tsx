@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import {
   CalendarClock,
   Check,
   CheckCircle2,
+  Circle,
   Clock3,
-  FileText,
   Home,
   MapPin,
+  Plus,
   RefreshCw,
   ShieldCheck,
-  UserRound,
+  Trash2,
   Video,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -17,12 +18,140 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { Property, Reservation } from "@/types";
 
 interface ReservationPageProps {
   reservations: Reservation[];
   properties: Property[];
+}
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+type ReservationChecklists = Record<string, ChecklistItem[]>;
+
+const CHECKLIST_STORAGE_KEY = "bangbangbwa:reservation-checklists";
+const DEFAULT_CHECKLIST_TEXTS = [
+  "벽지·천장 곰팡이 확인",
+  "등기부등본 근저당 확인",
+];
+
+function createDefaultChecklist(): ChecklistItem[] {
+  return DEFAULT_CHECKLIST_TEXTS.map((text, index) => ({
+    id: `default-${index}`,
+    text,
+    completed: false,
+  }));
+}
+
+function loadChecklists(): ReservationChecklists {
+  try {
+    const stored = localStorage.getItem(CHECKLIST_STORAGE_KEY);
+    return stored ? (JSON.parse(stored) as ReservationChecklists) : {};
+  } catch {
+    return {};
+  }
+}
+
+interface ReservationChecklistProps {
+  items: ChecklistItem[];
+  onChange: (items: ChecklistItem[]) => void;
+}
+
+function ReservationChecklist({ items, onChange }: ReservationChecklistProps) {
+  const [draft, setDraft] = useState("");
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text) {
+      return;
+    }
+    onChange([...items, { id: crypto.randomUUID(), text, completed: false }]);
+    setDraft("");
+  };
+
+  const toggleItem = (itemId: string) => {
+    onChange(
+      items.map((item) =>
+        item.id === itemId ? { ...item, completed: !item.completed } : item,
+      ),
+    );
+  };
+
+  const removeItem = (itemId: string) => {
+    onChange(items.filter((item) => item.id !== itemId));
+  };
+
+  return (
+    <div className="rounded-xl border bg-slate-50/70 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <strong className="text-sm text-slate-900">예약 체크리스트</strong>
+          <p className="mt-1 text-xs text-muted-foreground">
+            영상 통화에서 확인하거나 물어볼 내용을 적어두세요.
+          </p>
+        </div>
+        <Badge variant="secondary">{items.length}개</Badge>
+      </div>
+
+      <ul className="mt-4 space-y-2">
+        {items.map((item) => (
+          <li
+            key={item.id}
+            className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2.5"
+          >
+            <button
+              type="button"
+              className="shrink-0 text-primary"
+              aria-label={`${item.text} ${item.completed ? "미완료로 변경" : "완료로 변경"}`}
+              onClick={() => toggleItem(item.id)}
+            >
+              {item.completed ? (
+                <CheckCircle2 className="size-5" />
+              ) : (
+                <Circle className="size-5" />
+              )}
+            </button>
+            <span
+              className={cn(
+                "min-w-0 flex-1 text-sm",
+                item.completed && "text-muted-foreground line-through",
+              )}
+            >
+              {item.text}
+            </span>
+            <button
+              type="button"
+              className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+              aria-label={`${item.text} 삭제`}
+              onClick={() => removeItem(item.id)}
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <form className="mt-3 flex gap-2" onSubmit={handleSubmit}>
+        <Input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="확인할 내용이나 질문을 입력하세요"
+          aria-label="체크리스트 항목"
+          className="h-10 min-w-0 flex-1 bg-white"
+        />
+        <Button type="submit" size="sm" className="h-10 shrink-0">
+          <Plus /> 추가
+        </Button>
+      </form>
+    </div>
+  );
 }
 
 function ReservationPage({ reservations, properties }: ReservationPageProps) {
@@ -34,6 +163,15 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
   const [selectedId, setSelectedId] = useState(
     filteredReservations[0]?.id ?? "",
   );
+  const [checklists, setChecklists] = useState(loadChecklists);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklists));
+    } catch {
+      // 저장 공간을 사용할 수 없어도 현재 화면의 체크리스트는 계속 동작한다.
+    }
+  }, [checklists]);
 
   useEffect(() => {
     const selectionExists = filteredReservations.some(
@@ -50,6 +188,17 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
   const selectedProperty = properties.find(
     (property) => property.id === selectedReservation?.propertyId,
   );
+  const selectedChecklist = selectedReservation
+    ? (checklists[selectedReservation.id] ?? createDefaultChecklist())
+    : [];
+  const reservationStatusMessage =
+    selectedReservation?.status === "예약 확정"
+      ? "중개사와 일정이 확정되었습니다. 시작 10분 전부터 입장할 수 있어요."
+      : "중개사가 예약 일정을 확인하고 있어요. 확정 후 미팅에 입장할 수 있어요.";
+
+  const updateChecklist = (reservationId: string, items: ChecklistItem[]) => {
+    setChecklists((current) => ({ ...current, [reservationId]: items }));
+  };
 
   return (
     <main className="min-h-[calc(100svh-3.5rem)] bg-white">
@@ -114,7 +263,7 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
           </Button>
         </div>
       ) : (
-        <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 lg:grid-cols-[280px_minmax(0,1fr)_250px]">
+        <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 lg:grid-cols-[260px_minmax(0,1fr)_350px] xl:grid-cols-[280px_minmax(0,1fr)_370px]">
           <Card className="gap-3 py-4">
             <CardHeader className="flex-row items-center justify-between px-4">
               <CardTitle className="text-base">예약 목록</CardTitle>
@@ -229,77 +378,56 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                <div className="flex items-center justify-between">
-                  <strong className="text-sm text-blue-900">
-                    미팅 전 확인
-                  </strong>
-                  <Badge variant="secondary">3개</Badge>
+              <div className="rounded-xl border bg-slate-50/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <CheckCircle2 className="size-5 text-emerald-600" /> 예약
+                    상태
+                  </p>
+                  <Badge>{selectedReservation.status}</Badge>
                 </div>
-                <div className="mt-3 grid gap-2 text-xs text-blue-900 sm:grid-cols-3">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="size-4" /> 카메라 확인
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="size-4" /> 마이크 확인
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="size-4" /> 질문 준비
-                  </span>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {reservationStatusMessage}
+                </p>
+                <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div className="grid grid-cols-[70px_1fr] gap-y-2 text-xs">
+                    <span className="text-muted-foreground">예약번호</span>
+                    <strong>{selectedReservation.id.slice(-8)}</strong>
+                    <span className="text-muted-foreground">형식</span>
+                    <strong>실시간 영상 투어</strong>
+                    <span className="text-muted-foreground">소요시간</span>
+                    <strong>약 30분</strong>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() =>
+                        navigate(`/reservation/${selectedReservation.id}`)
+                      }
+                    >
+                      <Video /> 미팅 입장
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        navigate(`/booking/${selectedProperty.id}`)
+                      }
+                    >
+                      <Clock3 /> 일정 변경
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="gap-3 py-4">
-            <CardHeader className="px-4">
-              <CardTitle className="text-base">예약 상태</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 px-4">
-              <div className="rounded-xl border bg-slate-50 p-3">
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <CheckCircle2 className="size-5 text-emerald-600" /> 예약 확정
-                </p>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  중개사와 일정이 확정되었습니다. 시작 10분 전부터 입장할 수
-                  있어요.
-                </p>
-              </div>
-              {[
-                [UserRound, "참여자 확인 완료"],
-                [Video, "영상 미팅 준비 완료"],
-                [FileText, "체크리스트 준비 완료"],
-              ].map(([Icon, label]) => (
-                <div
-                  key={label as string}
-                  className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs"
-                >
-                  <Icon className="size-4 text-emerald-600" /> {label as string}
-                </div>
-              ))}
-              <div className="grid grid-cols-[70px_1fr] gap-y-2 rounded-xl border p-3 text-xs">
-                <span className="text-muted-foreground">예약번호</span>
-                <strong>{selectedReservation.id.slice(-8)}</strong>
-                <span className="text-muted-foreground">형식</span>
-                <strong>실시간 영상 투어</strong>
-                <span className="text-muted-foreground">소요시간</span>
-                <strong>약 30분</strong>
-              </div>
-              <Button
-                className="w-full"
-                onClick={() =>
-                  navigate(`/reservation/${selectedReservation.id}`)
+            <CardContent className="px-4">
+              <ReservationChecklist
+                items={selectedChecklist}
+                onChange={(items) =>
+                  updateChecklist(selectedReservation.id, items)
                 }
-              >
-                <Video /> 미팅 입장
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => navigate(`/booking/${selectedProperty.id}`)}
-              >
-                <Clock3 /> 일정 변경
-              </Button>
+              />
             </CardContent>
           </Card>
         </div>
