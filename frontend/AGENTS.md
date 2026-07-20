@@ -32,6 +32,7 @@ frontend/
 - **스타일링**: tailwind 4
 - **패키지매니저**: pnpm
 - **라이브러리**
+  - **API**: axios
   - **라우팅**: React Router
   - **서버 상태 캐싱**: Tanstack Query
   - **상태 관리**: Zustand
@@ -61,6 +62,13 @@ frontend/
   - 서버 요청 완료 전 UI 선반영(찜하기 토글, 메모 추가 등): 별도 임시 state로 흉내내지 말고 `useOptimistic`으로 낙관적 업데이트 처리
   - 폼 액션의 성공/실패 결과 상태: `useState` + `try/catch` 대신 `useActionState`의 반환값(state, formAction)을 사용
   - 그 외에도 `use()`, `useTransition` 등으로 더 간단히 표현되는 패턴이면 그것을 우선 검토하고, 마땅한 최신 hook이 없을 때만 `useState`/`useEffect` 조합으로 구현한다
+
+## API 통신 규칙
+
+- 서버 통신은 반드시 `src/api/client.ts`의 fetcher(`api.get` 등)를 통해서만 한다. 컴포넌트에서 axios·도메인 API 함수 직접 호출 금지
+- 서버 데이터는 TanStack Query로만 다룬다. `useEffect` + `useState`로 fetch 결과를 보관하지 말 것
+- 쿼리 키는 각 도메인의 `xxxKeys` 팩토리로만 생성하고, 새 쿼리는 `queryOptions` 팩토리로 정의한다
+- 상세 가이드: docs/api-guide.md — 새 도메인 API를 추가할 때 이 문서의 3단계(도메인 함수 → 쿼리 파일 → 훅 사용) 절차를 따를 것
 
 ## 디자인 규칙
 
