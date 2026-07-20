@@ -4,6 +4,14 @@ import { CalendarPlus, ChevronLeft, Heart, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice, toPyeong } from "@/lib/format";
 import type { Memo, Property } from "@/types";
@@ -166,6 +174,54 @@ function MemoSection({ memos, onAdd, onUpdate, onDelete }: MemoSectionProps) {
   );
 }
 
+// PROP-08·09 중개사 전용 수정·삭제 — 삭제는 확인 다이얼로그를 거친다
+function BrokerActions({
+  onEdit,
+  onDelete,
+}: {
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  return (
+    <div className="ml-auto flex items-center gap-1">
+      <Button variant="outline" size="sm" onClick={onEdit}>
+        <Pencil />
+        수정
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-destructive hover:bg-destructive/5 hover:text-destructive"
+        onClick={() => setDeleteOpen(true)}
+      >
+        <Trash2 />
+        삭제
+      </Button>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>매물을 삭제하시겠어요?</DialogTitle>
+            <DialogDescription>
+              삭제하면 매물 정보와 연결된 예약, 세입자가 저장한 매물에서 함께
+              사라지며 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              취소
+            </Button>
+            <Button variant="destructive" onClick={onDelete}>
+              삭제하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className="flex flex-col gap-4">
@@ -188,22 +244,29 @@ function DetailSkeleton() {
 interface PropertyDetailPageProps {
   property: Property | null;
   loading: boolean;
+  canManage: boolean;
   onBack: () => void;
   onToggleSave: (id: number) => void;
   onReserve: (id: number) => void;
+  onEdit: () => void;
+  onDelete: () => void;
   memos: Memo[];
   onAddMemo: (text: string) => void;
   onUpdateMemo: (memoId: number, text: string) => void;
   onDeleteMemo: (memoId: number) => void;
 }
 
-// PAGE-05 매물 상세 — 매물 정보(PROP-03), 저장(PROP-04·05), 예약, 메모(MEMO-01~04)
+// PAGE-05 매물 상세 — 매물 정보(PROP-03), 저장(PROP-04·05), 예약, 메모(MEMO-01~04),
+// 중개사 전용 수정·삭제(PROP-08·09)
 function PropertyDetailPage({
   property,
   loading,
+  canManage,
   onBack,
   onToggleSave,
   onReserve,
+  onEdit,
+  onDelete,
   memos,
   onAddMemo,
   onUpdateMemo,
@@ -229,6 +292,9 @@ function PropertyDetailPage({
             <ChevronLeft />
           </Button>
           <h1 className="text-lg font-semibold">매물 상세</h1>
+          {canManage && property && (
+            <BrokerActions onEdit={onEdit} onDelete={onDelete} />
+          )}
         </div>
       </header>
 

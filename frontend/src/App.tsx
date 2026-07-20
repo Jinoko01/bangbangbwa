@@ -6,12 +6,15 @@ import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import MyPage from "@/pages/MyPage";
 import PropertyDetailPage from "@/pages/PropertyDetailPage";
+import PropertyFormPage from "@/pages/PropertyFormPage";
 import PropertyListPage from "@/pages/PropertyListPage";
 import ReservationLivePage from "@/pages/ReservationLivePage";
 import ReservationPage from "@/pages/ReservationPage";
 import BookingPage from "@/pages/BookingPage";
 import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
 import { PROPERTIES } from "@/data/properties";
+import { isApprovedBroker } from "@/lib/auth";
+import { useAuthStore } from "@/stores/authStore";
 import type { Memo, Property, Reservation } from "@/types";
 
 // API 연동 전 목데이터 로딩 시뮬레이션 시간(ms)
@@ -29,6 +32,7 @@ interface DetailRouteProps {
   memos: Record<number, Memo[]>;
   onToggleSave: (id: number) => void;
   onReserve: (id: number) => void;
+  onDelete: (id: number) => void;
   memoActions: MemoActions;
 }
 
@@ -38,10 +42,12 @@ function DetailRoute({
   memos,
   onToggleSave,
   onReserve,
+  onDelete,
   memoActions,
 }: DetailRouteProps) {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const id = Number(idParam);
   const property = properties.find((p) => p.id === id) ?? null;
 
@@ -49,9 +55,15 @@ function DetailRoute({
     <PropertyDetailPage
       property={property}
       loading={loading}
+      canManage={isApprovedBroker(user)}
       onBack={() => navigate("/properties")}
       onToggleSave={onToggleSave}
       onReserve={onReserve}
+      onEdit={() => navigate(`/properties/${id}/edit`)}
+      onDelete={() => {
+        onDelete(id);
+        navigate("/properties", { replace: true });
+      }}
       memos={memos[id] ?? []}
       onAddMemo={(text) => memoActions.add(id, text)}
       onUpdateMemo={(memoId, text) => memoActions.update(id, memoId, text)}
@@ -97,6 +109,24 @@ function App() {
     setProperties((prev) =>
       prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)),
     );
+
+  // PROP-07·08 매물 등록·수정 — 같은 id가 있으면 교체, 없으면 맨 앞에 추가
+  const saveProperty = (property: Property) =>
+    setProperties((prev) =>
+      prev.some((p) => p.id === property.id)
+        ? prev.map((p) => (p.id === property.id ? property : p))
+        : [property, ...prev],
+    );
+
+  // PROP-09 매물 삭제 — 연결된 예약·메모도 함께 정리
+  const deleteProperty = (id: number) => {
+    setProperties((prev) => prev.filter((p) => p.id !== id));
+    setReservations((prev) => prev.filter((r) => r.propertyId !== id));
+    setMemos((prev) => {
+      const { [id]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
 
   // MEMO-01~03 메모 작성·수정·삭제
   const memoActions: MemoActions = {
@@ -171,6 +201,26 @@ function App() {
           }
         />
         <Route
+          path="/properties/new"
+          element={
+            <PropertyFormPage
+              loading={loading}
+              properties={properties}
+              onSave={saveProperty}
+            />
+          }
+        />
+        <Route
+          path="/properties/:id/edit"
+          element={
+            <PropertyFormPage
+              loading={loading}
+              properties={properties}
+              onSave={saveProperty}
+            />
+          }
+        />
+        <Route
           path="/properties/:id"
           element={
             <DetailRoute
@@ -179,6 +229,7 @@ function App() {
               memos={memos}
               onToggleSave={toggleSave}
               onReserve={(id) => navigate(`/booking/${id}`)}
+              onDelete={deleteProperty}
               memoActions={memoActions}
             />
           }

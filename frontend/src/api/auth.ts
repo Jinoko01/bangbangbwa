@@ -8,7 +8,9 @@ import type {
 // 백엔드 완성 후 이 파일만 교체하면 됨.
 // 카카오/구글 키는 .env(VITE_KAKAO_KEY 등)에서 읽을 것, 코드에 하드코딩 금지.
 
-const MOCK_USER: Omit<User, "provider"> = {
+// 데모용 계정 분리 — 카카오: 세입자, 구글: 승인 완료 중개사.
+// 실제 중개사 인증(관리자 승인) 연동 시 하나의 계정 흐름으로 되돌릴 것.
+const MOCK_TENANT: Omit<User, "provider"> = {
   name: "김방방",
   birth: "1998-03-14",
   nickname: "방방이",
@@ -18,14 +20,24 @@ const MOCK_USER: Omit<User, "provider"> = {
   brokerVerification: "미신청",
 };
 
+const MOCK_BROKER: Omit<User, "provider"> = {
+  name: "박중개",
+  birth: "1990-08-21",
+  nickname: "방방부동산",
+  email: "broker@example.com",
+  phone: "010-9876-5432",
+  role: "중개사",
+  brokerVerification: "승인 완료",
+};
+
 // TODO: 카카오 OAuth 연동 (import.meta.env.VITE_KAKAO_KEY)
 export async function loginWithKakao(): Promise<User> {
-  return { ...MOCK_USER, provider: "kakao" };
+  return { ...MOCK_TENANT, provider: "kakao" };
 }
 
 // TODO: 구글 OAuth 연동 (import.meta.env.VITE_GOOGLE_CLIENT_ID)
 export async function loginWithGoogle(): Promise<User> {
-  return { ...MOCK_USER, provider: "google" };
+  return { ...MOCK_BROKER, provider: "google" };
 }
 
 // TODO: 세션·토큰 무효화

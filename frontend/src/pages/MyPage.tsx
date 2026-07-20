@@ -20,17 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/authStore";
+import { readFileAsDataUrl } from "@/lib/file";
 import { cn } from "@/lib/utils";
 import type { AuthProvider, BrokerVerificationStatus, User } from "@/types";
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 const PROVIDER_LABEL: Record<AuthProvider, string> = {
   kakao: "카카오",
