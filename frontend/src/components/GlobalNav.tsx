@@ -3,8 +3,8 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LogOut, Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 
 interface NavItemConfig {
   label: string;
@@ -59,7 +59,8 @@ function AuthArea({
   compact?: boolean;
   onNavigate?: () => void;
 }) {
-  const { user, logout } = useAuth();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const location = useLocation();
 
