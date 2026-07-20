@@ -264,11 +264,9 @@ function LandingPage() {
                 세입자와 중개사를 잇는 1:1 라이브 투어
               </p>
               <h1 className="text-4xl leading-[1.12] font-bold tracking-[-0.04em] sm:text-5xl lg:text-7xl">
-                가보지 않고,
+                방송으로 방을 봐
                 <br />
-                방에서 끝내는
-                <br />
-                <span className="text-blue-400">실시간 임장</span>
+                <span className="text-blue-400">방방봐</span>
               </h1>
               <p className="mt-7 max-w-xl text-base leading-relaxed text-slate-300 sm:text-xl">
                 중개사가 현장에서 비춰주는 화면을 보며 체크리스트로 꼼꼼하게
