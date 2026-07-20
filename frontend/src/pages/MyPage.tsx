@@ -174,7 +174,7 @@ function ProfileEditField({
   );
 }
 
-// 내 정보 수정 폼 — 간편로그인 제공 항목 중 이메일만 수정 불가
+// 내 정보 수정 폼 — 이름과 이메일은 조회만 가능
 function ProfileEditForm({ user, onDone }: { user: User; onDone: () => void }) {
   const updateProfile = useAuthStore((state) => state.updateProfile);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -194,13 +194,9 @@ function ProfileEditForm({ user, onDone }: { user: User; onDone: () => void }) {
 
   const [error, submitAction, isPending] = useActionState(
     async (_prev: string | null, formData: FormData) => {
-      const name = String(formData.get("name")).trim();
       const birth = String(formData.get("birth"));
       const nickname = String(formData.get("nickname")).trim();
       const phone = String(formData.get("phone")).trim();
-      if (!name) {
-        return "이름을 입력해주세요";
-      }
       if (!birth) {
         return "생년월일을 입력해주세요";
       }
@@ -217,7 +213,7 @@ function ProfileEditForm({ user, onDone }: { user: User; onDone: () => void }) {
         const profileImageUrl = hasNewImage
           ? await readFileAsDataUrl(imageFile)
           : user.profileImageUrl;
-        await updateProfile({ name, birth, nickname, phone, profileImageUrl });
+        await updateProfile({ birth, nickname, phone, profileImageUrl });
         onDone();
         return null;
       } catch {
@@ -269,11 +265,13 @@ function ProfileEditForm({ user, onDone }: { user: User; onDone: () => void }) {
             </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <ProfileEditField
-              label="이름"
-              name="name"
-              defaultValue={user.name}
-            />
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">이름</span>
+              <p className="py-2 text-sm">{user.name}</p>
+              <p className="text-xs text-muted-foreground">
+                본인 확인 정보 · 변경 불가
+              </p>
+            </div>
             <ProfileEditField
               label="생년월일"
               name="birth"

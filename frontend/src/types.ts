@@ -67,7 +67,7 @@ export interface User {
 
 export type UserProfileChanges = Pick<
   User,
-  "name" | "birth" | "nickname" | "phone" | "profileImageUrl"
+  "birth" | "nickname" | "phone" | "profileImageUrl"
 >;
 
 export interface BrokerVerificationRequest {
