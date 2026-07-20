@@ -1,10 +1,15 @@
-import { useActionState, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -14,95 +19,206 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/context/AuthContext";
-import type { User } from "@/types";
+import { useAuthStore } from "@/stores/authStore";
+import { cn } from "@/lib/utils";
+import type { AuthProvider, BrokerVerificationStatus, User } from "@/types";
 
-// 프로필 요약 — 아바타·이름·역할·이메일 (USER-01)
-function ProfileCard({ user }: { user: User }) {
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+const PROVIDER_LABEL: Record<AuthProvider, string> = {
+  kakao: "카카오",
+  google: "Google",
+};
+
+function ProfileAvatar({
+  user,
+  imageUrl = user.profileImageUrl,
+  className,
+}: {
+  user: User;
+  imageUrl?: string;
+  className?: string;
+}) {
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt="프로필 이미지"
+        className={cn("size-20 shrink-0 rounded-full object-cover", className)}
+      />
+    );
+  }
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4">
-        <span
-          aria-hidden
-          className="grid size-16 shrink-0 place-items-center rounded-full bg-accent text-2xl font-semibold text-accent-foreground"
-        >
-          {user.name[0]}
-        </span>
+    <span
+      aria-hidden
+      className={cn(
+        "grid size-20 shrink-0 place-items-center rounded-full bg-accent text-2xl font-semibold text-accent-foreground",
+        className,
+      )}
+    >
+      {user.nickname[0]}
+    </span>
+  );
+}
+
+// 신원 레일 — 프로필·역할·로그인 계정·중개사 인증까지 "나"에 대한 정보를 한 곳에 (USER-01)
+function IdentityRail({ user }: { user: User }) {
+  return (
+    <aside className="flex flex-col gap-6 self-start md:sticky md:top-24">
+      <div className="flex items-center gap-4 md:flex-col md:items-start">
+        <ProfileAvatar user={user} />
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <p className="text-lg font-semibold">{user.name}</p>
+            <p className="text-xl font-semibold">{user.nickname}</p>
             <Badge>{user.role}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">{user.email}</p>
+          <p className="text-xs text-muted-foreground">
+            {PROVIDER_LABEL[user.provider]} 계정으로 로그인
+          </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <BrokerVerificationPanel user={user} />
+    </aside>
   );
 }
 
-// 내 정보 조회·수정 (USER-01·02)
-function ProfileInfoCard({ user }: { user: User }) {
-  const [editOpen, setEditOpen] = useState(false);
+// 문서형 섹션 공통 헤더 — 밑줄 하나로 위계를 만들고 카드 박스는 쓰지 않는다
+function SectionHeader({
+  title,
+  action,
+}: {
+  title: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex h-9 items-center justify-between border-b pb-2">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      {action}
+    </div>
+  );
+}
+
+// 내 정보 — 조회(USER-01)와 페이지 내 수정(USER-02) 모드 전환
+function ProfileSection({ user }: { user: User }) {
+  const [isEditing, setIsEditing] = useState(false);
+
+  if (isEditing) {
+    return <ProfileEditForm user={user} onDone={() => setIsEditing(false)} />;
+  }
 
   const infoRows = [
     { label: "이름", value: user.name },
+    { label: "생년월일", value: user.birth.replaceAll("-", ".") },
+    { label: "전화번호", value: user.phone },
     { label: "닉네임", value: user.nickname },
     { label: "이메일", value: user.email },
-    { label: "연락처", value: user.phone },
   ];
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">내 정보</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-          수정
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <dl className="divide-y">
-          {infoRows.map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between py-3">
-              <dt className="text-sm text-muted-foreground">{label}</dt>
-              <dd className="text-sm font-medium">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </CardContent>
-      <ProfileEditDialog
-        user={user}
-        open={editOpen}
-        onOpenChange={setEditOpen}
+    <section>
+      <SectionHeader
+        title="내 정보"
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+          >
+            수정
+          </Button>
+        }
       />
-    </Card>
+      <dl>
+        {infoRows.map(({ label, value }) => (
+          <div key={label} className="flex items-baseline gap-4 py-3">
+            <dt className="w-20 shrink-0 text-sm text-muted-foreground">
+              {label}
+            </dt>
+            <span
+              aria-hidden
+              className="min-w-8 flex-1 border-b border-dotted border-border"
+            />
+            <dd className="text-sm font-medium">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
-// 내 정보 수정 폼 — 소셜 로그인 제공 항목(이름·이메일)은 수정 불가
-function ProfileEditDialog({
-  user,
-  open,
-  onOpenChange,
+// 편집 필드 — 중개사 인증 다이얼로그와 동일한 라벨 위 + 표준 인풋 패턴
+function ProfileEditField({
+  label,
+  name,
+  type = "text",
+  defaultValue,
 }: {
-  user: User;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  label: string;
+  name: string;
+  type?: string;
+  defaultValue: string;
 }) {
-  const { updateProfile } = useAuth();
+  return (
+    <label className="flex flex-col gap-2 text-sm font-medium">
+      {label}
+      <Input name={name} type={type} defaultValue={defaultValue} />
+    </label>
+  );
+}
+
+// 내 정보 수정 폼 — 간편로그인 제공 항목 중 이메일만 수정 불가
+function ProfileEditForm({ user, onDone }: { user: User; onDone: () => void }) {
+  const updateProfile = useAuthStore((state) => state.updateProfile);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setPreviewUrl(file ? URL.createObjectURL(file) : null);
+  };
 
   const [error, submitAction, isPending] = useActionState(
     async (_prev: string | null, formData: FormData) => {
+      const name = String(formData.get("name")).trim();
+      const birth = String(formData.get("birth"));
       const nickname = String(formData.get("nickname")).trim();
       const phone = String(formData.get("phone")).trim();
+      if (!name) {
+        return "이름을 입력해주세요";
+      }
+      if (!birth) {
+        return "생년월일을 입력해주세요";
+      }
+      if (!phone) {
+        return "전화번호를 입력해주세요";
+      }
       if (!nickname) {
         return "닉네임을 입력해주세요";
       }
-      if (!phone) {
-        return "연락처를 입력해주세요";
-      }
+
+      const imageFile = formData.get("profileImage");
+      const hasNewImage = imageFile instanceof File && imageFile.size > 0;
       try {
-        await updateProfile({ nickname, phone });
-        onOpenChange(false);
+        const profileImageUrl = hasNewImage
+          ? await readFileAsDataUrl(imageFile)
+          : user.profileImageUrl;
+        await updateProfile({ name, birth, nickname, phone, profileImageUrl });
+        onDone();
         return null;
       } catch {
         return "정보 수정에 실패했습니다. 잠시 후 다시 시도해주세요";
@@ -112,22 +228,191 @@ function ProfileEditDialog({
   );
 
   return (
+    <section>
+      <form action={submitAction}>
+        <SectionHeader
+          title="내 정보"
+          action={
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+                취소
+              </Button>
+              <Button type="submit" size="sm" disabled={isPending}>
+                {isPending ? "저장 중..." : "저장"}
+              </Button>
+            </div>
+          }
+        />
+        <div className="flex flex-col gap-5 pt-5">
+          <div className="flex items-center gap-4">
+            <ProfileAvatar
+              user={user}
+              imageUrl={previewUrl ?? user.profileImageUrl}
+              className="size-16 text-xl"
+            />
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="cursor-pointer has-[:focus-visible]:border-ring has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50"
+            >
+              <label>
+                이미지 변경
+                <input
+                  name="profileImage"
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleImageChange}
+                />
+              </label>
+            </Button>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ProfileEditField
+              label="이름"
+              name="name"
+              defaultValue={user.name}
+            />
+            <ProfileEditField
+              label="생년월일"
+              name="birth"
+              type="date"
+              defaultValue={user.birth}
+            />
+            <ProfileEditField
+              label="전화번호"
+              name="phone"
+              type="tel"
+              defaultValue={user.phone}
+            />
+            <ProfileEditField
+              label="닉네임"
+              name="nickname"
+              defaultValue={user.nickname}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">이메일</span>
+            <p className="text-sm">{user.email}</p>
+            <p className="text-xs text-muted-foreground">
+              {PROVIDER_LABEL[user.provider]} 계정 이메일 · 변경 불가
+            </p>
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+      </form>
+    </section>
+  );
+}
+
+const BROKER_VERIFICATION_DESCRIPTION: Record<
+  BrokerVerificationStatus,
+  string
+> = {
+  미신청:
+    "중개업등록번호와 증빙 서류를 제출하면 관리자 확인 후 중개사 계정으로 전환됩니다.",
+  "심사 중":
+    "제출하신 서류를 관리자가 확인하고 있습니다. 승인이 완료되면 중개사 계정으로 전환됩니다.",
+  "승인 완료": "중개사 인증이 완료된 계정입니다.",
+};
+
+// 중개사 인증 — 등록번호·서류 제출 후 관리자 수동 승인, 신원 레일에 배치
+function BrokerVerificationPanel({ user }: { user: User }) {
+  const [applyOpen, setApplyOpen] = useState(false);
+
+  return (
+    <div className="border-t pt-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold">중개사 인증</h2>
+        {user.brokerVerification !== "미신청" && (
+          <Badge
+            variant={
+              user.brokerVerification === "승인 완료" ? "default" : "secondary"
+            }
+          >
+            {user.brokerVerification}
+          </Badge>
+        )}
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {BROKER_VERIFICATION_DESCRIPTION[user.brokerVerification]}
+      </p>
+      {user.brokerVerification === "미신청" && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() => setApplyOpen(true)}
+        >
+          인증 신청
+        </Button>
+      )}
+      <BrokerVerificationDialog open={applyOpen} onOpenChange={setApplyOpen} />
+    </div>
+  );
+}
+
+function BrokerVerificationDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const applyBrokerVerification = useAuthStore(
+    (state) => state.applyBrokerVerification,
+  );
+
+  const [error, submitAction, isPending] = useActionState(
+    async (_prev: string | null, formData: FormData) => {
+      const registrationNumber = String(
+        formData.get("registrationNumber"),
+      ).trim();
+      const document = formData.get("document");
+      if (!registrationNumber) {
+        return "중개업등록번호를 입력해주세요";
+      }
+      if (!(document instanceof File) || document.size === 0) {
+        return "중개사 증빙 서류를 첨부해주세요";
+      }
+      try {
+        await applyBrokerVerification({
+          registrationNumber,
+          documentName: document.name,
+        });
+        onOpenChange(false);
+        return null;
+      } catch {
+        return "인증 신청에 실패했습니다. 잠시 후 다시 시도해주세요";
+      }
+    },
+    null,
+  );
+
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>내 정보 수정</DialogTitle>
+          <DialogTitle>중개사 인증 신청</DialogTitle>
           <DialogDescription>
-            닉네임과 연락처를 변경할 수 있습니다.
+            중개업등록번호와 증빙 서류를 제출하면 관리자가 확인 후 승인합니다.
           </DialogDescription>
         </DialogHeader>
         <form action={submitAction} className="flex flex-col gap-4">
           <label className="flex flex-col gap-2 text-sm font-medium">
-            닉네임
-            <Input name="nickname" defaultValue={user.nickname} />
+            중개업등록번호
+            <Input
+              name="registrationNumber"
+              placeholder="예) 11110-2026-00001"
+            />
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium">
-            연락처
-            <Input name="phone" type="tel" defaultValue={user.phone} />
+            증빙 서류
+            <Input name="document" type="file" accept="image/*,.pdf" />
+            <span className="text-xs font-normal text-muted-foreground">
+              중개사무소 등록증 등 자격을 확인할 수 있는 서류 (PDF·이미지)
+            </span>
           </label>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
@@ -139,7 +424,7 @@ function ProfileEditDialog({
               취소
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "저장 중..." : "저장"}
+              {isPending ? "신청 중..." : "신청하기"}
             </Button>
           </DialogFooter>
         </form>
@@ -148,9 +433,10 @@ function ProfileEditDialog({
   );
 }
 
-// 계정 관리 — 로그아웃(AUTH-02)·회원 탈퇴(USER-03)
-function AccountCard() {
-  const { logout, withdraw } = useAuth();
+// 계정 — 로그아웃(AUTH-02)·회원 탈퇴(USER-03), 카드 없이 조용한 하단 섹션
+function AccountSection() {
+  const logout = useAuthStore((state) => state.logout);
+  const withdraw = useAuthStore((state) => state.withdraw);
   const navigate = useNavigate();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
@@ -178,97 +464,87 @@ function AccountCard() {
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">계정 관리</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium">로그아웃</p>
-            <p className="text-sm text-muted-foreground">
-              현재 기기에서 로그아웃합니다.
-            </p>
-          </div>
-          <form action={logoutAction}>
-            <Button type="submit" variant="outline" disabled={isLoggingOut}>
-              <LogOut />
-              로그아웃
-            </Button>
-          </form>
+    <section>
+      <SectionHeader title="계정" />
+      <div className="flex items-center justify-between gap-4 py-4">
+        <div>
+          <p className="text-sm font-medium">로그아웃</p>
+          <p className="text-sm text-muted-foreground">
+            현재 기기에서 로그아웃합니다.
+          </p>
         </div>
-        {logoutError && (
-          <p className="text-sm text-destructive">{logoutError}</p>
-        )}
-        <div className="border-t" />
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-destructive">회원 탈퇴</p>
-            <p className="text-sm text-muted-foreground">
-              탈퇴 시 저장한 매물과 리포트가 모두 삭제되며 복구할 수 없습니다.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/5 hover:text-destructive"
-            onClick={() => setWithdrawOpen(true)}
-          >
-            탈퇴하기
+        <form action={logoutAction}>
+          <Button type="submit" variant="outline" disabled={isLoggingOut}>
+            <LogOut />
+            로그아웃
           </Button>
+        </form>
+      </div>
+      {logoutError && <p className="text-sm text-destructive">{logoutError}</p>}
+      <div className="flex items-center justify-between gap-4 border-t py-4">
+        <div>
+          <p className="text-sm font-medium text-destructive">회원 탈퇴</p>
+          <p className="text-sm text-muted-foreground">
+            탈퇴 시 저장한 매물과 리포트가 모두 삭제되며 복구할 수 없습니다.
+          </p>
         </div>
-        <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>정말 탈퇴하시겠어요?</DialogTitle>
-              <DialogDescription>
-                탈퇴하면 계정 정보와 저장한 매물, 리포트가 모두 삭제되며 되돌릴
-                수 없습니다.
-              </DialogDescription>
-            </DialogHeader>
-            {withdrawError && (
-              <p className="text-sm text-destructive">{withdrawError}</p>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setWithdrawOpen(false)}>
-                취소
+        <Button
+          variant="ghost"
+          className="shrink-0 text-destructive hover:bg-destructive/5 hover:text-destructive"
+          onClick={() => setWithdrawOpen(true)}
+        >
+          탈퇴하기
+        </Button>
+      </div>
+      <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>정말 탈퇴하시겠어요?</DialogTitle>
+            <DialogDescription>
+              탈퇴하면 계정 정보와 저장한 매물, 리포트가 모두 삭제되며 되돌릴 수
+              없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          {withdrawError && (
+            <p className="text-sm text-destructive">{withdrawError}</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWithdrawOpen(false)}>
+              취소
+            </Button>
+            <form action={withdrawAction}>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={isWithdrawing}
+              >
+                {isWithdrawing ? "처리 중..." : "탈퇴하기"}
               </Button>
-              <form action={withdrawAction}>
-                <Button
-                  type="submit"
-                  variant="destructive"
-                  disabled={isWithdrawing}
-                >
-                  {isWithdrawing ? "처리 중..." : "탈퇴하기"}
-                </Button>
-              </form>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+            </form>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }
 
-// PAGE-02 마이페이지 — 내 정보 조회·수정·탈퇴·로그아웃
+// PAGE-02 마이페이지 — 내 정보 조회·수정·중개사 인증·탈퇴·로그아웃
 function MyPage() {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
 
   if (!user) {
     return <Navigate to="/login" state={{ from: "/mypage" }} replace />;
   }
 
   return (
-    <main className="min-h-[calc(100svh-3.5rem)] bg-muted/40 px-4 py-10">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
-        <header>
-          <h1 className="text-2xl font-semibold">마이페이지</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            내 정보를 확인하고 계정을 관리하세요.
-          </p>
-        </header>
-        <ProfileCard user={user} />
-        <ProfileInfoCard user={user} />
-        <AccountCard />
+    <main className="min-h-[calc(100svh-3.5rem)] px-4 py-12">
+      <h1 className="sr-only">마이페이지</h1>
+      <div className="mx-auto grid w-full max-w-4xl gap-10 md:grid-cols-[15rem_1fr] md:gap-14">
+        <IdentityRail user={user} />
+        <div className="flex min-w-0 flex-col gap-12">
+          <ProfileSection user={user} />
+          <AccountSection />
+        </div>
       </div>
     </main>
   );

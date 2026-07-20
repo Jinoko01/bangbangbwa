@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Route, Routes, useNavigate, useParams } from "react-router-dom";
 
 import GlobalNav from "@/components/GlobalNav";
-import { AuthProvider } from "@/context/AuthContext";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import MyPage from "@/pages/MyPage";
@@ -124,7 +123,7 @@ function App() {
   };
 
   return (
-    <AuthProvider>
+    <>
       <GlobalNav />
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -185,7 +184,7 @@ function App() {
           }
         />
       </Routes>
-    </AuthProvider>
+    </>
   );
 }
 

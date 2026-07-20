@@ -51,13 +51,26 @@ export type AuthProvider = "kakao" | "google";
 
 export type UserRole = "세입자" | "중개사";
 
+export type BrokerVerificationStatus = "미신청" | "심사 중" | "승인 완료";
+
 export interface User {
   name: string;
+  birth: string;
   nickname: string;
   email: string;
   phone: string;
+  profileImageUrl?: string;
   role: UserRole;
+  brokerVerification: BrokerVerificationStatus;
   provider: AuthProvider;
 }
 
-export type UserProfileChanges = Pick<User, "nickname" | "phone">;
+export type UserProfileChanges = Pick<
+  User,
+  "name" | "birth" | "nickname" | "phone" | "profileImageUrl"
+>;
+
+export interface BrokerVerificationRequest {
+  registrationNumber: string;
+  documentName: string;
+}

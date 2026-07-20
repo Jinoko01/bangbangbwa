@@ -1,4 +1,8 @@
-import type { User, UserProfileChanges } from "@/types";
+import type {
+  BrokerVerificationRequest,
+  User,
+  UserProfileChanges,
+} from "@/types";
 
 // AUTH-01·02, USER-01~03 인증·회원 API 스텁.
 // 백엔드 완성 후 이 파일만 교체하면 됨.
@@ -6,10 +10,12 @@ import type { User, UserProfileChanges } from "@/types";
 
 const MOCK_USER: Omit<User, "provider"> = {
   name: "김방방",
+  birth: "1998-03-14",
   nickname: "방방이",
   email: "bangbang@example.com",
   phone: "010-1234-5678",
   role: "세입자",
+  brokerVerification: "미신청",
 };
 
 // TODO: 카카오 OAuth 연동 (import.meta.env.VITE_KAKAO_KEY)
@@ -31,6 +37,15 @@ export async function updateProfile(
   changes: UserProfileChanges,
 ): Promise<User> {
   return { ...user, ...changes };
+}
+
+// TODO: 중개사 인증 신청 API 연동 (등록번호·서류 업로드, 관리자 수동 승인)
+export async function applyBrokerVerification(
+  user: User,
+  request: BrokerVerificationRequest,
+): Promise<User> {
+  void request;
+  return { ...user, brokerVerification: "심사 중" };
 }
 
 // TODO: USER-03 회원 탈퇴 API 연동

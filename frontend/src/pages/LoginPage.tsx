@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useAuth } from "@/context/AuthContext";
+import { useAuthStore } from "@/stores/authStore";
 import type { AuthProvider } from "@/types";
 
 // 카카오 공식 심볼(말풍선) — 브랜드 가이드: 심볼·텍스트 검정(#000000 85%), 배경 #FEE500
@@ -40,7 +40,7 @@ function GoogleLogo() {
 
 // PAGE-01 로그인 — 카카오·구글 소셜 로그인 (AUTH-01). OAuth 실연동 전 스텁 동작.
 function LoginPage() {
-  const { login } = useAuth();
+  const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
   const location = useLocation();
 
