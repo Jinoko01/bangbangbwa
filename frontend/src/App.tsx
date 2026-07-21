@@ -188,7 +188,15 @@ function App() {
             />
           }
         />
-        <Route path="/reservation/:slug" element={<ReservationLivePage />} />
+        <Route
+          path="/reservation/:slug"
+          element={
+            <ReservationLivePage
+              reservations={reservations}
+              properties={properties}
+            />
+          }
+        />
         <Route
           path="/properties"
           element={

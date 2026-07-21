@@ -40,6 +40,11 @@ export interface Memo {
   text: string;
   createdAt: string;
 }
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
 
 export interface Filters {
   query: string;

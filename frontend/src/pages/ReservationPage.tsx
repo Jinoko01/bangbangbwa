@@ -1,157 +1,28 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarClock,
   Check,
   CheckCircle2,
-  Circle,
   Clock3,
   Home,
   MapPin,
-  Plus,
   RefreshCw,
   ShieldCheck,
-  Trash2,
   Video,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import ReservationChecklist from "@/components/ReservationChecklist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { useReservationChecklist } from "@/hooks/useReservationChecklist";
 import { cn } from "@/lib/utils";
 import type { Property, Reservation } from "@/types";
 
 interface ReservationPageProps {
   reservations: Reservation[];
   properties: Property[];
-}
-
-interface ChecklistItem {
-  id: string;
-  text: string;
-  completed: boolean;
-}
-
-type ReservationChecklists = Record<string, ChecklistItem[]>;
-
-const CHECKLIST_STORAGE_KEY = "bangbangbwa:reservation-checklists";
-const DEFAULT_CHECKLIST_TEXTS = [
-  "벽지·천장 곰팡이 확인",
-  "등기부등본 근저당 확인",
-];
-
-function createDefaultChecklist(): ChecklistItem[] {
-  return DEFAULT_CHECKLIST_TEXTS.map((text, index) => ({
-    id: `default-${index}`,
-    text,
-    completed: false,
-  }));
-}
-
-function loadChecklists(): ReservationChecklists {
-  try {
-    const stored = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-    return stored ? (JSON.parse(stored) as ReservationChecklists) : {};
-  } catch {
-    return {};
-  }
-}
-
-interface ReservationChecklistProps {
-  items: ChecklistItem[];
-  onChange: (items: ChecklistItem[]) => void;
-}
-
-function ReservationChecklist({ items, onChange }: ReservationChecklistProps) {
-  const [draft, setDraft] = useState("");
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const text = draft.trim();
-    if (!text) {
-      return;
-    }
-    onChange([...items, { id: crypto.randomUUID(), text, completed: false }]);
-    setDraft("");
-  };
-
-  const toggleItem = (itemId: string) => {
-    onChange(
-      items.map((item) =>
-        item.id === itemId ? { ...item, completed: !item.completed } : item,
-      ),
-    );
-  };
-
-  const removeItem = (itemId: string) => {
-    onChange(items.filter((item) => item.id !== itemId));
-  };
-
-  return (
-    <div className="rounded-xl border bg-slate-50/70 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <strong className="text-sm text-slate-900">예약 체크리스트</strong>
-          <p className="mt-1 text-xs text-muted-foreground">
-            영상 통화에서 확인하거나 물어볼 내용을 적어두세요.
-          </p>
-        </div>
-        <Badge variant="secondary">{items.length}개</Badge>
-      </div>
-
-      <ul className="mt-4 space-y-2">
-        {items.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2.5"
-          >
-            <button
-              type="button"
-              className="shrink-0 text-primary"
-              aria-label={`${item.text} ${item.completed ? "미완료로 변경" : "완료로 변경"}`}
-              onClick={() => toggleItem(item.id)}
-            >
-              {item.completed ? (
-                <CheckCircle2 className="size-5" />
-              ) : (
-                <Circle className="size-5" />
-              )}
-            </button>
-            <span
-              className={cn(
-                "min-w-0 flex-1 text-sm",
-                item.completed && "text-muted-foreground line-through",
-              )}
-            >
-              {item.text}
-            </span>
-            <button
-              type="button"
-              className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
-              aria-label={`${item.text} 삭제`}
-              onClick={() => removeItem(item.id)}
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <form className="mt-3 flex gap-2" onSubmit={handleSubmit}>
-        <Input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="확인할 내용이나 질문을 입력하세요"
-          aria-label="체크리스트 항목"
-          className="h-10 min-w-0 flex-1 bg-white"
-        />
-        <Button type="submit" size="sm" className="h-10 shrink-0">
-          <Plus /> 추가
-        </Button>
-      </form>
-    </div>
-  );
 }
 
 function ReservationPage({ reservations, properties }: ReservationPageProps) {
@@ -163,15 +34,6 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
   const [selectedId, setSelectedId] = useState(
     filteredReservations[0]?.id ?? "",
   );
-  const [checklists, setChecklists] = useState(loadChecklists);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklists));
-    } catch {
-      // 저장 공간을 사용할 수 없어도 현재 화면의 체크리스트는 계속 동작한다.
-    }
-  }, [checklists]);
 
   useEffect(() => {
     const selectionExists = filteredReservations.some(
@@ -188,17 +50,12 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
   const selectedProperty = properties.find(
     (property) => property.id === selectedReservation?.propertyId,
   );
-  const selectedChecklist = selectedReservation
-    ? (checklists[selectedReservation.id] ?? createDefaultChecklist())
-    : [];
+  const { items: selectedChecklist, setItems: setSelectedChecklist } =
+    useReservationChecklist(selectedReservation?.id);
   const reservationStatusMessage =
     selectedReservation?.status === "예약 확정"
       ? "중개사와 일정이 확정되었습니다. 시작 10분 전부터 입장할 수 있어요."
       : "중개사가 예약 일정을 확인하고 있어요. 확정 후 미팅에 입장할 수 있어요.";
-
-  const updateChecklist = (reservationId: string, items: ChecklistItem[]) => {
-    setChecklists((current) => ({ ...current, [reservationId]: items }));
-  };
 
   return (
     <main className="min-h-[calc(100svh-3.5rem)] bg-white">
@@ -424,9 +281,7 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
             <CardContent className="px-4">
               <ReservationChecklist
                 items={selectedChecklist}
-                onChange={(items) =>
-                  updateChecklist(selectedReservation.id, items)
-                }
+                onChange={setSelectedChecklist}
               />
             </CardContent>
           </Card>
