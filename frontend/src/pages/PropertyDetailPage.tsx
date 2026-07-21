@@ -1,5 +1,15 @@
 import { useState, type ComponentProps, type ReactNode } from "react";
-import { CalendarPlus, ChevronLeft, Heart, Pencil, Trash2 } from "lucide-react";
+import {
+  CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import type { Swiper as SwiperInstance } from "swiper";
+import "swiper/css";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +23,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPrice, toPyeong } from "@/lib/format";
+import { formatPrice, formatPriceLabel, toPyeong } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { Memo, Property } from "@/types";
 
 // shadcn Textarea 미설치 → Input과 동일 토큰으로 스타일링한 로컬 textarea
@@ -222,6 +233,114 @@ function BrokerActions({
   );
 }
 
+interface PhotoCarouselProps {
+  title: string;
+  imageUrls: string[];
+  onPhotoClick: (url: string) => void;
+}
+
+// 매물 사진 인라인 캐러셀 — 스와이프·좌우 버튼으로 넘기고, 사진 클릭 시 크게 보기
+function PhotoCarousel({ title, imageUrls, onPhotoClick }: PhotoCarouselProps) {
+  const [swiper, setSwiper] = useState<SwiperInstance | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  return (
+    <div className="relative">
+      {/* loop: 마지막 사진에서 다음 → 첫 사진, 첫 사진에서 이전 → 마지막 사진 */}
+      <Swiper
+        loop={imageUrls.length > 1}
+        onSwiper={setSwiper}
+        onSlideChange={(instance) => setActiveIndex(instance.realIndex)}
+      >
+        {imageUrls.map((url, index) => (
+          <SwiperSlide key={url}>
+            <button
+              type="button"
+              className="block w-full cursor-zoom-in"
+              aria-label={`${title} 사진 ${index + 1} 크게 보기`}
+              onClick={() => onPhotoClick(url)}
+            >
+              <img
+                src={url}
+                alt={`${title} 사진 ${index + 1}`}
+                className="h-64 w-full object-cover"
+              />
+            </button>
+          </SwiperSlide>
+        ))}
+      </Swiper>
+      <Button
+        variant="secondary"
+        size="icon"
+        className="absolute top-1/2 left-2 z-10 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100"
+        aria-label="이전 사진"
+        onClick={() => swiper?.slidePrev()}
+      >
+        <ChevronLeft />
+      </Button>
+      <Button
+        variant="secondary"
+        size="icon"
+        className="absolute top-1/2 right-2 z-10 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100"
+        aria-label="다음 사진"
+        onClick={() => swiper?.slideNext()}
+      >
+        <ChevronRight />
+      </Button>
+      <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
+        {imageUrls.map((url, index) => (
+          <button
+            key={url}
+            type="button"
+            aria-label={`${index + 1}번째 사진 보기`}
+            aria-current={index === activeIndex}
+            className={cn(
+              "size-2 rounded-full transition-colors",
+              index === activeIndex
+                ? "bg-white"
+                : "bg-white/50 hover:bg-white/70",
+            )}
+            onClick={() => swiper?.slideToLoop(index)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface PhotoDialogProps {
+  title: string;
+  photoUrl: string | null;
+  onClose: () => void;
+}
+
+// 캐러셀에서 클릭한 사진 한 장을 크게 보여주는 모달
+function PhotoDialog({ title, photoUrl, onClose }: PhotoDialogProps) {
+  return (
+    <Dialog
+      open={photoUrl !== null}
+      onOpenChange={(open) => !open && onClose()}
+    >
+      {/* 기본 grid 레이아웃에선 원본 크기 이미지가 트랙을 밀어내므로 flex로 폭을 고정 */}
+      <DialogContent className="flex flex-col sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>매물 사진</DialogTitle>
+          <DialogDescription className="sr-only">
+            {title} 사진을 크게 보여줍니다.
+          </DialogDescription>
+        </DialogHeader>
+        {photoUrl && (
+          <img
+            src={photoUrl}
+            alt={`${title} 사진 크게 보기`}
+            className="max-h-[70svh] w-full rounded-lg object-contain"
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className="flex flex-col gap-4">
@@ -272,11 +391,16 @@ function PropertyDetailPage({
   onUpdateMemo,
   onDeleteMemo,
 }: PropertyDetailPageProps) {
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+
   const priceLabel = property
     ? { 매매: "매매가", 전세: "전세 보증금", 월세: "보증금 / 월세" }[
         property.dealType
       ]
     : "";
+
+  const photoUrls =
+    property?.imageUrls ?? (property?.imageUrl ? [property.imageUrl] : []);
 
   return (
     <div className="min-h-svh bg-background">
@@ -311,12 +435,20 @@ function PropertyDetailPage({
         ) : (
           <>
             <Card className="gap-0 overflow-hidden py-0">
-              <img
-                src={property.imageUrl}
-                alt={`${property.title} 매물 사진`}
-                className="h-64 w-full object-cover"
-              />
-              <CardHeader>
+              {photoUrls.length > 0 ? (
+                <PhotoCarousel
+                  title={property.title}
+                  imageUrls={photoUrls}
+                  onPhotoClick={setSelectedPhoto}
+                />
+              ) : (
+                <img
+                  src={property.imageUrl}
+                  alt={`${property.title} 매물 사진`}
+                  className="h-64 w-full object-cover"
+                />
+              )}
+              <CardHeader className="pt-4">
                 <div className="flex items-center gap-1.5">
                   <Badge>{property.dealType}</Badge>
                   <Badge variant="secondary">{property.buildingType}</Badge>
@@ -325,15 +457,10 @@ function PropertyDetailPage({
               </CardHeader>
               <CardContent className="pb-6">
                 <p className="text-3xl font-bold text-primary">
-                  {formatPrice(property)}
-                  <span className="ml-1 text-sm font-normal text-muted-foreground">
-                    만원
-                  </span>
+                  {formatPriceLabel(property)}
                 </p>
                 <dl className="mt-4 divide-y">
-                  <InfoRow label={priceLabel}>
-                    {formatPrice(property)} 만원
-                  </InfoRow>
+                  <InfoRow label={priceLabel}>{formatPrice(property)}</InfoRow>
                   <InfoRow label="위치">
                     {property.region} {property.dong}
                   </InfoRow>
@@ -378,6 +505,12 @@ function PropertyDetailPage({
               onAdd={onAddMemo}
               onUpdate={onUpdateMemo}
               onDelete={onDeleteMemo}
+            />
+
+            <PhotoDialog
+              title={property.title}
+              photoUrl={selectedPhoto}
+              onClose={() => setSelectedPhoto(null)}
             />
           </>
         )}

@@ -371,16 +371,6 @@
                   "fontFamily": "$font-sans",
                   "fontSize": 20,
                   "fontWeight": "700"
-                },
-                {
-                  "type": "text",
-                  "id": "rbRYN",
-                  "name": "Price Unit",
-                  "fill": "$muted-foreground",
-                  "content": "만원",
-                  "fontFamily": "$font-sans",
-                  "fontSize": 12,
-                  "fontWeight": "normal"
                 }
               ]
             },
@@ -17770,7 +17760,7 @@
       "name": "My Page",
       "clip": true,
       "width": 1440,
-      "height": 900,
+      "height": 798,
       "fill": "$background",
       "layout": "vertical",
       "children": [
@@ -20243,23 +20233,150 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "PNfqX",
-                      "name": "Image",
+                      "id": "o7OGQ",
+                      "name": "Photo Carousel",
+                      "metadata": {
+                        "type": "unsplash",
+                        "username": "pajorstudio",
+                        "link": "https://unsplash.com/@pajorstudio",
+                        "author": "Dominik"
+                      },
+                      "clip": true,
                       "width": "fill_container",
                       "height": 256,
-                      "fill": "$muted",
-                      "justifyContent": "center",
-                      "alignItems": "center",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "https://images.unsplash.com/photo-1757439402190-99b73ac8e807?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODQ2MTIxODZ8&ixlib=rb-4.1.0&q=80&w=1080",
+                        "mode": "fill"
+                      },
+                      "layout": "vertical",
                       "children": [
                         {
-                          "type": "icon",
-                          "id": "BiiqB",
-                          "name": "Photo",
-                          "width": 32,
-                          "height": 32,
-                          "icon": "image",
-                          "library": "lucide",
-                          "fill": "$muted-foreground"
+                          "type": "frame",
+                          "id": "B28yq",
+                          "name": "Carousel Buttons Row",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "padding": [
+                            0,
+                            8
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "BViti",
+                              "name": "Carousel Prev Button",
+                              "opacity": 0.8,
+                              "width": 36,
+                              "height": 36,
+                              "fill": "$secondary",
+                              "cornerRadius": 18,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "dxfxK",
+                                  "name": "Prev Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "chevron-left",
+                                  "library": "lucide",
+                                  "fill": "$secondary-foreground"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "styx8",
+                              "name": "Carousel Next Button",
+                              "opacity": 0.8,
+                              "width": 36,
+                              "height": 36,
+                              "fill": "$secondary",
+                              "cornerRadius": 18,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "lLLpd",
+                                  "name": "Next Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "chevron-right",
+                                  "library": "lucide",
+                                  "fill": "$secondary-foreground"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "zj6FP",
+                          "name": "Carousel Dots Row",
+                          "width": "fill_container",
+                          "padding": [
+                            0,
+                            0,
+                            12,
+                            0
+                          ],
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "HeILa",
+                              "name": "Carousel Dots",
+                              "gap": 6,
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "gg0Kv",
+                                  "name": "Dot 1",
+                                  "fill": "#FFFFFF",
+                                  "width": 8,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "Ofom5",
+                                  "name": "Dot 2",
+                                  "fill": "#FFFFFF80",
+                                  "width": 8,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "cB5Vo",
+                                  "name": "Dot 3",
+                                  "fill": "#FFFFFF80",
+                                  "width": 8,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "KpN6R",
+                                  "name": "Dot 4",
+                                  "fill": "#FFFFFF80",
+                                  "width": 8,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "USIK5",
+                                  "name": "Dot 5",
+                                  "fill": "#FFFFFF80",
+                                  "width": 8,
+                                  "height": 8
+                                }
+                              ]
+                            }
+                          ]
                         }
                       ]
                     },
@@ -20341,20 +20458,10 @@
                               "id": "P4rdAU",
                               "name": "Price",
                               "fill": "$primary",
-                              "content": "5억 5,000",
+                              "content": "5억 5,000만",
                               "fontFamily": "$font-sans",
                               "fontSize": 28,
                               "fontWeight": "700"
-                            },
-                            {
-                              "type": "text",
-                              "id": "f5AmX",
-                              "name": "Price Unit",
-                              "fill": "$muted-foreground",
-                              "content": "만원",
-                              "fontFamily": "$font-sans",
-                              "fontSize": 14,
-                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -20393,7 +20500,7 @@
                                   "id": "RlWDS",
                                   "name": "Value",
                                   "fill": "$foreground",
-                                  "content": "5억 5,000 만원",
+                                  "content": "5억 5,000",
                                   "fontFamily": "$font-sans",
                                   "fontSize": 14,
                                   "fontWeight": "500"
@@ -21033,6 +21140,86 @@
               ]
             }
           ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "shgZ5",
+      "x": 14040,
+      "y": 1587,
+      "name": "Photo Dialog — 사진 크게 보기",
+      "clip": true,
+      "width": 768,
+      "fill": "$card",
+      "cornerRadius": "$radius-xl",
+      "stroke": "$border",
+      "strokeWidth": 1,
+      "strokeAlignment": "inner",
+      "effect": {
+        "type": "shadow",
+        "shadowType": "outer",
+        "color": "#00000026",
+        "offset": {
+          "x": 0,
+          "y": 8
+        },
+        "blur": 24
+      },
+      "layout": "vertical",
+      "gap": 16,
+      "padding": 24,
+      "children": [
+        {
+          "type": "frame",
+          "id": "UWYCB",
+          "name": "Dialog Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "nsjIZ",
+              "name": "Dialog Title",
+              "fill": "$foreground",
+              "content": "매물 사진",
+              "fontFamily": "$font-sans",
+              "fontSize": 18,
+              "fontWeight": "600"
+            },
+            {
+              "type": "icon",
+              "id": "gwI1M",
+              "name": "Close Icon",
+              "width": 16,
+              "height": 16,
+              "icon": "x",
+              "library": "lucide",
+              "fill": "$muted-foreground"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "sQVLg",
+          "name": "Dialog Photo",
+          "metadata": {
+            "type": "unsplash",
+            "username": "vendedorescostalive",
+            "link": "https://unsplash.com/@vendedorescostalive",
+            "author": "Costa Live"
+          },
+          "clip": true,
+          "width": "fill_container",
+          "height": 460,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "https://images.unsplash.com/photo-1759722667485-95244a63fbb2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODQ2MTE5NDZ8&ixlib=rb-4.1.0&q=80&w=1080",
+            "mode": "fill"
+          },
+          "cornerRadius": "$radius-lg"
         }
       ]
     }

@@ -16,6 +16,7 @@ export interface Property {
   rooms: number;
   saved: boolean;
   imageUrl?: string;
+  imageUrls?: string[];
 }
 
 export interface Reservation {

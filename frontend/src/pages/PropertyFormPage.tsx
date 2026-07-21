@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BUILDING_TYPES, REGIONS } from "@/data/properties";
 import { isApprovedBroker } from "@/lib/auth";
 import { readFileAsDataUrl } from "@/lib/file";
+import { formatManwonLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import type { BuildingType, DealType, Property } from "@/types";
@@ -67,6 +68,37 @@ function FormField({
       {label}
       {children}
     </label>
+  );
+}
+
+// 만원 단위 금액 입력 — 자릿수 실수 방지를 위해 입력값을 한글 금액으로 실시간 표시
+function PriceInput({
+  name,
+  defaultValue,
+  disabled,
+}: {
+  name: string;
+  defaultValue?: number;
+  disabled?: boolean;
+}) {
+  const [amount, setAmount] = useState(defaultValue ?? 0);
+
+  return (
+    <>
+      <Input
+        name={name}
+        type="number"
+        min={1}
+        defaultValue={defaultValue}
+        disabled={disabled}
+        onChange={(e) => setAmount(Number(e.target.value))}
+      />
+      {!disabled && amount > 0 && (
+        <span className="text-xs font-normal text-muted-foreground">
+          = {formatManwonLabel(amount)}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -295,21 +327,14 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
           </Select>
         </FormField>
         <FormField label={DEPOSIT_LABEL[dealType]}>
-          <Input
-            name="deposit"
-            type="number"
-            min={1}
-            defaultValue={property?.deposit}
-          />
+          <PriceInput name="deposit" defaultValue={property?.deposit} />
         </FormField>
         <FormField
           label="월세 (만원)"
           className={dealType !== "월세" ? "text-muted-foreground" : undefined}
         >
-          <Input
+          <PriceInput
             name="monthlyRent"
-            type="number"
-            min={1}
             defaultValue={property?.monthlyRent || undefined}
             disabled={dealType !== "월세"}
           />

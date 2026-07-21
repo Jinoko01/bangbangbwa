@@ -74,9 +74,6 @@ function PropertyCard({ property, onToggleSave, onOpen }: PropertyCardProps) {
       <CardContent className="px-5 pb-5">
         <p className="text-xl font-bold text-primary">
           {formatPrice(property)}
-          <span className="ml-1 text-xs font-normal text-muted-foreground">
-            만원
-          </span>
         </p>
         <p className="mt-2 text-sm text-foreground">
           {region} {dong}

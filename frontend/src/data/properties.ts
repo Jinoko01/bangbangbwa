@@ -257,6 +257,9 @@ const PROPERTY_IMAGES = [
 
 PROPERTIES.forEach((property, index) => {
   property.imageUrl = PROPERTY_IMAGES[index % PROPERTY_IMAGES.length];
+  property.imageUrls = PROPERTY_IMAGES.map(
+    (_, offset) => PROPERTY_IMAGES[(index + offset) % PROPERTY_IMAGES.length],
+  );
 });
 
 // 지역 필터 옵션은 데이터에서 파생 (등장 순서 유지)
