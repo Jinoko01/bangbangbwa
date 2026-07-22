@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Route, Routes, useNavigate, useParams } from "react-router-dom";
+import {
+  Route,
+  Routes,
+  matchPath,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 import GlobalNav from "@/components/GlobalNav";
 import LandingPage from "@/pages/LandingPage";
@@ -95,6 +102,10 @@ function App() {
     },
   ]);
   const navigate = useNavigate();
+  const location = useLocation();
+  // 라이브 세션 중에는 GNB 링크 한 번에 확인 없이 통화가 끊기므로 아예 노출하지 않는다.
+  // 이 화면을 벗어나는 길은 확인 다이얼로그가 붙은 나가기 버튼 하나뿐이다
+  const hideGlobalNav = matchPath("/reservation/:slug", location.pathname);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -154,7 +165,7 @@ function App() {
 
   return (
     <>
-      <GlobalNav />
+      {!hideGlobalNav && <GlobalNav />}
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />

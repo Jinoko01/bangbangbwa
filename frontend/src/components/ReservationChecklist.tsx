@@ -10,9 +10,16 @@ import type { ChecklistItem } from "@/types";
 interface ReservationChecklistProps {
   items: ChecklistItem[];
   onChange: (items: ChecklistItem[]) => void;
+  // bare — 이미 제목이 있는 탭·패널 안에 들어갈 때 카드 껍데기와 제목을 뺀다
+  variant?: "card" | "bare";
 }
 
-function ReservationChecklist({ items, onChange }: ReservationChecklistProps) {
+function ReservationChecklist({
+  items,
+  onChange,
+  variant = "card",
+}: ReservationChecklistProps) {
+  const isBare = variant === "bare";
   const [draft, setDraft] = useState("");
   const completedCount = items.filter((item) => item.completed).length;
 
@@ -39,25 +46,32 @@ function ReservationChecklist({ items, onChange }: ReservationChecklistProps) {
   };
 
   return (
-    <div className="rounded-xl border bg-slate-50/70 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <strong className="text-sm text-slate-900">예약 체크리스트</strong>
-          <p className="mt-1 text-xs text-muted-foreground">
-            통화 중 확인할 내용을 적고, 확인한 항목을 체크하세요.
-          </p>
+    <div className={cn(!isBare && "rounded-xl border bg-slate-50/70 p-4")}>
+      {!isBare && (
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <strong className="text-sm text-slate-900">예약 체크리스트</strong>
+            <p className="mt-1 text-xs text-muted-foreground">
+              통화 중 확인할 내용을 적고, 확인한 항목을 체크하세요.
+            </p>
+          </div>
+          <Badge variant="secondary">
+            {completedCount}/{items.length}
+          </Badge>
         </div>
-        <Badge variant="secondary">
-          {completedCount}/{items.length}
-        </Badge>
-      </div>
+      )}
 
       {items.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed bg-white px-3 py-6 text-center text-xs text-muted-foreground">
+        <p
+          className={cn(
+            "rounded-lg border border-dashed bg-white px-3 py-6 text-center text-xs text-muted-foreground",
+            !isBare && "mt-4",
+          )}
+        >
           아직 체크리스트 항목이 없습니다. 아래에서 추가하세요.
         </p>
       ) : (
-        <ul className="mt-4 space-y-2">
+        <ul className={cn("space-y-2", !isBare && "mt-4")}>
           {items.map((item) => (
             <li
               key={item.id}
@@ -77,7 +91,7 @@ function ReservationChecklist({ items, onChange }: ReservationChecklistProps) {
               </button>
               <span
                 className={cn(
-                  "min-w-0 flex-1 text-sm",
+                  "min-w-0 flex-1 text-sm break-words",
                   item.completed && "text-muted-foreground line-through",
                 )}
               >
@@ -103,6 +117,7 @@ function ReservationChecklist({ items, onChange }: ReservationChecklistProps) {
           placeholder="확인할 내용이나 질문을 입력하세요"
           aria-label="체크리스트 항목"
           className="h-10 min-w-0 flex-1 bg-white"
+          maxLength={60}
         />
         <Button type="submit" size="sm" className="h-10 shrink-0">
           <Plus /> 추가
