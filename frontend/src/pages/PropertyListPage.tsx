@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { List, Map, SearchX } from "lucide-react";
+import { List, Map, Plus, SearchX } from "lucide-react";
 
 import PropertyCard from "@/components/PropertyCard";
 import PropertyFilterBar, {
@@ -225,16 +225,20 @@ function PropertyMap({
 interface PropertyListPageProps {
   loading: boolean;
   properties: Property[];
+  canCreate: boolean;
   onToggleSave: (id: number) => void;
   onOpen: (id: number) => void;
+  onCreate: () => void;
 }
 
 // PAGE-04 매물 목록 — 목록 조회(PROP-02) 및 필터. 매물 상태는 App이 소유.
 function PropertyListPage({
   loading,
   properties,
+  canCreate,
   onToggleSave,
   onOpen,
+  onCreate,
 }: PropertyListPageProps) {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -269,7 +273,15 @@ function PropertyListPage({
     <div className="min-h-svh bg-background">
       <header>
         <div className="mx-auto flex max-w-6xl flex-col items-start gap-4 px-4 py-6">
-          <h1 className="text-lg font-semibold">매물 목록</h1>
+          <div className="flex w-full items-center justify-between">
+            <h1 className="text-lg font-semibold">매물 목록</h1>
+            {canCreate && (
+              <Button size="sm" onClick={onCreate}>
+                <Plus />
+                매물 등록
+              </Button>
+            )}
+          </div>
           <div
             className="inline-flex rounded-xl border bg-muted p-1.5 shadow-sm"
             role="tablist"

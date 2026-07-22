@@ -140,6 +140,7 @@ function App() {
     },
   ]);
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const location = useLocation();
   // 라이브 세션 중에는 GNB 링크 한 번에 확인 없이 통화가 끊기므로 아예 노출하지 않는다.
   // 이 화면을 벗어나는 길은 확인 다이얼로그가 붙은 나가기 버튼 하나뿐이다
@@ -263,8 +264,10 @@ function App() {
             <PropertyListPage
               loading={loading}
               properties={properties}
+              canCreate={isApprovedBroker(user)}
               onToggleSave={toggleSave}
               onOpen={(id) => navigate(`/properties/${id}`)}
+              onCreate={() => navigate("/properties/new")}
             />
           }
         />

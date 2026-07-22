@@ -12,7 +12,7 @@ export interface Property {
   dong: string;
   areaM2: number;
   floor: number;
-  totalFloors: number;
+  totalFloors?: number;
   rooms: number;
   saved: boolean;
   imageUrl?: string;

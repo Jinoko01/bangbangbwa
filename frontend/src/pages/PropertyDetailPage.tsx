@@ -468,7 +468,9 @@ function PropertyDetailPage({
                     {property.areaM2}㎡ ({toPyeong(property.areaM2)}평)
                   </InfoRow>
                   <InfoRow label="층수">
-                    {property.floor}층 / 전체 {property.totalFloors}층
+                    {property.totalFloors
+                      ? `${property.floor}층 / 전체 ${property.totalFloors}층`
+                      : `${property.floor}층`}
                   </InfoRow>
                   <InfoRow label="방 개수">방{property.rooms}</InfoRow>
                 </dl>
