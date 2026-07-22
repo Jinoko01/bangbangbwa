@@ -3568,11 +3568,12 @@
               "id": "XVuZu",
               "name": "Title Inner",
               "width": 1152,
-              "layout": "vertical",
               "padding": [
                 24,
                 0
               ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
               "children": [
                 {
                   "type": "text",
@@ -3583,6 +3584,43 @@
                   "fontFamily": "$font-sans",
                   "fontSize": 18,
                   "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "EetfJ",
+                  "name": "Register Button",
+                  "height": 32,
+                  "fill": "$primary",
+                  "cornerRadius": "$radius-md",
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "DP6Zz",
+                      "name": "Plus",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "plus",
+                      "library": "lucide",
+                      "fill": "$primary-foreground"
+                    },
+                    {
+                      "type": "text",
+                      "id": "s6fnxK",
+                      "name": "Label",
+                      "fill": "$primary-foreground",
+                      "content": "매물 등록",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "500"
+                    }
+                  ]
                 }
               ]
             }

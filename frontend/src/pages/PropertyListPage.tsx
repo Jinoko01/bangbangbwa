@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { SearchX } from "lucide-react";
+import { Plus, SearchX } from "lucide-react";
 
 import PropertyCard from "@/components/PropertyCard";
 import PropertyFilterBar, {
@@ -35,16 +35,20 @@ function PropertyCardSkeleton() {
 interface PropertyListPageProps {
   loading: boolean;
   properties: Property[];
+  canCreate: boolean;
   onToggleSave: (id: number) => void;
   onOpen: (id: number) => void;
+  onCreate: () => void;
 }
 
 // PAGE-04 매물 목록 — 목록 조회(PROP-02) 및 필터. 매물 상태는 App이 소유.
 function PropertyListPage({
   loading,
   properties,
+  canCreate,
   onToggleSave,
   onOpen,
+  onCreate,
 }: PropertyListPageProps) {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
@@ -77,8 +81,14 @@ function PropertyListPage({
   return (
     <div className="min-h-svh bg-background">
       <header>
-        <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-6">
           <h1 className="text-lg font-semibold">매물 목록</h1>
+          {canCreate && (
+            <Button size="sm" onClick={onCreate}>
+              <Plus />
+              매물 등록
+            </Button>
+          )}
         </div>
       </header>
 

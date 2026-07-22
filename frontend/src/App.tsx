@@ -95,6 +95,7 @@ function App() {
     },
   ]);
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -195,8 +196,10 @@ function App() {
             <PropertyListPage
               loading={loading}
               properties={properties}
+              canCreate={isApprovedBroker(user)}
               onToggleSave={toggleSave}
               onOpen={(id) => navigate(`/properties/${id}`)}
+              onCreate={() => navigate("/properties/new")}
             />
           }
         />
