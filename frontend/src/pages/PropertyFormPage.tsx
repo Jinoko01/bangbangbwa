@@ -69,18 +69,27 @@ function FormSection({
 
 function FormField({
   label,
+  required,
   error,
   children,
   className,
 }: {
   label: string;
+  required?: boolean;
   error?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <label className={cn("flex flex-col gap-2 text-sm font-medium", className)}>
-      {label}
+      <span>
+        {label}
+        {required && (
+          <span aria-hidden className="ml-0.5 text-destructive">
+            *
+          </span>
+        )}
+      </span>
       {children}
       {error && (
         <span className="text-xs font-normal text-destructive">{error}</span>
@@ -272,7 +281,7 @@ function validate(input: {
   dong: string;
   areaM2: number;
   floor: number;
-  totalFloors: number;
+  totalFloors?: number;
   rooms: number;
 }) {
   const errors: FormErrors = {};
@@ -297,10 +306,18 @@ function validate(input: {
   if (!Number.isFinite(input.floor) || input.floor <= 0) {
     errors.floor = "층수를 입력해주세요";
   }
-  if (!Number.isFinite(input.totalFloors) || input.totalFloors <= 0) {
-    errors.totalFloors = "총 층수를 입력해주세요";
+  if (
+    input.totalFloors !== undefined &&
+    (!Number.isFinite(input.totalFloors) || input.totalFloors <= 0)
+  ) {
+    errors.totalFloors = "총 층수를 올바르게 입력해주세요";
   }
-  if (!errors.floor && !errors.totalFloors && input.floor > input.totalFloors) {
+  if (
+    !errors.floor &&
+    !errors.totalFloors &&
+    input.totalFloors !== undefined &&
+    input.floor > input.totalFloors
+  ) {
     errors.floor = "층수는 총 층수보다 클 수 없습니다";
   }
   if (!Number.isFinite(input.rooms) || input.rooms <= 0) {
@@ -389,7 +406,9 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
         dong: values.dong.trim(),
         areaM2: Number(values.areaM2),
         floor: Number(values.floor),
-        totalFloors: Number(values.totalFloors),
+        totalFloors: values.totalFloors
+          ? Number(values.totalFloors)
+          : undefined,
         rooms: Number(values.rooms),
       };
       const errors = validate(input);
@@ -443,9 +462,16 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
       action={submitAction}
       className="flex flex-col gap-10"
     >
+      <p className="-mb-6 text-xs text-muted-foreground">
+        <span aria-hidden className="text-destructive">
+          *
+        </span>{" "}
+        표시는 필수 입력 항목입니다
+      </p>
       <FormSection title="기본 정보">
         <FormField
           label="매물명"
+          required
           error={errors?.title}
           className="sm:col-span-2"
         >
@@ -475,7 +501,11 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label={DEPOSIT_LABEL[dealType]} error={errors?.deposit}>
+        <FormField
+          label={DEPOSIT_LABEL[dealType]}
+          required
+          error={errors?.deposit}
+        >
           <PriceInput
             name="deposit"
             defaultValue={values?.deposit ?? property?.deposit}
@@ -484,6 +514,7 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
         </FormField>
         <FormField
           label="월세 (만원)"
+          required={dealType === "월세"}
           error={errors?.monthlyRent}
           className={dealType !== "월세" ? "text-muted-foreground" : undefined}
         >
@@ -518,7 +549,7 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="동" error={errors?.dong}>
+        <FormField label="동" required error={errors?.dong}>
           <Input
             name="dong"
             defaultValue={values?.dong ?? property?.dong}
@@ -528,7 +559,7 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
       </FormSection>
 
       <FormSection title="상세 정보">
-        <FormField label="전용면적 (㎡)" error={errors?.areaM2}>
+        <FormField label="전용면적 (㎡)" required error={errors?.areaM2}>
           <Input
             name="areaM2"
             type="number"
@@ -546,7 +577,7 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
             aria-invalid={errors?.rooms ? true : undefined}
           />
         </FormField>
-        <FormField label="층" error={errors?.floor}>
+        <FormField label="층" required error={errors?.floor}>
           <Input
             name="floor"
             type="number"
