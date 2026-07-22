@@ -8,9 +8,10 @@ import type {
 // 백엔드 완성 후 이 파일만 교체하면 됨.
 // 카카오/구글 키는 .env(VITE_KAKAO_KEY 등)에서 읽을 것, 코드에 하드코딩 금지.
 
-// 데모용 계정 분리 — 카카오: 세입자, 구글: 승인 완료 중개사.
+// 데모용 계정 분리 — 카카오: 세입자, 구글: 승인 완료 중개사(1번).
 // 실제 중개사 인증(관리자 승인) 연동 시 하나의 계정 흐름으로 되돌릴 것.
 const MOCK_TENANT: Omit<User, "provider"> = {
+  id: 100,
   name: "김방방",
   birth: "1998-03-14",
   nickname: "방방이",
@@ -20,15 +21,34 @@ const MOCK_TENANT: Omit<User, "provider"> = {
   brokerVerification: "미신청",
 };
 
-const MOCK_BROKER: Omit<User, "provider"> = {
-  name: "박중개",
-  birth: "1990-08-21",
-  nickname: "방방부동산",
-  email: "broker@example.com",
-  phone: "010-9876-5432",
-  role: "중개사",
-  brokerVerification: "승인 완료",
-};
+// id는 data/properties.ts의 brokerId와 연결됨 — 중개사별 매물 구분 테스트용 2계정
+const MOCK_BROKERS: Array<Omit<User, "provider">> = [
+  {
+    id: 1,
+    name: "박중개",
+    birth: "1990-08-21",
+    nickname: "방방부동산",
+    email: "broker@example.com",
+    phone: "010-9876-5432",
+    role: "중개사",
+    brokerVerification: "승인 완료",
+  },
+  {
+    id: 2,
+    name: "이중개",
+    birth: "1987-02-11",
+    nickname: "봐봐부동산",
+    email: "broker2@example.com",
+    phone: "010-2468-1357",
+    role: "중개사",
+    brokerVerification: "승인 완료",
+  },
+];
+
+// 로그인 페이지의 개발용 테스트 계정 버튼에 노출할 중개사 목록
+export const MOCK_BROKER_ACCOUNTS = MOCK_BROKERS.map(
+  ({ id, name, nickname }) => ({ id, name, nickname }),
+);
 
 // TODO: 카카오 OAuth 연동 (import.meta.env.VITE_KAKAO_KEY)
 export async function loginWithKakao(): Promise<User> {
@@ -37,7 +57,13 @@ export async function loginWithKakao(): Promise<User> {
 
 // TODO: 구글 OAuth 연동 (import.meta.env.VITE_GOOGLE_CLIENT_ID)
 export async function loginWithGoogle(): Promise<User> {
-  return { ...MOCK_BROKER, provider: "google" };
+  return { ...MOCK_BROKERS[0], provider: "google" };
+}
+
+// 개발용 — 중개사별 매물 구분 테스트를 위해 특정 목 중개사로 로그인
+export async function loginWithMockBroker(brokerId: number): Promise<User> {
+  const broker = MOCK_BROKERS.find((b) => b.id === brokerId) ?? MOCK_BROKERS[0];
+  return { ...broker, provider: "google" };
 }
 
 // TODO: 세션·토큰 무효화

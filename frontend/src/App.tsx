@@ -20,7 +20,7 @@ import ReservationPage from "@/pages/ReservationPage";
 import BookingPage from "@/pages/BookingPage";
 import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
 import { PROPERTIES } from "@/data/properties";
-import { isApprovedBroker } from "@/lib/auth";
+import { canManageProperty, isApprovedBroker } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
 import type { Memo, Property, Reservation } from "@/types";
 
@@ -62,7 +62,7 @@ function DetailRoute({
     <PropertyDetailPage
       property={property}
       loading={loading}
-      canManage={isApprovedBroker(user)}
+      canManage={property !== null && canManageProperty(user, property)}
       onBack={() => navigate("/properties")}
       onToggleSave={onToggleSave}
       onReserve={onReserve}
@@ -208,7 +208,10 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/mypage" element={<MyPage />} />
+        <Route
+          path="/mypage"
+          element={<MyPage loading={loading} properties={properties} />}
+        />
         <Route
           path="/reservations"
           element={

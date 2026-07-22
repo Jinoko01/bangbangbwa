@@ -270,6 +270,7 @@ function ExtraPhotoField({
 interface PropertyFormProps {
   property: Property | null;
   nextId: number;
+  brokerId: number;
   onSave: (property: Property) => void;
 }
 
@@ -326,7 +327,12 @@ function validate(input: {
   return errors;
 }
 
-function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
+function PropertyForm({
+  property,
+  nextId,
+  brokerId,
+  onSave,
+}: PropertyFormProps) {
   const navigate = useNavigate();
   const [dealType, setDealType] = useState<DealType>(
     property?.dealType ?? "전세",
@@ -426,6 +432,7 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
       const next: Property = {
         ...input,
         id: property?.id ?? nextId,
+        brokerId,
         buildingType,
         region,
         saved: property?.saved ?? false,
@@ -650,6 +657,7 @@ interface PropertyFormPageProps {
 }
 
 // PAGE-07 매물 등록·수정 — 중개사(승인 완료) 전용, 등록(PROP-07)과 수정(PROP-08)이 같은 폼을 공유
+// 수정은 본인이 등록한 매물만 가능 — 남의 매물 URL로 진입하면 상세로 돌려보낸다
 function PropertyFormPage({
   loading,
   properties,
@@ -671,6 +679,9 @@ function PropertyFormPage({
   const property = isEdit
     ? (properties.find((p) => p.id === Number(idParam)) ?? null)
     : null;
+  if (property && property.brokerId !== user.id) {
+    return <Navigate to={`/properties/${property.id}`} replace />;
+  }
   const nextId = properties.reduce((max, p) => Math.max(max, p.id), 0) + 1;
 
   return (
@@ -710,7 +721,12 @@ function PropertyFormPage({
             </Button>
           </div>
         ) : (
-          <PropertyForm property={property} nextId={nextId} onSave={onSave} />
+          <PropertyForm
+            property={property}
+            nextId={nextId}
+            brokerId={property?.brokerId ?? user.id}
+            onSave={onSave}
+          />
         )}
       </main>
     </div>
