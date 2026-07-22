@@ -13,6 +13,9 @@
 */
 :root {
   --radius: 0.625rem;
+  /* GlobalNav 실제 점유 높이 — nav h-14(3.5rem) + header border-b 1px.
+     전체 화면을 쓰는 페이지가 100svh에서 빼는 값이라 nav 높이를 바꾸면 여기도 함께 고친다 */
+  --nav-h: calc(3.5rem + 1px);
 
   --background: #ffffff;
   --foreground: #0f172b;

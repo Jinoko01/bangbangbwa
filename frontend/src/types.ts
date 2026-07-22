@@ -24,6 +24,7 @@ export interface Reservation {
   propertyId: number;
   date: string;
   time: string;
+  timeOptions: string[];
   status: "예약 확정" | "예약 대기";
   direction: "sent" | "received";
 }
@@ -39,6 +40,11 @@ export interface Memo {
   id: number;
   text: string;
   createdAt: string;
+}
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
 }
 
 export interface Filters {
