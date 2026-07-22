@@ -3568,57 +3568,147 @@
               "id": "XVuZu",
               "name": "Title Inner",
               "width": 1152,
+              "layout": "vertical",
+              "gap": 16,
               "padding": [
                 24,
                 0
               ],
-              "justifyContent": "space_between",
-              "alignItems": "center",
               "children": [
                 {
-                  "type": "text",
-                  "id": "k2IQ6m",
-                  "name": "Page Title",
-                  "fill": "$foreground",
-                  "content": "매물 목록",
-                  "fontFamily": "$font-sans",
-                  "fontSize": 18,
-                  "fontWeight": "600"
-                },
-                {
                   "type": "frame",
-                  "id": "EetfJ",
-                  "name": "Register Button",
-                  "height": 32,
-                  "fill": "$primary",
-                  "cornerRadius": "$radius-md",
-                  "gap": 6,
-                  "padding": [
-                    0,
-                    12
-                  ],
-                  "justifyContent": "center",
+                  "id": "XvhFf",
+                  "name": "Title Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
                   "alignItems": "center",
                   "children": [
                     {
-                      "type": "icon",
-                      "id": "DP6Zz",
-                      "name": "Plus",
-                      "width": 16,
-                      "height": 16,
-                      "icon": "plus",
-                      "library": "lucide",
-                      "fill": "$primary-foreground"
+                      "type": "text",
+                      "id": "k2IQ6m",
+                      "name": "Page Title",
+                      "fill": "$foreground",
+                      "content": "매물 목록",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 18,
+                      "fontWeight": "600"
                     },
                     {
-                      "type": "text",
-                      "id": "s6fnxK",
-                      "name": "Label",
-                      "fill": "$primary-foreground",
-                      "content": "매물 등록",
-                      "fontFamily": "$font-sans",
-                      "fontSize": 14,
-                      "fontWeight": "500"
+                      "type": "frame",
+                      "id": "EetfJ",
+                      "name": "Register Button",
+                      "height": 32,
+                      "fill": "$primary",
+                      "cornerRadius": "$radius-md",
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "DP6Zz",
+                          "name": "Plus",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "plus",
+                          "library": "lucide",
+                          "fill": "$primary-foreground"
+                        },
+                        {
+                          "type": "text",
+                          "id": "s6fnxK",
+                          "name": "Label",
+                          "fill": "$primary-foreground",
+                          "content": "매물 등록",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nXGJN",
+                  "name": "View Toggle",
+                  "fill": "$muted",
+                  "cornerRadius": "$radius-xl",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "padding": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZubaC",
+                      "name": "Tab 리스트형식",
+                      "width": 112,
+                      "height": 36,
+                      "fill": "$primary",
+                      "cornerRadius": "$radius-md",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "DZsH4",
+                          "name": "List Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "list",
+                          "library": "lucide",
+                          "fill": "$primary-foreground"
+                        },
+                        {
+                          "type": "text",
+                          "id": "FIB5P",
+                          "name": "Label",
+                          "fill": "$primary-foreground",
+                          "content": "리스트형식",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hvzTK",
+                      "name": "Tab 지도형식",
+                      "width": 112,
+                      "height": 36,
+                      "cornerRadius": "$radius-md",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "zckFK",
+                          "name": "Map Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "map",
+                          "library": "lucide",
+                          "fill": "$foreground"
+                        },
+                        {
+                          "type": "text",
+                          "id": "ynWen",
+                          "name": "Label",
+                          "fill": "$foreground",
+                          "content": "지도형식",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -21258,6 +21348,678 @@
             "mode": "fill"
           },
           "cornerRadius": "$radius-lg"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "JHbiS",
+      "x": 14928,
+      "y": 1587,
+      "name": "Property List Page - Map",
+      "clip": true,
+      "width": 1440,
+      "fill": "$background",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "za5CE",
+          "type": "ref",
+          "ref": "PBh4e",
+          "name": "GNB",
+          "width": "fill_container",
+          "descendants": {
+            "iOhGF": {
+              "fontWeight": "600",
+              "fill": "$foreground"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "EWtHV",
+          "name": "Title Section",
+          "width": "fill_container",
+          "layout": "vertical",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "L188se",
+              "name": "Title Inner",
+              "width": 1152,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                24,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ljdpx",
+                  "name": "Title Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "U8jBBR",
+                      "name": "Page Title",
+                      "fill": "$foreground",
+                      "content": "매물 목록",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 18,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PAau0",
+                      "name": "Register Button",
+                      "height": 32,
+                      "fill": "$primary",
+                      "cornerRadius": "$radius-md",
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Nb8yO",
+                          "name": "Plus",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "plus",
+                          "library": "lucide",
+                          "fill": "$primary-foreground"
+                        },
+                        {
+                          "type": "text",
+                          "id": "AHPdD",
+                          "name": "Label",
+                          "fill": "$primary-foreground",
+                          "content": "매물 등록",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "E8UND",
+                  "name": "View Toggle",
+                  "fill": "$muted",
+                  "cornerRadius": "$radius-xl",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "padding": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "dnjS0",
+                      "name": "Tab 리스트형식",
+                      "width": 112,
+                      "height": 36,
+                      "fill": "#00000000",
+                      "cornerRadius": "$radius-md",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "B4fJHX",
+                          "name": "List Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "list",
+                          "library": "lucide",
+                          "fill": "$foreground"
+                        },
+                        {
+                          "type": "text",
+                          "id": "AWfsh",
+                          "name": "Label",
+                          "fill": "$foreground",
+                          "content": "리스트형식",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dcW7Q",
+                      "name": "Tab 지도형식",
+                      "width": 112,
+                      "height": 36,
+                      "fill": "$primary",
+                      "cornerRadius": "$radius-md",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "rfr0a",
+                          "name": "Map Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "map",
+                          "library": "lucide",
+                          "fill": "$primary-foreground"
+                        },
+                        {
+                          "type": "text",
+                          "id": "CDzC2",
+                          "name": "Label",
+                          "fill": "$primary-foreground",
+                          "content": "지도형식",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "soU57",
+          "name": "Filter Section",
+          "width": "fill_container",
+          "fill": "$background",
+          "stroke": "$border",
+          "strokeWidth": {
+            "top": 1,
+            "bottom": 1
+          },
+          "strokeAlignment": "inner",
+          "layout": "vertical",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "D0pkig",
+              "name": "Filter Inner",
+              "width": 1152,
+              "gap": 8,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Lny1m",
+                  "name": "Search Input",
+                  "width": 288,
+                  "height": 36,
+                  "fill": "$background",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$input",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Gb6vV",
+                      "name": "Search Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "search",
+                      "library": "lucide",
+                      "fill": "$muted-foreground"
+                    },
+                    {
+                      "type": "text",
+                      "id": "MbK1x",
+                      "name": "Placeholder",
+                      "fill": "$muted-foreground",
+                      "content": "매물명·지역 검색",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "xHdre",
+                  "name": "Select 지역 전체",
+                  "height": 36,
+                  "fill": "$background",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$input",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HQ7h4",
+                      "name": "Value",
+                      "fill": "$foreground",
+                      "content": "지역 전체",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "DNGVp",
+                      "name": "Chevron",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "$muted-foreground"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kfUbo",
+                  "name": "Select 가격 전체",
+                  "height": 36,
+                  "fill": "$background",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$input",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VcLQ7",
+                      "name": "Value",
+                      "fill": "$foreground",
+                      "content": "가격 전체",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "E8avP",
+                      "name": "Chevron",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "$muted-foreground"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Q4r6A",
+                  "name": "Select 유형 전체",
+                  "height": 36,
+                  "fill": "$background",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$input",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MUniL",
+                      "name": "Value",
+                      "fill": "$foreground",
+                      "content": "유형 전체",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "yW6aA",
+                      "name": "Chevron",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "$muted-foreground"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "nJ1op",
+          "name": "Main Section",
+          "width": "fill_container",
+          "layout": "vertical",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "B5OYG",
+              "name": "Main Inner",
+              "width": 1152,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                24,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "epvnW",
+                  "name": "Count Row",
+                  "gap": 4,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WXLV0",
+                      "name": "Count Prefix",
+                      "fill": "$muted-foreground",
+                      "content": "매물",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nfxu7",
+                      "name": "Count Number",
+                      "fill": "$foreground",
+                      "content": "15",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Kb8cB",
+                      "name": "Count Suffix",
+                      "fill": "$muted-foreground",
+                      "content": "건",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Hgt9T",
+                  "name": "Map Area",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": 544,
+                  "fill": "#ECE7DE",
+                  "cornerRadius": "$radius-xl",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "g8tYf",
+                      "x": 0,
+                      "y": 230,
+                      "name": "Road H1",
+                      "fill": "#FFFFFF",
+                      "width": 1152,
+                      "height": 8
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "kKNLU",
+                      "x": 0,
+                      "y": 404,
+                      "name": "Road H2",
+                      "fill": "#FFFFFF",
+                      "width": 1152,
+                      "height": 5
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "EIRUK",
+                      "x": 760,
+                      "y": 0,
+                      "name": "Road V1",
+                      "fill": "#FFFFFF",
+                      "width": 8,
+                      "height": 544
+                    },
+                    {
+                      "type": "icon",
+                      "id": "RRhgz",
+                      "x": 180,
+                      "y": 120,
+                      "name": "Pin 1",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "map-pin",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "F78mxC",
+                      "x": 420,
+                      "y": 260,
+                      "name": "Pin 2",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "map-pin",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "COR0Z",
+                      "x": 640,
+                      "y": 90,
+                      "name": "Pin 3",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "map-pin",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "XZj6v",
+                      "x": 880,
+                      "y": 320,
+                      "name": "Pin 4",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "map-pin",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "P8tDt",
+                      "x": 1010,
+                      "y": 180,
+                      "name": "Pin 5",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "map-pin",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "H4Mxw4",
+                      "x": 300,
+                      "y": 420,
+                      "name": "Pin 6",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "map-pin",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "XFXyV",
+                      "x": 16,
+                      "y": 16,
+                      "name": "Map Info Chip",
+                      "fill": "$background",
+                      "cornerRadius": "$radius-md",
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "#0000000D",
+                        "offset": {
+                          "x": 0,
+                          "y": 1
+                        },
+                        "blur": 2
+                      },
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "bbmMP",
+                          "name": "Chip Text",
+                          "fill": "$foreground",
+                          "content": "지도에서 매물 15건을 확인해 보세요",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MgDyu",
+                      "x": 16,
+                      "y": 440,
+                      "name": "Selected Property Card",
+                      "width": 384,
+                      "fill": "$background",
+                      "cornerRadius": "$radius-xl",
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "strokeAlignment": "inner",
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "#00000014",
+                        "offset": {
+                          "x": 0,
+                          "y": 2
+                        },
+                        "blur": 6
+                      },
+                      "gap": 12,
+                      "padding": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "L9Jyv",
+                          "name": "Thumb",
+                          "width": 64,
+                          "height": 64,
+                          "fill": "$muted",
+                          "cornerRadius": "$radius-md",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Yus6g",
+                              "name": "Thumb Icon",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "image",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "F1o0V",
+                          "name": "Selected Info",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "AlEqC",
+                              "name": "Selected Title",
+                              "fill": "$foreground",
+                              "content": "역삼 래미안",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "go0VK",
+                              "name": "Selected Sub",
+                              "fill": "$muted-foreground",
+                              "content": "강남구 역삼동 · 아파트",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     }
