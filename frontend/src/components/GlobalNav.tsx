@@ -137,7 +137,7 @@ function GlobalNav() {
           ))}
         </div>
 
-        <div className="ml-auto hidden translate-x-2 items-center gap-1 sm:flex lg:translate-x-4">
+        <div className="absolute right-0 hidden items-center gap-1 sm:flex xl:-right-8">
           <AuthArea />
         </div>
 

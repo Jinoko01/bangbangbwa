@@ -68,14 +68,15 @@ function BookingPage({ properties, onConfirm }: BookingPageProps) {
     if (selectedHours.length !== REQUIRED_TIME_COUNT) {
       return;
     }
+    const timeOptions = selectedHours.map(
+      (hour) => `${String(hour).padStart(2, "0")}:00`,
+    );
     onConfirm({
       id: `reservation-${Date.now()}`,
       propertyId: property.id,
       date: selectedDate,
-      time: [...selectedHours]
-        .sort((first, second) => first - second)
-        .map((hour) => `${String(hour).padStart(2, "0")}:00`)
-        .join(", "),
+      time: timeOptions.join(", "),
+      timeOptions,
       status: "예약 대기",
       direction: "sent",
     });
