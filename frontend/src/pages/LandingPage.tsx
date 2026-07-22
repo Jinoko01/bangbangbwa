@@ -1,6 +1,12 @@
-import { useRef, useSyncExternalStore } from "react";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   CalendarCheck,
@@ -8,6 +14,7 @@ import {
   CheckCircle2,
   Circle,
   ClipboardCheck,
+  Eye,
   FileText,
   Image as ImageIcon,
   MapPin,
@@ -31,6 +38,7 @@ const FLOW_STEPS = [
 ] as const;
 
 const DESKTOP_QUERY = "(min-width: 1024px)";
+const FLOW_STEP_HOP_MS = 300;
 
 function subscribeToDesktopQuery(onChange: () => void) {
   const media = window.matchMedia(DESKTOP_QUERY);
@@ -38,7 +46,7 @@ function subscribeToDesktopQuery(onChange: () => void) {
   return () => media.removeEventListener("change", onChange);
 }
 
-// lg 이상에서만 스크롤텔링을 켜기 위한 뷰포트 구독
+// 활성 단계 산출 방식(러너웨이 진행률/리스트 위치)을 가르기 위한 뷰포트 구독
 function useIsDesktop() {
   return useSyncExternalStore(
     subscribeToDesktopQuery,
@@ -55,7 +63,7 @@ function subscribeToWindowScroll(onChange: () => void) {
   };
 }
 
-function getActiveStep(runway: HTMLElement | null) {
+function getRunwayStep(runway: HTMLElement | null, stepCount: number) {
   if (!runway) {
     return 0;
   }
@@ -67,10 +75,7 @@ function getActiveStep(runway: HTMLElement | null) {
     1,
     Math.max(0, -runway.getBoundingClientRect().top / range),
   );
-  return Math.min(
-    FLOW_STEPS.length - 1,
-    Math.floor(progress * FLOW_STEPS.length),
-  );
+  return Math.min(stepCount - 1, Math.floor(progress * stepCount));
 }
 
 type FlowStepState = "static" | "done" | "active" | "todo";
@@ -159,15 +164,47 @@ function FlowStep({
   );
 }
 
-// 스크롤 진행에 따라 단계가 순차 하이라이트되는 이용 흐름 섹션 (lg 이상 sticky 스크롤텔링)
+// 스크롤 진행에 따라 단계가 순차 하이라이트되는 이용 흐름 섹션
+// (lg 이상은 sticky 스크롤텔링, 미만은 단계 버튼 탭 전환)
 function FlowSection() {
   const runwayRef = useRef<HTMLElement>(null);
   const isDesktop = useIsDesktop();
   const reducedMotion = useReducedMotion();
   const animated = isDesktop && !reducedMotion;
+  const [mobileStep, setMobileStep] = useState(0);
+  const [targetStep, setTargetStep] = useState(0);
+  const [stepDirection, setStepDirection] = useState(1);
+  const [hopMs, setHopMs] = useState(FLOW_STEP_HOP_MS);
   const activeStep = useSyncExternalStore(subscribeToWindowScroll, () =>
-    getActiveStep(runwayRef.current),
+    isDesktop ? getRunwayStep(runwayRef.current, FLOW_STEPS.length) : 0,
   );
+  const [ActiveIcon, activeTitle, activeDescription] = FLOW_STEPS[targetStep];
+
+  const selectMobileStep = (index: number) => {
+    setStepDirection(index >= targetStep ? 1 : -1);
+    setTargetStep(index);
+    if (reducedMotion) {
+      setMobileStep(index);
+      return;
+    }
+    const distance = Math.abs(index - mobileStep);
+    if (distance > 0) {
+      setHopMs(Math.round(FLOW_STEP_HOP_MS / distance));
+      setMobileStep(mobileStep + Math.sign(index - mobileStep));
+    }
+  };
+
+  // 단계를 건너뛰어 선택해도 스텝퍼는 목표까지 한 칸씩 순차로 이동한다.
+  // 홉 간격은 이동 거리로 나눠, 거리와 무관하게 총 소요 시간을 일정하게 유지한다
+  useEffect(() => {
+    if (mobileStep === targetStep) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setMobileStep((step) => step + Math.sign(targetStep - step));
+    }, hopMs);
+    return () => clearTimeout(timer);
+  }, [mobileStep, targetStep, hopMs]);
 
   return (
     <section
@@ -187,7 +224,7 @@ function FlowSection() {
           </div>
 
           <div className="grid gap-16 lg:grid-cols-[1fr_420px] lg:items-start">
-            <ol>
+            <ol className="hidden lg:block">
               {FLOW_STEPS.map(([Icon, title, description], index) => (
                 <FlowStep
                   key={title}
@@ -200,6 +237,116 @@ function FlowSection() {
                 />
               ))}
             </ol>
+
+            <div className="lg:hidden">
+              <div className="flex items-start">
+                {FLOW_STEPS.map(([, title], index) => {
+                  const isSelected = index === mobileStep;
+                  const isReached = index <= mobileStep;
+                  return (
+                    <Fragment key={title}>
+                      {index > 0 && (
+                        <span className="relative mt-[17px] h-0.5 min-w-4 flex-1 overflow-hidden rounded-full bg-border">
+                          <motion.span
+                            className="absolute inset-0 origin-left bg-primary"
+                            animate={{ scaleX: isReached ? 1 : 0 }}
+                            transition={{
+                              duration: hopMs / 1000,
+                              ease: "easeOut",
+                            }}
+                          />
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => selectMobileStep(index)}
+                        aria-current={index === targetStep ? "step" : undefined}
+                        className="flex w-16 flex-col items-center gap-1.5"
+                      >
+                        <motion.span
+                          className={cn(
+                            "grid size-9 place-items-center rounded-full text-sm font-bold",
+                            isReached
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground",
+                          )}
+                          animate={
+                            isSelected && !reducedMotion
+                              ? {
+                                  scale: 1.08,
+                                  boxShadow: [
+                                    "0 0 0 0 rgba(22,93,252,0.45)",
+                                    "0 0 0 10px rgba(22,93,252,0)",
+                                  ],
+                                }
+                              : {
+                                  scale: 1,
+                                  boxShadow: "0 0 0 0 rgba(22,93,252,0)",
+                                }
+                          }
+                          transition={{
+                            scale: {
+                              type: "spring",
+                              stiffness: 260,
+                              damping: 24,
+                            },
+                            boxShadow:
+                              isSelected && !reducedMotion
+                                ? {
+                                    duration: 1.4,
+                                    repeat: Infinity,
+                                    ease: "easeOut",
+                                  }
+                                : { duration: 0.2 },
+                          }}
+                        >
+                          {index < mobileStep ? (
+                            <Check className="size-4" />
+                          ) : (
+                            index + 1
+                          )}
+                        </motion.span>
+                        <span
+                          className={cn(
+                            "text-xs font-medium break-keep",
+                            isSelected
+                              ? "text-primary"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {title}
+                        </span>
+                      </button>
+                    </Fragment>
+                  );
+                })}
+              </div>
+
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={targetStep}
+                  initial={
+                    reducedMotion
+                      ? false
+                      : { opacity: 0, x: 24 * stepDirection }
+                  }
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={
+                    reducedMotion ? {} : { opacity: 0, x: -24 * stepDirection }
+                  }
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="mt-6 rounded-xl border bg-card p-5 shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <ActiveIcon className="size-5 text-primary" />
+                    <h3 className="font-semibold">{activeTitle}</h3>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {activeDescription}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
             <div className="rounded-2xl border bg-card p-6 shadow-[0_16px_40px_-8px_rgba(22,93,252,0.15)]">
               <div className="flex items-center justify-between gap-3">
@@ -237,11 +384,336 @@ function FlowSection() {
   );
 }
 
+const FEATURES = [
+  {
+    icon: Video,
+    label: "라이브 투어",
+    title: "실시간 라이브 투어",
+    description:
+      "중개사가 현장에서 직접 비추는 실시간 영상. 보고 싶은 곳을 바로 요청하세요",
+  },
+  {
+    icon: ClipboardCheck,
+    label: "체크리스트",
+    title: "스마트 체크리스트",
+    description:
+      "곰팡이·누수·수압까지, 점검 항목을 하나씩 확인하며 놓치지 않고 기록해요",
+  },
+  {
+    icon: FileText,
+    label: "AI 리포트",
+    title: "AI 검수 리포트",
+    description: "통화가 끝나면 캡처와 요약, 하자 기록이 자동으로 정리돼요",
+  },
+] as const;
+
+const FEATURE_CHECKLIST = [
+  { label: "곰팡이·누수 흔적 확인", done: true },
+  { label: "수압 확인", done: true },
+  { label: "채광 확인", done: false },
+] as const;
+
+const FEATURE_TINTED_SHADOW = "shadow-[0_16px_40px_-8px_rgba(22,93,252,0.15)]";
+
+// 기능별 목업 패널 — 같은 포스터를 라이브 화면 / 확대 크롭 + 체크리스트 /
+// 블러 + 리포트 요약으로 다르게 연출한다 (전용 에셋 확보 시 src만 교체)
+function FeatureVisual({ index }: { index: number }) {
+  const reducedMotion = useReducedMotion();
+
+  if (index === 0) {
+    return (
+      <>
+        <img
+          src="/hero-poster.webp"
+          alt="중개사가 라이브 투어로 비추는 매물 내부 화면"
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.15)_0%,rgba(2,6,23,.35)_60%,rgba(2,6,23,.75)_100%)]" />
+        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-1 text-[11px] font-semibold text-white">
+          <span className="relative flex size-1.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-white opacity-75" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-white" />
+          </span>
+          LIVE
+        </span>
+        <span className="absolute top-1/2 left-1/2 grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/20 backdrop-blur">
+          <Play className="size-4 fill-current text-white" />
+        </span>
+        <p className="absolute bottom-3 left-3 text-xs font-medium text-white/90">
+          강남구 역삼동
+        </p>
+        <p className="absolute right-3 bottom-3 flex items-center gap-1 text-xs text-white/80">
+          <Eye className="size-3.5" />
+          시청 중
+        </p>
+      </>
+    );
+  }
+
+  if (index === 1) {
+    return (
+      <>
+        <img
+          src="/hero-poster.webp"
+          alt="점검 중인 매물 내부 화면"
+          loading="lazy"
+          className="absolute inset-0 h-full w-full scale-125 object-cover object-[70%_60%]"
+        />
+        <div className="absolute inset-0 bg-slate-950/55" />
+        <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-lg border border-white/15 bg-slate-950/60 p-4 backdrop-blur-md sm:inset-x-6">
+          <div className="flex items-center gap-2 text-white">
+            <ClipboardCheck className="size-4 text-blue-400" />
+            <strong className="text-sm font-semibold">투어 중 점검 항목</strong>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm">
+            {FEATURE_CHECKLIST.map(({ label, done }, itemIndex) => (
+              <motion.li
+                key={label}
+                className={cn(
+                  "flex items-center gap-2",
+                  done ? "text-white/90" : "text-white/55",
+                )}
+                initial={reducedMotion ? false : { opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{
+                  delay: 0.2 + itemIndex * 0.15,
+                  duration: 0.25,
+                  ease: "easeOut",
+                }}
+              >
+                {done ? (
+                  <CheckCircle2 className="size-3.5 shrink-0 text-blue-400" />
+                ) : (
+                  <Circle className="size-3.5 shrink-0 text-white/40" />
+                )}
+                {label}
+              </motion.li>
+            ))}
+          </ul>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <img
+        src="/hero-poster.webp"
+        alt="투어를 마친 매물 내부 화면"
+        loading="lazy"
+        className="absolute inset-0 h-full w-full scale-110 object-cover blur-sm"
+      />
+      <div className="absolute inset-0 bg-slate-950/60" />
+      <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-lg border border-white/15 bg-slate-950/60 p-4 backdrop-blur-md sm:inset-x-6">
+        <div className="flex items-center justify-between gap-2 text-white">
+          <span className="flex items-center gap-2">
+            <FileText className="size-4 text-blue-400" />
+            <strong className="text-sm font-semibold">AI 검수 리포트</strong>
+          </span>
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+            자동 생성
+          </span>
+        </div>
+        <div className="mt-3 flex gap-1.5">
+          <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
+            캡처 12장
+          </span>
+          <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
+            하자 2건
+          </span>
+        </div>
+        <div className="mt-3 space-y-1.5">
+          <div className="h-2 rounded-full bg-white/15" />
+          <div className="h-2 w-3/5 rounded-full bg-white/15" />
+        </div>
+      </div>
+    </>
+  );
+}
+
+// 핵심 기능 쇼케이스 — 활성 기능이 메인 카드로 크게 표시된다
+// (lg 이상은 스크롤 구간별 전환, 미만·모션 축소 시엔 카드 클릭 전환)
+function FeaturesSection() {
+  const runwayRef = useRef<HTMLElement>(null);
+  const isDesktop = useIsDesktop();
+  const reducedMotion = useReducedMotion();
+  const animated = isDesktop && !reducedMotion;
+  const [selected, setSelected] = useState(0);
+  const scrollStep = useSyncExternalStore(subscribeToWindowScroll, () =>
+    animated ? getRunwayStep(runwayRef.current, FEATURES.length) : 0,
+  );
+  const active = animated ? scrollStep : selected;
+  const { icon: ActiveIcon, title, description } = FEATURES[active];
+
+  // 스크롤 모드에서는 선택한 기능의 러너웨이 구간 중앙으로 이동시켜
+  // 활성 산출(getRunwayStep)과 어긋나지 않게 한다
+  const selectFeature = (index: number) => {
+    if (!animated) {
+      setSelected(index);
+      return;
+    }
+    const runway = runwayRef.current;
+    if (!runway) {
+      return;
+    }
+    const range = runway.offsetHeight - window.innerHeight;
+    const top = window.scrollY + runway.getBoundingClientRect().top;
+    window.scrollTo({
+      top: top + (range * (index + 0.5)) / FEATURES.length,
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <section ref={runwayRef} className={cn(animated && "lg:h-[300vh]")}>
+      <div
+        className={cn(
+          animated &&
+            "lg:sticky lg:top-14 lg:flex lg:h-[calc(100svh-3.5rem)] lg:items-center",
+        )}
+      >
+        <div
+          className={cn(
+            "mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8",
+            animated ? "lg:py-0" : "lg:py-32",
+          )}
+        >
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold tracking-wider text-primary">
+              핵심 기능
+            </p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+              집 보는 방식이 달라집니다
+            </h2>
+          </div>
+
+          <div className="mt-10 grid gap-4 lg:grid-cols-[1fr_368px]">
+            <div className="grid grid-cols-3 gap-2 lg:hidden">
+              {FEATURES.map(({ icon: Icon, label }, index) => (
+                <button
+                  type="button"
+                  key={label}
+                  onClick={() => selectFeature(index)}
+                  aria-current={active === index ? "true" : undefined}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 rounded-xl border bg-card p-3 transition-colors duration-300",
+                    active === index && "border-primary/60 bg-primary/5",
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "size-5",
+                      active === index
+                        ? "text-primary"
+                        : "text-muted-foreground",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "text-xs font-medium break-keep",
+                      active === index
+                        ? "text-primary"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.article
+                key={active}
+                initial={reducedMotion ? false : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reducedMotion ? {} : { opacity: 0, y: -16 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className={cn(
+                  "flex flex-col gap-6 rounded-2xl border bg-card p-7 sm:flex-row sm:items-center",
+                  FEATURE_TINTED_SHADOW,
+                )}
+              >
+                <div className="flex-1">
+                  <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <ActiveIcon className="size-5" />
+                  </div>
+                  <h3 className="mt-4 text-xl font-semibold">{title}</h3>
+                  <p className="mt-2 leading-relaxed break-keep text-muted-foreground">
+                    {description}
+                  </p>
+                </div>
+                <div className="relative h-[220px] w-full shrink-0 overflow-hidden rounded-xl bg-slate-900 sm:h-[260px] sm:w-[300px] lg:w-[380px]">
+                  <FeatureVisual index={active} />
+                </div>
+              </motion.article>
+            </AnimatePresence>
+
+            <div className="hidden gap-4 lg:grid lg:grid-rows-3">
+              {FEATURES.map(
+                (
+                  {
+                    icon: Icon,
+                    title: itemTitle,
+                    description: itemDescription,
+                  },
+                  index,
+                ) => {
+                  const isActive = active === index;
+                  return (
+                    <button
+                      type="button"
+                      key={itemTitle}
+                      onClick={() => selectFeature(index)}
+                      aria-current={isActive ? "true" : undefined}
+                      className={cn(
+                        "rounded-xl border bg-card p-5 text-left transition-all duration-300",
+                        isActive
+                          ? cn("border-primary/50", FEATURE_TINTED_SHADOW)
+                          : "shadow-sm hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-8px_rgba(22,93,252,0.15)]",
+                      )}
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span
+                          className={cn(
+                            "grid size-8 shrink-0 place-items-center rounded-lg transition-colors duration-300",
+                            isActive
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-primary/10 text-primary",
+                          )}
+                        >
+                          <Icon className="size-4" />
+                        </span>
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            isActive && "text-primary",
+                          )}
+                        >
+                          {itemTitle}
+                        </span>
+                      </span>
+                      <span className="mt-2 block text-sm leading-relaxed break-keep text-muted-foreground">
+                        {itemDescription}
+                      </span>
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function LandingPage() {
   return (
     <main className="overflow-x-clip bg-background">
-      <section className="px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-        <div className="relative mx-auto min-h-[640px] max-w-[1400px] overflow-hidden rounded-[2rem] bg-slate-950 shadow-2xl shadow-[#165dfc]/15 lg:min-h-[720px]">
+      <section className="lg:px-8 lg:py-10">
+        <div className="relative mx-auto max-w-[1400px] overflow-hidden bg-slate-950 lg:min-h-[720px] lg:rounded-[2rem] lg:shadow-2xl lg:shadow-[#165dfc]/15">
           <video
             src="/hero-tour.mp4"
             poster="/hero-poster.webp"
@@ -252,9 +724,9 @@ function LandingPage() {
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover opacity-90"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,.98)_0%,rgba(2,6,23,.86)_45%,rgba(2,6,23,.25)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.95)_0%,rgba(2,6,23,.8)_40%,rgba(2,6,23,.45)_80%,rgba(2,6,23,.3)_100%)] lg:bg-[linear-gradient(90deg,rgba(2,6,23,.98)_0%,rgba(2,6,23,.86)_45%,rgba(2,6,23,.25)_100%)]" />
 
-          <div className="relative z-10 grid min-h-[640px] items-center gap-12 p-7 sm:p-12 lg:min-h-[720px] lg:grid-cols-[1.15fr_.85fr] lg:p-20">
+          <div className="relative z-10 grid items-center gap-8 px-6 py-10 sm:p-12 lg:min-h-[720px] lg:grid-cols-[1.15fr_.85fr] lg:gap-12 lg:p-20">
             <div className="max-w-2xl text-white">
               <p className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-blue-300 backdrop-blur">
                 <span className="relative flex size-2">
@@ -295,32 +767,7 @@ function LandingPage() {
 
             <div className="mx-auto w-full max-w-md space-y-4">
               <HeroSearch />
-              <div className="rounded-[1.5rem] border border-white/15 bg-white/10 p-2 backdrop-blur-xl">
-                <div className="rounded-[1.1rem] bg-slate-900/95 p-6 text-white">
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-md bg-blue-400 px-2 py-1 text-xs font-bold text-blue-950">
-                      예약 확정
-                    </span>
-                    <span className="font-mono text-xs text-slate-400">
-                      TODAY 14:00
-                    </span>
-                  </div>
-                  <p className="mt-5 text-lg leading-snug font-semibold">
-                    서초구 래미안 투룸
-                    <br />
-                    화상 투어
-                  </p>
-                  <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4">
-                    <span className="text-xs text-slate-400">
-                      SESSION · BBV-9421
-                    </span>
-                    <span className="flex items-center gap-1 text-sm font-semibold text-blue-300">
-                      입장 대기실 <ArrowRight className="size-4" />
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap justify-end gap-2 text-xs text-slate-300">
+              <div className="hidden flex-wrap justify-end gap-2 text-xs text-slate-300 lg:flex">
                 {["#역세권투룸", "#신축오피스텔", "#전세자금대출"].map(
                   (tag) => (
                     <span
@@ -337,76 +784,7 @@ function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-        <div className="max-w-2xl">
-          <p className="text-sm font-semibold tracking-wider text-primary">
-            핵심 기능
-          </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            집 보는 방식이 달라집니다
-          </h2>
-        </div>
-
-        <div className="mt-10 grid gap-4 lg:grid-cols-[1fr_368px]">
-          <article className="flex flex-col items-center gap-6 rounded-xl border bg-card p-7 shadow-sm sm:flex-row">
-            <div className="flex-1">
-              <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Video className="size-5" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold">실시간 라이브 투어</h3>
-              <p className="mt-1.5 leading-relaxed text-muted-foreground">
-                중개사가 현장에서 직접 비추는 실시간 영상. 보고 싶은 곳을 바로
-                요청하세요
-              </p>
-            </div>
-            <div className="relative h-[170px] w-full shrink-0 overflow-hidden rounded-lg bg-slate-900 sm:w-[260px]">
-              <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-1 text-[11px] font-semibold text-white">
-                <span className="size-1.5 rounded-full bg-white" />
-                LIVE
-              </span>
-              <span className="absolute top-1/2 left-1/2 grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/20 backdrop-blur">
-                <Play className="size-4 fill-current text-white" />
-              </span>
-              <p className="absolute bottom-3 left-3 text-xs text-white/80">
-                강남구 역삼동 · 시청 3명
-              </p>
-            </div>
-          </article>
-
-          <div className="grid gap-4">
-            <article className="rounded-xl border bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-2">
-                <ClipboardCheck className="size-[18px] text-primary" />
-                <h3 className="font-semibold">스마트 체크리스트</h3>
-              </div>
-              <div className="mt-3 space-y-2 text-sm">
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="size-3.5 text-primary" />
-                  곰팡이·누수 흔적 확인
-                </p>
-                <p className="flex items-center gap-2 text-muted-foreground">
-                  <Circle className="size-3.5" />
-                  수압·배수 상태 확인
-                </p>
-              </div>
-            </article>
-
-            <article className="rounded-xl border bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-2">
-                <FileText className="size-[18px] text-primary" />
-                <h3 className="font-semibold">AI 검수 리포트</h3>
-              </div>
-              <div className="mt-3 flex gap-1.5">
-                <Badge variant="secondary">캡처 12장</Badge>
-                <Badge variant="secondary">하자 2건</Badge>
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                통화가 끝나면 캡처·요약·하자 기록이 자동으로
-              </p>
-            </article>
-          </div>
-        </div>
-      </section>
+      <FeaturesSection />
 
       <FlowSection />
 
