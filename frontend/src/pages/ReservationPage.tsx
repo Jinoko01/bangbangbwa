@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CalendarClock,
   Check,
@@ -23,26 +23,122 @@ import type { Property, Reservation } from "@/types";
 interface ReservationPageProps {
   reservations: Reservation[];
   properties: Property[];
+  onConfirmReservation: (reservationId: string, time: string) => void;
 }
 
-function ReservationPage({ reservations, properties }: ReservationPageProps) {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"sent" | "received">("sent");
-  const filteredReservations = reservations.filter(
-    (reservation) => reservation.direction === activeTab,
+function ReservationStatusBadge({ status }: Pick<Reservation, "status">) {
+  const confirmed = status === "예약 확정";
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "gap-1 px-2 py-0.5 font-medium",
+        confirmed
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-amber-200 bg-amber-50 text-amber-700",
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-1.5 rounded-full",
+          confirmed ? "bg-emerald-500" : "bg-amber-500",
+        )}
+      />
+      {status}
+    </Badge>
   );
+}
+
+function getReservationTime(reservation: Reservation) {
+  const time =
+    reservation.status === "예약 확정"
+      ? reservation.time
+      : ([...reservation.timeOptions].sort()[0] ??
+        reservation.time.split(",")[0].trim());
+
+  return new Date(`${reservation.date}T${time}:00`).getTime();
+}
+
+function sortByNearest(first: Reservation, second: Reservation) {
+  const now = Date.now();
+  const firstTime = getReservationTime(first);
+  const secondTime = getReservationTime(second);
+  const firstIsUpcoming = firstTime >= now;
+  const secondIsUpcoming = secondTime >= now;
+
+  if (firstIsUpcoming !== secondIsUpcoming) {
+    return firstIsUpcoming ? -1 : 1;
+  }
+
+  return firstIsUpcoming ? firstTime - secondTime : secondTime - firstTime;
+}
+
+function ReservationConfirmation({
+  reservation,
+  onConfirm,
+}: {
+  reservation: Reservation;
+  onConfirm: (time: string) => void;
+}) {
+  const options = reservation.timeOptions.length
+    ? reservation.timeOptions
+    : reservation.time.split(",").map((time) => time.trim());
+  const [selectedTime, setSelectedTime] = useState(options[0]);
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/[0.03] p-4">
+      <p className="font-semibold">예약 시간을 선택해 주세요</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        요청자가 보낸 후보 중 가능한 시간을 하나 선택하면 예약이 확정됩니다.
+      </p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {options.map((time) => (
+          <Button
+            key={time}
+            type="button"
+            variant={selectedTime === time ? "default" : "outline"}
+            aria-pressed={selectedTime === time}
+            onClick={() => setSelectedTime(time)}
+          >
+            <Clock3 /> {time}
+          </Button>
+        ))}
+      </div>
+      <Button
+        className="mt-3 w-full"
+        disabled={!selectedTime}
+        onClick={() => selectedTime && onConfirm(selectedTime)}
+      >
+        <Check /> 이 시간으로 예약 확정
+      </Button>
+    </div>
+  );
+}
+
+function ReservationPage({
+  reservations,
+  properties,
+  onConfirmReservation,
+}: ReservationPageProps) {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"sent" | "received" | "all">(
+    "all",
+  );
+  const filteredReservations = useMemo(() => {
+    const visibleReservations =
+      activeTab === "all"
+        ? reservations
+        : reservations.filter(
+            (reservation) => reservation.direction === activeTab,
+          );
+
+    return [...visibleReservations].sort(sortByNearest);
+  }, [activeTab, reservations]);
   const [selectedId, setSelectedId] = useState(
     filteredReservations[0]?.id ?? "",
   );
-
-  useEffect(() => {
-    const selectionExists = filteredReservations.some(
-      (reservation) => reservation.id === selectedId,
-    );
-    if (!selectionExists) {
-      setSelectedId(filteredReservations[0]?.id ?? "");
-    }
-  }, [filteredReservations, selectedId]);
 
   const selectedReservation =
     filteredReservations.find((reservation) => reservation.id === selectedId) ??
@@ -52,10 +148,6 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
   );
   const { items: selectedChecklist, setItems: setSelectedChecklist } =
     useReservationChecklist(selectedReservation?.id);
-  const reservationStatusMessage =
-    selectedReservation?.status === "예약 확정"
-      ? "중개사와 일정이 확정되었습니다. 시작 10분 전부터 입장할 수 있어요."
-      : "중개사가 예약 일정을 확인하고 있어요. 확정 후 미팅에 입장할 수 있어요.";
 
   return (
     <main className="min-h-[calc(100svh-3.5rem)] bg-white">
@@ -69,7 +161,13 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="hidden sm:flex">
-              <ShieldCheck /> 확정 예약 {reservations.length}건
+              <ShieldCheck /> 확정 예약{" "}
+              {
+                reservations.filter(
+                  (reservation) => reservation.status === "예약 확정",
+                ).length
+              }
+              건
             </Badge>
             <Button variant="outline" size="sm">
               <RefreshCw /> 새로고침
@@ -83,10 +181,13 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
 
       <div className="mx-auto max-w-7xl px-4 pt-4">
         <div className="inline-flex rounded-xl bg-slate-100 p-1">
-          {(["sent", "received"] as const).map((tab) => {
-            const count = reservations.filter(
-              (reservation) => reservation.direction === tab,
-            ).length;
+          {(["all", "sent", "received"] as const).map((tab) => {
+            const count =
+              tab === "all"
+                ? reservations.length
+                : reservations.filter(
+                    (reservation) => reservation.direction === tab,
+                  ).length;
             return (
               <button
                 key={tab}
@@ -99,7 +200,12 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
                 )}
                 onClick={() => setActiveTab(tab)}
               >
-                {tab === "sent" ? "보낸 예약" : "받은 예약"} {count}
+                {tab === "sent"
+                  ? "보낸 예약"
+                  : tab === "received"
+                    ? "받은 예약"
+                    : "모든 예약"}{" "}
+                {count}
               </button>
             );
           })}
@@ -113,7 +219,9 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
           <p className="mt-1 text-sm text-muted-foreground">
             {activeTab === "sent"
               ? "매물 목록에서 원하는 매물의 미팅을 예약해 보세요."
-              : "아직 중개사에게 받은 예약이 없습니다."}
+              : activeTab === "received"
+                ? "아직 중개사에게 받은 예약이 없습니다."
+                : "아직 등록된 예약이 없습니다."}
           </p>
           <Button className="mt-5" onClick={() => navigate("/properties")}>
             매물 둘러보기
@@ -147,36 +255,30 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
                     )}
                     onClick={() => setSelectedId(reservation.id)}
                   >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "grid size-4 place-items-center rounded border",
-                          isSelected &&
-                            "border-primary bg-primary text-primary-foreground",
-                        )}
-                      >
-                        {isSelected && <Check className="size-3" />}
-                      </span>
+                    <div className="flex items-center">
                       <strong className="truncate text-sm">
                         {property.title}
                       </strong>
                     </div>
-                    <p className="mt-2 text-xs font-medium text-primary">
-                      {reservation.status} · {reservation.time}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <ReservationStatusBadge status={reservation.status} />
+                      {activeTab === "all" && (
+                        <Badge variant="outline">
+                          {reservation.direction === "sent"
+                            ? "보낸 예약"
+                            : "받은 예약"}
+                        </Badge>
+                      )}
+                      <span className="text-xs font-medium text-primary">
+                        {reservation.time}
+                      </span>
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {reservation.date} · 온라인 미팅
                     </p>
                   </button>
                 );
               })}
-              <div className="rounded-xl border bg-slate-50 p-3">
-                <p className="text-xs font-semibold">오늘 일정 요약</p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {activeTab === "sent" ? "보낸" : "받은"} 예약{" "}
-                  {filteredReservations.length}건
-                </p>
-              </div>
             </CardContent>
           </Card>
 
@@ -188,7 +290,7 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
                   일정과 매물 정보를 확인하세요
                 </p>
               </div>
-              <Badge>{selectedReservation.status}</Badge>
+              <ReservationStatusBadge status={selectedReservation.status} />
             </CardHeader>
             <CardContent className="space-y-4 px-4">
               <div className="grid overflow-hidden rounded-xl border sm:grid-cols-[220px_1fr]">
@@ -197,8 +299,14 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
                   alt={`${selectedProperty.title} 매물 사진`}
                   className="h-44 w-full object-cover sm:h-full"
                 />
-                <div className="p-4">
-                  <div className="flex gap-2">
+                <div className="relative p-4">
+                  <span className="absolute right-4 top-4 text-xs text-muted-foreground">
+                    예약번호{" "}
+                    <strong className="ml-1 text-foreground">
+                      {selectedReservation.id.slice(-8)}
+                    </strong>
+                  </span>
+                  <div className="flex gap-2 pr-32">
                     <Badge variant="secondary">
                       {selectedProperty.dealType}
                     </Badge>
@@ -235,45 +343,61 @@ function ReservationPage({ reservations, properties }: ReservationPageProps) {
                 </div>
               </div>
 
-              <div className="rounded-xl border bg-slate-50/70 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="flex items-center gap-2 text-sm font-semibold">
-                    <CheckCircle2 className="size-5 text-emerald-600" /> 예약
-                    상태
+              {selectedReservation.direction === "received" &&
+                selectedReservation.status === "예약 대기" && (
+                  <ReservationConfirmation
+                    key={selectedReservation.id}
+                    reservation={selectedReservation}
+                    onConfirm={(time) =>
+                      onConfirmReservation(selectedReservation.id, time)
+                    }
+                  />
+                )}
+
+              {selectedReservation.status === "예약 확정" && (
+                <div className="rounded-xl border bg-slate-50/70 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="flex items-center gap-2 text-sm font-semibold">
+                      <CheckCircle2 className="size-5 text-emerald-600" /> 예약
+                      상태
+                    </p>
+                    <ReservationStatusBadge
+                      status={selectedReservation.status}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    중개사와 일정이 확정되었습니다. 시작 10분 전부터 입장할 수
+                    있어요.
                   </p>
-                  <Badge>{selectedReservation.status}</Badge>
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  {reservationStatusMessage}
-                </p>
-                <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                  <div className="grid grid-cols-[70px_1fr] gap-y-2 text-xs">
-                    <span className="text-muted-foreground">예약번호</span>
-                    <strong>{selectedReservation.id.slice(-8)}</strong>
-                    <span className="text-muted-foreground">형식</span>
-                    <strong>실시간 영상 투어</strong>
-                    <span className="text-muted-foreground">소요시간</span>
-                    <strong>약 30분</strong>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() =>
-                        navigate(`/reservation/${selectedReservation.id}`)
-                      }
-                    >
-                      <Video /> 미팅 입장
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        navigate(`/booking/${selectedProperty.id}`)
-                      }
-                    >
-                      <Clock3 /> 일정 변경
-                    </Button>
+                  <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                    <div className="grid grid-cols-[70px_1fr] gap-y-2 text-xs">
+                      <span className="text-muted-foreground">형식</span>
+                      <strong>실시간 영상 투어</strong>
+                      <span className="text-muted-foreground">소요시간</span>
+                      <strong>약 30분</strong>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() =>
+                          navigate(`/reservation/${selectedReservation.id}`)
+                        }
+                      >
+                        <Video /> 미팅 입장
+                      </Button>
+                      {selectedReservation.direction === "sent" && (
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            navigate(`/booking/${selectedProperty.id}`)
+                          }
+                        >
+                          <Clock3 /> 일정 변경
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
