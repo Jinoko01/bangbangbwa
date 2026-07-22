@@ -1,5 +1,7 @@
 import {
   useActionState,
+  useEffect,
+  useRef,
   useState,
   type ChangeEvent,
   type ReactNode,
@@ -10,7 +12,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { ChevronLeft, ImageIcon } from "lucide-react";
+import { ChevronLeft, ImageIcon, ImagePlus, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +41,17 @@ const DEPOSIT_LABEL: Record<DealType, string> = {
   매매: "매매가 (만원)",
 };
 
+// 대표 사진을 제외하고 캐러셀에 추가로 넣을 수 있는 사진 수 (총 5장)
+const MAX_EXTRA_PHOTOS = 4;
+
+type FormErrors = Record<string, string>;
+
+// React 19가 액션 완료 후 폼을 리셋하므로, 실패 시 values를 되돌려 defaultValue로 복원
+interface FormState {
+  errors: FormErrors;
+  values: Record<string, string>;
+}
+
 function FormSection({
   title,
   children,
@@ -56,10 +69,12 @@ function FormSection({
 
 function FormField({
   label,
+  error,
   children,
   className,
 }: {
   label: string;
+  error?: string;
   children: ReactNode;
   className?: string;
 }) {
@@ -67,6 +82,9 @@ function FormField({
     <label className={cn("flex flex-col gap-2 text-sm font-medium", className)}>
       {label}
       {children}
+      {error && (
+        <span className="text-xs font-normal text-destructive">{error}</span>
+      )}
     </label>
   );
 }
@@ -76,12 +94,14 @@ function PriceInput({
   name,
   defaultValue,
   disabled,
+  invalid,
 }: {
   name: string;
-  defaultValue?: number;
+  defaultValue?: number | string;
   disabled?: boolean;
+  invalid?: boolean;
 }) {
-  const [amount, setAmount] = useState(defaultValue ?? 0);
+  const [amount, setAmount] = useState(Number(defaultValue ?? 0));
 
   return (
     <>
@@ -91,6 +111,7 @@ function PriceInput({
         min={1}
         defaultValue={defaultValue}
         disabled={disabled}
+        aria-invalid={invalid || undefined}
         onChange={(e) => setAmount(Number(e.target.value))}
       />
       {!disabled && amount > 0 && (
@@ -182,6 +203,61 @@ function PhotoField({
   );
 }
 
+// 추가 사진 — 대표 사진과 함께 상세 캐러셀에 노출 (최대 4장, 총 5장)
+function ExtraPhotoField({
+  urls,
+  onSelect,
+  onRemove,
+}: {
+  urls: string[];
+  onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:col-span-2">
+      <div className="flex flex-wrap gap-3">
+        {urls.map((url, index) => (
+          <div key={`${index}-${url.slice(-24)}`} className="relative">
+            <img
+              src={url}
+              alt={`추가 사진 ${index + 1}`}
+              className="h-20 w-32 rounded-lg border object-cover"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              aria-label={`추가 사진 ${index + 1} 삭제`}
+              className="absolute -top-2 -right-2 size-6 rounded-full border shadow-sm"
+              onClick={() => onRemove(index)}
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        ))}
+        {urls.length < MAX_EXTRA_PHOTOS && (
+          <label className="grid h-20 w-32 cursor-pointer place-items-center rounded-lg border border-dashed transition-colors hover:bg-muted has-[:focus-visible]:border-ring has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50">
+            <span className="flex flex-col items-center gap-1 text-xs font-normal text-muted-foreground">
+              <ImagePlus className="size-5" />
+              사진 추가
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="sr-only"
+              onChange={onSelect}
+            />
+          </label>
+        )}
+      </div>
+      <p className="text-xs font-normal text-muted-foreground">
+        상세 캐러셀에 함께 노출되는 사진 (최대 {MAX_EXTRA_PHOTOS}장)
+      </p>
+    </div>
+  );
+}
+
 interface PropertyFormProps {
   property: Property | null;
   nextId: number;
@@ -199,39 +275,38 @@ function validate(input: {
   totalFloors: number;
   rooms: number;
 }) {
+  const errors: FormErrors = {};
   if (!input.title) {
-    return "매물명을 입력해주세요";
+    errors.title = "매물명을 입력해주세요";
   }
   if (!Number.isFinite(input.deposit) || input.deposit <= 0) {
-    return `${DEPOSIT_LABEL[input.dealType]}을 입력해주세요`;
+    errors.deposit = `${DEPOSIT_LABEL[input.dealType]}을 입력해주세요`;
   }
   if (
     input.dealType === "월세" &&
     (!Number.isFinite(input.monthlyRent) || input.monthlyRent <= 0)
   ) {
-    return "월세를 입력해주세요";
+    errors.monthlyRent = "월세를 입력해주세요";
   }
   if (!input.dong) {
-    return "동(법정동)을 입력해주세요";
+    errors.dong = "동(법정동)을 입력해주세요";
   }
   if (!Number.isFinite(input.areaM2) || input.areaM2 <= 0) {
-    return "전용면적을 입력해주세요";
+    errors.areaM2 = "전용면적을 입력해주세요";
   }
-  if (
-    !Number.isFinite(input.floor) ||
-    !Number.isFinite(input.totalFloors) ||
-    input.floor <= 0 ||
-    input.totalFloors <= 0
-  ) {
-    return "층수와 총 층수를 입력해주세요";
+  if (!Number.isFinite(input.floor) || input.floor <= 0) {
+    errors.floor = "층수를 입력해주세요";
   }
-  if (input.floor > input.totalFloors) {
-    return "층수는 총 층수보다 클 수 없습니다";
+  if (!Number.isFinite(input.totalFloors) || input.totalFloors <= 0) {
+    errors.totalFloors = "총 층수를 입력해주세요";
+  }
+  if (!errors.floor && !errors.totalFloors && input.floor > input.totalFloors) {
+    errors.floor = "층수는 총 층수보다 클 수 없습니다";
   }
   if (!Number.isFinite(input.rooms) || input.rooms <= 0) {
-    return "방 개수를 입력해주세요";
+    errors.rooms = "방 개수를 입력해주세요";
   }
-  return null;
+  return errors;
 }
 
 function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
@@ -244,6 +319,12 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
   );
   const [region, setRegion] = useState(property?.region ?? REGIONS[0]);
   const [previewUrl, setPreviewUrl] = useState(property?.imageUrl);
+  const [extraUrls, setExtraUrls] = useState<string[]>(
+    property?.imageUrls?.slice(1, MAX_EXTRA_PHOTOS + 1) ?? [],
+  );
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [formVersion, setFormVersion] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -252,59 +333,127 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
     }
     try {
       setPreviewUrl(await readFileAsDataUrl(file));
+      setPhotoError(null);
     } catch {
       setPreviewUrl(property?.imageUrl);
+      setPhotoError("이미지를 처리하지 못했습니다. 잠시 후 다시 시도해주세요");
     }
   };
 
-  const [error, submitAction, isPending] = useActionState(
-    async (_prev: string | null, formData: FormData) => {
+  const handleExtraSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = [...(event.target.files ?? [])];
+    event.target.value = "";
+    if (files.length === 0) {
+      return;
+    }
+    const remaining = MAX_EXTRA_PHOTOS - extraUrls.length;
+    try {
+      const urls = await Promise.all(
+        files.slice(0, remaining).map(readFileAsDataUrl),
+      );
+      setExtraUrls((prev) => [...prev, ...urls].slice(0, MAX_EXTRA_PHOTOS));
+      setPhotoError(
+        files.length > remaining
+          ? `추가 사진은 최대 ${MAX_EXTRA_PHOTOS}장까지 등록할 수 있어요`
+          : null,
+      );
+    } catch {
+      setPhotoError("이미지를 처리하지 못했습니다. 잠시 후 다시 시도해주세요");
+    }
+  };
+
+  const handleExtraRemove = (index: number) => {
+    setExtraUrls((prev) => prev.filter((_, i) => i !== index));
+    setPhotoError(null);
+  };
+
+  const [formState, submitAction, isPending] = useActionState(
+    async (_prev: FormState | null, formData: FormData) => {
+      const values = Object.fromEntries(
+        [
+          "title",
+          "deposit",
+          "monthlyRent",
+          "dong",
+          "areaM2",
+          "floor",
+          "totalFloors",
+          "rooms",
+        ].map((key) => [key, String(formData.get(key) ?? "")]),
+      );
       const input = {
-        title: String(formData.get("title")).trim(),
+        title: values.title.trim(),
         dealType,
-        deposit: Number(formData.get("deposit")),
-        monthlyRent:
-          dealType === "월세" ? Number(formData.get("monthlyRent")) : 0,
-        dong: String(formData.get("dong")).trim(),
-        areaM2: Number(formData.get("areaM2")),
-        floor: Number(formData.get("floor")),
-        totalFloors: Number(formData.get("totalFloors")),
-        rooms: Number(formData.get("rooms")),
+        deposit: Number(values.deposit),
+        monthlyRent: dealType === "월세" ? Number(values.monthlyRent) : 0,
+        dong: values.dong.trim(),
+        areaM2: Number(values.areaM2),
+        floor: Number(values.floor),
+        totalFloors: Number(values.totalFloors),
+        rooms: Number(values.rooms),
       };
-      const validationError = validate(input);
-      if (validationError) {
-        return validationError;
+      const errors = validate(input);
+      if (Object.keys(errors).length > 0) {
+        setFormVersion((version) => version + 1);
+        return { errors, values };
       }
 
-      const imageFile = formData.get("image");
-      const hasNewImage = imageFile instanceof File && imageFile.size > 0;
-      try {
-        const imageUrl = hasNewImage
-          ? await readFileAsDataUrl(imageFile)
-          : property?.imageUrl;
-        const next: Property = {
-          ...input,
-          id: property?.id ?? nextId,
-          buildingType,
-          region,
-          saved: property?.saved ?? false,
-          imageUrl,
-        };
-        onSave(next);
-        navigate(`/properties/${next.id}`, { replace: true });
-        return null;
-      } catch {
-        return "이미지를 처리하지 못했습니다. 잠시 후 다시 시도해주세요";
-      }
+      const imageUrl = previewUrl;
+      const imageUrls = imageUrl
+        ? [imageUrl, ...extraUrls]
+        : extraUrls.length > 0
+          ? [...extraUrls]
+          : undefined;
+      const next: Property = {
+        ...input,
+        id: property?.id ?? nextId,
+        buildingType,
+        region,
+        saved: property?.saved ?? false,
+        imageUrl,
+        imageUrls,
+      };
+      onSave(next);
+      navigate(`/properties/${next.id}`, { replace: true });
+      return null;
     },
     null,
   );
+  const errors = formState?.errors;
+  const values = formState?.values;
+
+  useEffect(() => {
+    if (!errors) {
+      return;
+    }
+    const invalid = formRef.current?.querySelector<HTMLElement>(
+      '[aria-invalid="true"]',
+    );
+    if (invalid) {
+      invalid.focus({ preventScroll: true });
+      invalid.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [errors]);
 
   return (
-    <form action={submitAction} className="flex flex-col gap-10">
+    // key: 검증 실패 시 리마운트 — React 19 폼 리셋 후 defaultValue로 입력값을 복원하기 위함
+    <form
+      key={formVersion}
+      ref={formRef}
+      action={submitAction}
+      className="flex flex-col gap-10"
+    >
       <FormSection title="기본 정보">
-        <FormField label="매물명" className="sm:col-span-2">
-          <Input name="title" defaultValue={property?.title} />
+        <FormField
+          label="매물명"
+          error={errors?.title}
+          className="sm:col-span-2"
+        >
+          <Input
+            name="title"
+            defaultValue={values?.title ?? property?.title}
+            aria-invalid={errors?.title ? true : undefined}
+          />
         </FormField>
         <FormField label="거래 유형">
           <DealTypeSegment value={dealType} onChange={setDealType} />
@@ -326,17 +475,25 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label={DEPOSIT_LABEL[dealType]}>
-          <PriceInput name="deposit" defaultValue={property?.deposit} />
+        <FormField label={DEPOSIT_LABEL[dealType]} error={errors?.deposit}>
+          <PriceInput
+            name="deposit"
+            defaultValue={values?.deposit ?? property?.deposit}
+            invalid={Boolean(errors?.deposit)}
+          />
         </FormField>
         <FormField
           label="월세 (만원)"
+          error={errors?.monthlyRent}
           className={dealType !== "월세" ? "text-muted-foreground" : undefined}
         >
           <PriceInput
             name="monthlyRent"
-            defaultValue={property?.monthlyRent || undefined}
+            defaultValue={
+              values?.monthlyRent ?? (property?.monthlyRent || undefined)
+            }
             disabled={dealType !== "월세"}
+            invalid={Boolean(errors?.monthlyRent)}
           />
           {dealType !== "월세" && (
             <span className="text-xs font-normal">
@@ -361,51 +518,71 @@ function PropertyForm({ property, nextId, onSave }: PropertyFormProps) {
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="동">
-          <Input name="dong" defaultValue={property?.dong} />
+        <FormField label="동" error={errors?.dong}>
+          <Input
+            name="dong"
+            defaultValue={values?.dong ?? property?.dong}
+            aria-invalid={errors?.dong ? true : undefined}
+          />
         </FormField>
       </FormSection>
 
       <FormSection title="상세 정보">
-        <FormField label="전용면적 (㎡)">
+        <FormField label="전용면적 (㎡)" error={errors?.areaM2}>
           <Input
             name="areaM2"
             type="number"
             min={1}
-            defaultValue={property?.areaM2}
+            defaultValue={values?.areaM2 ?? property?.areaM2}
+            aria-invalid={errors?.areaM2 ? true : undefined}
           />
         </FormField>
-        <FormField label="방 개수">
+        <FormField label="방 개수" error={errors?.rooms}>
           <Input
             name="rooms"
             type="number"
             min={1}
-            defaultValue={property?.rooms}
+            defaultValue={values?.rooms ?? property?.rooms}
+            aria-invalid={errors?.rooms ? true : undefined}
           />
         </FormField>
-        <FormField label="층">
+        <FormField label="층" error={errors?.floor}>
           <Input
             name="floor"
             type="number"
             min={1}
-            defaultValue={property?.floor}
+            defaultValue={values?.floor ?? property?.floor}
+            aria-invalid={errors?.floor ? true : undefined}
           />
         </FormField>
-        <FormField label="총 층수">
+        <FormField label="총 층수" error={errors?.totalFloors}>
           <Input
             name="totalFloors"
             type="number"
             min={1}
-            defaultValue={property?.totalFloors}
+            defaultValue={values?.totalFloors ?? property?.totalFloors}
+            aria-invalid={errors?.totalFloors ? true : undefined}
           />
         </FormField>
       </FormSection>
 
-      <FormSection title="대표 사진">
+      <FormSection title="사진">
         <PhotoField imageUrl={previewUrl} onSelect={handleImageChange} />
+        <ExtraPhotoField
+          urls={extraUrls}
+          onSelect={handleExtraSelect}
+          onRemove={handleExtraRemove}
+        />
+        {photoError && (
+          <p className="text-xs text-destructive sm:col-span-2">{photoError}</p>
+        )}
       </FormSection>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {errors && Object.keys(errors).length > 0 && (
+        <p className="text-sm text-destructive">
+          입력하지 않은 항목이 있어요. 표시된 필드를 확인해주세요
+        </p>
+      )}
 
       <div className="flex items-center justify-between gap-4 border-t pt-4">
         <p className="text-sm text-muted-foreground">
