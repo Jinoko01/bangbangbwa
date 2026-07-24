@@ -79,7 +79,8 @@ function PropertyCard({ property, onToggleSave, onOpen }: PropertyCardProps) {
           {region} {dong}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {areaM2}㎡({toPyeong(areaM2)}평) · {floor}/{totalFloors}층 · 방{rooms}
+          {areaM2}㎡({toPyeong(areaM2)}평) ·{" "}
+          {totalFloors ? `${floor}/${totalFloors}층` : `${floor}층`} · 방{rooms}
         </p>
       </CardContent>
     </Card>

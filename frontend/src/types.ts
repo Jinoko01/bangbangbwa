@@ -18,6 +18,7 @@ export interface NearbyFacility {
 
 export interface Property {
   id: number;
+  brokerId: number;
   title: string;
   dealType: DealType;
   buildingType: BuildingType;
@@ -27,7 +28,7 @@ export interface Property {
   dong: string;
   areaM2: number;
   floor: number;
-  totalFloors: number;
+  totalFloors?: number;
   rooms: number;
   saved: boolean;
   imageUrl?: string;
@@ -77,6 +78,7 @@ export type UserRole = "세입자" | "중개사";
 export type BrokerVerificationStatus = "미신청" | "심사 중" | "승인 완료";
 
 export interface User {
+  id: number;
   name: string;
   birth: string;
   nickname: string;

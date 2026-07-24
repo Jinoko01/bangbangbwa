@@ -1145,67 +1145,46 @@ function PropertyDetailPage({
           </div>
         ) : (
           <>
-            <div className="grid items-stretch gap-4 md:grid-cols-2">
-              <Card className="h-full gap-0 overflow-hidden py-0">
-                {photoUrls.length > 0 ? (
-                  <PhotoCarousel
-                    title={property.title}
-                    imageUrls={photoUrls}
-                    onPhotoClick={setSelectedPhoto}
-                  />
-                ) : (
-                  <img
-                    src={property.imageUrl}
-                    alt={`${property.title} 매물 사진`}
-                    className="h-52 w-full object-cover"
-                  />
-                )}
-                <CardHeader className="pt-4">
-                  <div className="flex items-center gap-1.5">
-                    <Badge>{property.dealType}</Badge>
-                    <Badge variant="secondary">{property.buildingType}</Badge>
-                  </div>
-                  <CardTitle className="text-xl">{property.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="pb-4">
-                  <p className="text-2xl font-bold text-primary">
-                    {formatPriceLabel(property)}
-                  </p>
-                  <dl className="mt-4 divide-y">
-                    <InfoRow label={priceLabel}>
-                      {formatPrice(property)}
-                    </InfoRow>
-                    <InfoRow label="위치">
-                      {property.region} {property.dong}
-                    </InfoRow>
-                    <InfoRow label="전용면적">
-                      {property.areaM2}㎡ ({toPyeong(property.areaM2)}평)
-                    </InfoRow>
-                    <InfoRow label="층수">
-                      {property.floor}층 / 전체 {property.totalFloors}층
-                    </InfoRow>
-                    <InfoRow label="방 개수">방{property.rooms}</InfoRow>
-                  </dl>
-                </CardContent>
-              </Card>
-
-              <div className="flex min-w-0 flex-col gap-4">
-                {property.nearbyFacilities &&
-                  property.nearbyFacilities.length > 0 && (
-                    <NearbyFacilitiesSection
-                      facilities={property.nearbyFacilities}
-                      propertyTitle={property.title}
-                      propertyAddress={`${property.region} ${property.dong}`}
-                    />
-                  )}
-                <MemoSection
-                  memos={memos}
-                  onAdd={onAddMemo}
-                  onUpdate={onUpdateMemo}
-                  onDelete={onDeleteMemo}
+            <Card className="gap-0 overflow-hidden py-0">
+              {photoUrls.length > 0 ? (
+                <PhotoCarousel
+                  title={property.title}
+                  imageUrls={photoUrls}
+                  onPhotoClick={setSelectedPhoto}
                 />
-              </div>
-            </div>
+              ) : (
+                <img
+                  src={property.imageUrl}
+                  alt={`${property.title} 매물 사진`}
+                  className="h-64 w-full object-cover"
+                />
+              )}
+              <CardHeader className="pt-4">
+                <div className="flex items-center gap-1.5">
+                  <Badge>{property.dealType}</Badge>
+                  <Badge variant="secondary">{property.buildingType}</Badge>
+                </div>
+                <CardTitle className="text-xl">{property.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-6">
+                <p className="text-3xl font-bold text-primary">
+                  {formatPriceLabel(property)}
+                </p>
+                <dl className="mt-4 divide-y">
+                  <InfoRow label={priceLabel}>{formatPrice(property)}</InfoRow>
+                  <InfoRow label="위치">
+                    {property.region} {property.dong}
+                  </InfoRow>
+                  <InfoRow label="전용면적">
+                    {property.areaM2}㎡ ({toPyeong(property.areaM2)}평)
+                  </InfoRow>
+                  <InfoRow label="층수">
+                    {property.floor}층 / 전체 {property.totalFloors}층
+                  </InfoRow>
+                  <InfoRow label="방 개수">방{property.rooms}</InfoRow>
+                </dl>
+              </CardContent>
+            </Card>
 
             <div className="flex gap-2">
               <Button

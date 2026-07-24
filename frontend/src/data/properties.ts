@@ -7,6 +7,7 @@ import type {
 
 // PAGE-04 매물 목록 — 목데이터 15건 (PROP-02)
 // 금액 단위: 만원. deposit = 보증금(전세·월세) 또는 매매가.
+// brokerId = 등록한 중개사(api/auth.ts 목 계정) — 1: 방방부동산(동부권), 2: 봐봐부동산(서부권)
 
 export const BUILDING_TYPES: BuildingType[] = [
   "아파트",
@@ -27,6 +28,7 @@ export const PRICE_BANDS: PriceBand[] = [
 export const PROPERTIES: Property[] = [
   {
     id: 1,
+    brokerId: 1,
     title: "역삼 래미안",
     dealType: "전세",
     buildingType: "아파트",
@@ -42,6 +44,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 2,
+    brokerId: 2,
     title: "서교 자이",
     dealType: "매매",
     buildingType: "아파트",
@@ -57,6 +60,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 3,
+    brokerId: 1,
     title: "잠실 엘스",
     dealType: "전세",
     buildingType: "아파트",
@@ -72,6 +76,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 4,
+    brokerId: 1,
     title: "성수 트리마제",
     dealType: "매매",
     buildingType: "아파트",
@@ -87,6 +92,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 5,
+    brokerId: 2,
     title: "한남 더힐",
     dealType: "매매",
     buildingType: "아파트",
@@ -102,6 +108,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 6,
+    brokerId: 1,
     title: "강남 스카이 오피스텔",
     dealType: "월세",
     buildingType: "오피스텔",
@@ -117,6 +124,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 7,
+    brokerId: 2,
     title: "홍대 리브 원룸",
     dealType: "월세",
     buildingType: "원룸",
@@ -132,6 +140,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 8,
+    brokerId: 2,
     title: "상수 그린빌",
     dealType: "전세",
     buildingType: "빌라",
@@ -147,6 +156,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 9,
+    brokerId: 1,
     title: "잠실 리센츠",
     dealType: "월세",
     buildingType: "아파트",
@@ -162,6 +172,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 10,
+    brokerId: 1,
     title: "서울숲 포레스트",
     dealType: "전세",
     buildingType: "오피스텔",
@@ -177,6 +188,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 11,
+    brokerId: 2,
     title: "한남 리버뷰",
     dealType: "월세",
     buildingType: "빌라",
@@ -192,6 +204,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 12,
+    brokerId: 2,
     title: "여의도 아이파크",
     dealType: "전세",
     buildingType: "아파트",
@@ -207,6 +220,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 13,
+    brokerId: 1,
     title: "자양 스테이 원룸",
     dealType: "월세",
     buildingType: "원룸",
@@ -222,6 +236,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 14,
+    brokerId: 2,
     title: "사당 우성빌라",
     dealType: "매매",
     buildingType: "빌라",
@@ -237,6 +252,7 @@ export const PROPERTIES: Property[] = [
   },
   {
     id: 15,
+    brokerId: 2,
     title: "상계 주공",
     dealType: "매매",
     buildingType: "아파트",

@@ -20,7 +20,7 @@ import ReservationPage from "@/pages/ReservationPage";
 import BookingPage from "@/pages/BookingPage";
 import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
 import { PROPERTIES } from "@/data/properties";
-import { isApprovedBroker } from "@/lib/auth";
+import { canManageProperty, isApprovedBroker } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
 import type { Memo, Property, Reservation } from "@/types";
 
@@ -62,7 +62,7 @@ function DetailRoute({
     <PropertyDetailPage
       property={property}
       loading={loading}
-      canManage={isApprovedBroker(user)}
+      canManage={property !== null && canManageProperty(user, property)}
       onBack={() => navigate("/properties")}
       onToggleSave={onToggleSave}
       onReserve={onReserve}
@@ -140,6 +140,7 @@ function App() {
     },
   ]);
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const location = useLocation();
   // 라이브 세션 중에는 GNB 링크 한 번에 확인 없이 통화가 끊기므로 아예 노출하지 않는다.
   // 이 화면을 벗어나는 길은 확인 다이얼로그가 붙은 나가기 버튼 하나뿐이다
@@ -207,7 +208,10 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/mypage" element={<MyPage />} />
+        <Route
+          path="/mypage"
+          element={<MyPage loading={loading} properties={properties} />}
+        />
         <Route
           path="/reservations"
           element={
@@ -263,8 +267,10 @@ function App() {
             <PropertyListPage
               loading={loading}
               properties={properties}
+              canCreate={isApprovedBroker(user)}
               onToggleSave={toggleSave}
               onOpen={(id) => navigate(`/properties/${id}`)}
+              onCreate={() => navigate("/properties/new")}
             />
           }
         />

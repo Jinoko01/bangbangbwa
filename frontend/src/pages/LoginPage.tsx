@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { MOCK_BROKER_ACCOUNTS } from "@/api/auth";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthProvider } from "@/types";
 
@@ -41,6 +42,7 @@ function GoogleLogo() {
 // PAGE-01 로그인 — 카카오·구글 소셜 로그인 (AUTH-01). OAuth 실연동 전 스텁 동작.
 function LoginPage() {
   const login = useAuthStore((state) => state.login);
+  const loginAsMockBroker = useAuthStore((state) => state.loginAsMockBroker);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,6 +51,11 @@ function LoginPage() {
 
   const mockLogin = async (provider: AuthProvider) => {
     await login(provider);
+    navigate(from, { replace: true });
+  };
+
+  const mockBrokerLogin = async (brokerId: number) => {
+    await loginAsMockBroker(brokerId);
     navigate(from, { replace: true });
   };
 
@@ -89,6 +96,24 @@ function LoginPage() {
             </a>
             에 동의하게 됩니다
           </p>
+          {import.meta.env.DEV && (
+            <div className="mt-2 flex flex-col gap-2 border-t pt-4">
+              <p className="text-center text-xs text-muted-foreground">
+                개발용 중개사 테스트 계정 — 배포 빌드에는 노출되지 않아요
+              </p>
+              {MOCK_BROKER_ACCOUNTS.map((broker) => (
+                <Button
+                  key={broker.id}
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => mockBrokerLogin(broker.id)}
+                >
+                  중개사 {broker.id} · {broker.nickname} ({broker.name})
+                </Button>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </main>
