@@ -7,6 +7,7 @@ dist-ssr
 .env
 .env.*
 !.env.example
+.pnpm-store
 
 # 외부 스킬 리포 클론 (참조용)
 supanova-design-skill/
