@@ -3,6 +3,7 @@ export type BuildingType = "아파트" | "오피스텔" | "빌라" | "원룸";
 
 export interface Property {
   id: number;
+  brokerId: number;
   title: string;
   dealType: DealType;
   buildingType: BuildingType;
@@ -61,6 +62,7 @@ export type UserRole = "세입자" | "중개사";
 export type BrokerVerificationStatus = "미신청" | "심사 중" | "승인 완료";
 
 export interface User {
+  id: number;
   name: string;
   birth: string;
   nickname: string;

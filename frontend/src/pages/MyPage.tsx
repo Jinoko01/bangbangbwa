@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { ImageIcon, LogOut } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/authStore";
+import { isApprovedBroker } from "@/lib/auth";
 import { readFileAsDataUrl } from "@/lib/file";
+import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { AuthProvider, BrokerVerificationStatus, User } from "@/types";
+import type {
+  AuthProvider,
+  BrokerVerificationStatus,
+  Property,
+  User,
+} from "@/types";
 
 const PROVIDER_LABEL: Record<AuthProvider, string> = {
   kakao: "카카오",
@@ -423,6 +431,91 @@ function BrokerVerificationDialog({
   );
 }
 
+// PROP-10 내가 올린 매물 — 중개사 본인이 등록한 매물만 모아 보여준다
+function MyListingsSection({
+  loading,
+  properties,
+}: {
+  loading: boolean;
+  properties: Property[];
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <section>
+      <SectionHeader
+        title={
+          loading ? "내가 올린 매물" : `내가 올린 매물 (${properties.length})`
+        }
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/properties/new")}
+          >
+            매물 등록
+          </Button>
+        }
+      />
+      {loading ? (
+        <div className="flex flex-col gap-3 py-4">
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
+        </div>
+      ) : properties.length === 0 ? (
+        <p className="py-6 text-sm text-muted-foreground">
+          아직 등록한 매물이 없어요. 첫 매물을 등록해보세요.
+        </p>
+      ) : (
+        <ul>
+          {properties.map((property) => (
+            <li
+              key={property.id}
+              className="flex items-center gap-4 border-b py-3 last:border-b-0"
+            >
+              {property.imageUrl ? (
+                <img
+                  src={property.imageUrl}
+                  alt={`${property.title} 대표 사진`}
+                  className="h-12 w-16 shrink-0 rounded-lg object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className="grid h-12 w-16 shrink-0 place-items-center rounded-lg bg-muted"
+                >
+                  <ImageIcon className="size-4 text-muted-foreground" />
+                </span>
+              )}
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <button
+                  type="button"
+                  className="max-w-full self-start truncate text-sm font-medium hover:underline"
+                  onClick={() => navigate(`/properties/${property.id}`)}
+                >
+                  {property.title}
+                </button>
+                <p className="truncate text-xs text-muted-foreground">
+                  {property.region} {property.dong} · {property.buildingType} ·{" "}
+                  {property.dealType} {formatPrice(property)}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0"
+                onClick={() => navigate(`/properties/${property.id}/edit`)}
+              >
+                수정
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 // 계정 — 로그아웃(AUTH-02)·회원 탈퇴(USER-03), 카드 없이 조용한 하단 섹션
 function AccountSection() {
   const logout = useAuthStore((state) => state.logout);
@@ -518,13 +611,20 @@ function AccountSection() {
   );
 }
 
-// PAGE-02 마이페이지 — 내 정보 조회·수정·중개사 인증·탈퇴·로그아웃
-function MyPage() {
+interface MyPageProps {
+  loading: boolean;
+  properties: Property[];
+}
+
+// PAGE-02 마이페이지 — 내 정보 조회·수정·중개사 인증·내가 올린 매물(중개사)·탈퇴·로그아웃
+function MyPage({ loading, properties }: MyPageProps) {
   const user = useAuthStore((state) => state.user);
 
   if (!user) {
     return <Navigate to="/login" state={{ from: "/mypage" }} replace />;
   }
+
+  const myListings = properties.filter((p) => p.brokerId === user.id);
 
   return (
     <main className="min-h-[calc(100svh-3.5rem)] px-4 py-12">
@@ -533,6 +633,9 @@ function MyPage() {
         <IdentityRail user={user} />
         <div className="flex min-w-0 flex-col gap-12">
           <ProfileSection user={user} />
+          {isApprovedBroker(user) && (
+            <MyListingsSection loading={loading} properties={myListings} />
+          )}
           <AccountSection />
         </div>
       </div>

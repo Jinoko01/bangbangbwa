@@ -11,6 +11,7 @@ import type {
 interface AuthStore {
   user: User | null;
   login: (provider: AuthProvider) => Promise<User>;
+  loginAsMockBroker: (brokerId: number) => Promise<User>;
   logout: () => Promise<void>;
   updateProfile: (changes: UserProfileChanges) => Promise<User>;
   applyBrokerVerification: (
@@ -26,6 +27,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       provider === "kakao"
         ? await authApi.loginWithKakao()
         : await authApi.loginWithGoogle();
+    set({ user });
+    return user;
+  },
+  loginAsMockBroker: async (brokerId) => {
+    const user = await authApi.loginWithMockBroker(brokerId);
     set({ user });
     return user;
   },
