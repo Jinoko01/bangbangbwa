@@ -1,6 +1,21 @@
 export type DealType = "전세" | "월세" | "매매";
 export type BuildingType = "아파트" | "오피스텔" | "빌라" | "원룸";
 
+export type FacilityCategory =
+  "지하철" | "편의점" | "카페" | "빨래방" | "마트" | "약국";
+
+export interface NearbyFacility {
+  id: string;
+  category: FacilityCategory;
+  name: string;
+  distanceM: number;
+  walkingMinutes: number;
+  direction: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 export interface Property {
   id: number;
   title: string;
@@ -17,6 +32,7 @@ export interface Property {
   saved: boolean;
   imageUrl?: string;
   imageUrls?: string[];
+  nearbyFacilities?: NearbyFacility[];
 }
 
 export interface Reservation {
