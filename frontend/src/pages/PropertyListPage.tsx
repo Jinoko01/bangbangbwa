@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, List, Map, Plus, SearchX } from "lucide-react";
 
 import PropertyCard from "@/components/PropertyCard";
@@ -17,12 +11,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DEAL_TYPES } from "@/data/properties";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { filterProperties } from "@/lib/filterProperties";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Property } from "@/types";
 
 const SKELETON_COUNT = 6;
+// 모바일 레일 한 페이지(2×2)에 담을 카드 수
+const RAIL_PAGE_SIZE = 4;
 type ViewMode = "list" | "map";
 type KakaoPoint = object;
 type KakaoMap = {
@@ -85,19 +82,10 @@ function loadKakaoMap(appKey: string) {
   return kakaoMapLoader;
 }
 
-const MOBILE_QUERY = "(max-width: 639px)"; // Tailwind sm(640px) 미만
-
-function subscribeToMobileQuery(onChange: () => void) {
-  const media = window.matchMedia(MOBILE_QUERY);
-  media.addEventListener("change", onChange);
-  return () => media.removeEventListener("change", onChange);
-}
-
-// 목록을 데스크톱 카드 대신 컴팩트 카드 그리드로 보여줄지 가르기 위한 뷰포트 구독
-function useIsMobile() {
-  return useSyncExternalStore(
-    subscribeToMobileQuery,
-    () => window.matchMedia(MOBILE_QUERY).matches,
+// 모바일 레일을 페이지 단위 묶음으로 나눈다
+function chunkIntoPages<T>(items: T[], size: number) {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+    items.slice(index * size, index * size + size),
   );
 }
 
@@ -407,7 +395,7 @@ function PropertyListPage({
       <div className="sticky top-14 z-10 border-y bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
           <div
-            className="-mx-4 flex items-center gap-1 overflow-x-auto px-4 sm:hidden"
+            className="scrollbar-hidden -mx-4 flex items-center gap-1 overflow-x-auto px-4 sm:hidden"
             role="tablist"
             aria-label="거래유형 필터"
           >
@@ -465,12 +453,20 @@ function PropertyListPage({
           <>
             <Skeleton className="h-5 w-20" />
             {isMobile ? (
-              <div className="-mx-4 mt-4 overflow-x-auto px-4 pb-2">
-                <div className="grid auto-cols-[45%] grid-flow-col grid-rows-2 gap-3">
-                  {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-                    <PropertyCardCompactSkeleton key={i} />
-                  ))}
-                </div>
+              <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2">
+                {chunkIntoPages(
+                  Array.from({ length: SKELETON_COUNT }, (_, i) => i),
+                  RAIL_PAGE_SIZE,
+                ).map((pageIndexes) => (
+                  <div
+                    key={pageIndexes[0]}
+                    className="grid w-[92%] shrink-0 grid-cols-2 gap-3"
+                  >
+                    {pageIndexes.map((i) => (
+                      <PropertyCardCompactSkeleton key={i} />
+                    ))}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -506,24 +502,30 @@ function PropertyListPage({
             </p>
             {viewMode === "list" ? (
               isMobile ? (
-                // 다음 카드가 오른쪽에 살짝 보이는 2줄 가로 스크롤 레일.
+                // 2×2 카드 페이지를 가로로 스와이프하는 레일 — 카드가 왼쪽 위부터 가로 순서로 채워진다.
                 // 필터가 바뀌면 key로 리마운트해 첫 매물부터 다시 보여준다
                 <div
                   key={JSON.stringify(filters)}
-                  className="-mx-4 mt-4 snap-x scroll-pl-4 overflow-x-auto px-4 pb-2"
+                  className="-mx-4 mt-4 flex snap-x scroll-pl-4 gap-3 overflow-x-auto px-4 pb-2"
                   role="tabpanel"
                 >
-                  <div className="grid auto-cols-[45%] grid-flow-col grid-rows-2 gap-3">
-                    {filtered.map((property) => (
-                      <div key={property.id} className="snap-start">
-                        <PropertyCardCompact
-                          property={property}
-                          onToggleSave={onToggleSave}
-                          onOpen={onOpen}
-                        />
+                  {chunkIntoPages(filtered, RAIL_PAGE_SIZE).map(
+                    (pageProperties) => (
+                      <div
+                        key={pageProperties[0].id}
+                        className="grid w-[92%] shrink-0 snap-start grid-cols-2 gap-3"
+                      >
+                        {pageProperties.map((property) => (
+                          <PropertyCardCompact
+                            key={property.id}
+                            property={property}
+                            onToggleSave={onToggleSave}
+                            onOpen={onOpen}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    ),
+                  )}
                 </div>
               ) : (
                 <div

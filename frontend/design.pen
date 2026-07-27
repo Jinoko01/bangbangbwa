@@ -3412,122 +3412,6 @@
               ]
             }
           ]
-        },
-        {
-          "type": "frame",
-          "id": "jzHTd",
-          "name": "CTA Section",
-          "width": "fill_container",
-          "layout": "vertical",
-          "padding": [
-            72,
-            0
-          ],
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "dSQzk",
-              "name": "CTA Box",
-              "width": 1152,
-              "fill": "$primary",
-              "cornerRadius": 16,
-              "layout": "vertical",
-              "gap": 24,
-              "padding": [
-                56,
-                24
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "pTy6D",
-                  "name": "CTA Title",
-                  "fill": "$primary-foreground",
-                  "content": "오늘 올라온 매물 15건, 방송으로 확인하세요",
-                  "fontFamily": "$font-sans",
-                  "fontSize": 32,
-                  "fontWeight": "700",
-                  "letterSpacing": -0.5
-                },
-                {
-                  "type": "frame",
-                  "id": "HUlhs",
-                  "name": "CTA Button",
-                  "height": 48,
-                  "fill": "$secondary",
-                  "cornerRadius": "$radius-md",
-                  "gap": 8,
-                  "padding": [
-                    0,
-                    28
-                  ],
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "T3cQ4",
-                      "name": "Label",
-                      "fill": "$secondary-foreground",
-                      "content": "매물 둘러보기",
-                      "fontFamily": "$font-sans",
-                      "fontSize": 16,
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "xyt3P",
-                      "name": "Arrow",
-                      "width": 16,
-                      "height": 16,
-                      "icon": "arrow-right",
-                      "library": "lucide",
-                      "fill": "$secondary-foreground"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "aqILm",
-          "name": "Footer",
-          "width": "fill_container",
-          "stroke": "$border",
-          "strokeWidth": {
-            "top": 1
-          },
-          "strokeAlignment": "inner",
-          "layout": "vertical",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "X7yeDC",
-              "name": "Footer Inner",
-              "width": 1152,
-              "padding": [
-                24,
-                0
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "dvp3j",
-                  "name": "Footer Text",
-                  "fill": "$muted-foreground",
-                  "content": "방방봐 — 방을 방송으로 봐",
-                  "fontFamily": "$font-sans",
-                  "fontSize": 14,
-                  "fontWeight": "normal"
-                }
-              ]
-            }
-          ]
         }
       ]
     },
@@ -5508,8 +5392,8 @@
     {
       "type": "frame",
       "id": "eOPWd",
-      "x": 4680,
-      "y": 4398,
+      "x": 7920,
+      "y": 5600,
       "name": "Meeting Reservation Page",
       "clip": true,
       "width": 1440,
@@ -7748,8 +7632,8 @@
     {
       "type": "frame",
       "id": "ICBpp",
-      "x": 3120,
-      "y": 4398,
+      "x": 6360,
+      "y": 5600,
       "name": "Report Pages - Agent Work",
       "clip": true,
       "width": 1440,
@@ -10336,8 +10220,8 @@
     {
       "type": "frame",
       "id": "KCkyx",
-      "x": 1560,
-      "y": 4398,
+      "x": 4800,
+      "y": 5600,
       "name": "Inspection Checklist Page",
       "clip": true,
       "width": 1440,
@@ -11370,8 +11254,8 @@
     {
       "type": "frame",
       "id": "v03ITA",
-      "x": 0,
-      "y": 4398,
+      "x": 3240,
+      "y": 5600,
       "name": "Live Call Page",
       "clip": true,
       "width": 1440,
@@ -23522,6 +23406,3331 @@
                   ]
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Cq5KF",
+      "x": 0,
+      "y": 4334,
+      "name": "Mobile Screens",
+      "fill": "$background",
+      "cornerRadius": 16,
+      "stroke": "$border",
+      "strokeWidth": 1,
+      "strokeAlignment": "inner",
+      "layout": "vertical",
+      "gap": 8,
+      "padding": 48,
+      "children": [
+        {
+          "type": "text",
+          "id": "hJ7b7",
+          "name": "Title",
+          "fill": "$foreground",
+          "content": "Mobile",
+          "fontFamily": "$font-sans",
+          "fontSize": 28,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "Wy2Hp",
+          "name": "Subtitle",
+          "fill": "$muted-foreground",
+          "content": "모바일 화면 구역 (390 × 844) — 매물 페이지 모바일 UX 개선",
+          "fontFamily": "$font-sans",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "AkmbD",
+          "name": "Screens Row",
+          "gap": 40,
+          "padding": [
+            24,
+            0,
+            0,
+            0
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "JIP9V",
+              "name": "매물 목록 — 모바일",
+              "clip": true,
+              "width": 390,
+              "height": 844,
+              "fill": "$background",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "sSWkY",
+                  "name": "GNB",
+                  "width": "fill_container",
+                  "height": 56,
+                  "stroke": "$border",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "padding": [
+                    0,
+                    16
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "o31u3",
+                      "name": "Logo",
+                      "fill": "$primary",
+                      "content": "방방봐",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "if50x",
+                      "name": "Menu Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "menu",
+                      "library": "lucide",
+                      "fill": "$foreground"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Zaang",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    24,
+                    16
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "NI9dN",
+                      "name": "Title Row",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "iWJF1",
+                          "name": "Page Title",
+                          "fill": "$foreground",
+                          "content": "매물 목록",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 18,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "m7xAYR",
+                          "name": "Create Button",
+                          "height": 32,
+                          "fill": "$primary",
+                          "cornerRadius": "$radius-md",
+                          "gap": 6,
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "B3crN",
+                              "name": "Plus Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "plus",
+                              "library": "lucide",
+                              "fill": "$primary-foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "p62Hx",
+                              "name": "Create Label",
+                              "fill": "$primary-foreground",
+                              "content": "매물 등록",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "waOgI",
+                      "name": "View Toggle",
+                      "fill": "$muted",
+                      "cornerRadius": 12,
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "strokeAlignment": "inner",
+                      "padding": 6,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "VDfOF",
+                          "name": "Toggle List",
+                          "width": 128,
+                          "height": 36,
+                          "fill": "$primary",
+                          "cornerRadius": "$radius-lg",
+                          "gap": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "i12m3x",
+                              "name": "List Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "list",
+                              "library": "lucide",
+                              "fill": "$primary-foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "rgzHz",
+                              "name": "List Label",
+                              "fill": "$primary-foreground",
+                              "content": "리스트형식",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "LEjMb",
+                          "name": "Toggle Map",
+                          "width": 128,
+                          "height": 36,
+                          "gap": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "oxP2o",
+                              "name": "Map Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "map",
+                              "library": "lucide",
+                              "fill": "$foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "X5acwK",
+                              "name": "Map Label",
+                              "fill": "$foreground",
+                              "content": "지도형식",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ldvk6",
+                  "name": "Filter Section",
+                  "width": "fill_container",
+                  "stroke": "$border",
+                  "strokeWidth": {
+                    "top": 1,
+                    "bottom": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zXJq7",
+                      "name": "Deal Chips",
+                      "gap": 4,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Qpp3j",
+                          "name": "Deal 전체",
+                          "fill": "$foreground",
+                          "cornerRadius": 999,
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "XVvaA",
+                              "name": "Deal Label 전체",
+                              "fill": "$background",
+                              "content": "전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "raxbQ",
+                          "name": "Deal 월세",
+                          "cornerRadius": 999,
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "VoP0z",
+                              "name": "Deal Label 월세",
+                              "fill": "$muted-foreground",
+                              "content": "월세",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "BtktA",
+                          "name": "Deal 전세",
+                          "cornerRadius": 999,
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "b0olRZ",
+                              "name": "Deal Label 전세",
+                              "fill": "$muted-foreground",
+                              "content": "전세",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "B3tJqw",
+                          "name": "Deal 매매",
+                          "cornerRadius": 999,
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "S3OYfL",
+                              "name": "Deal Label 매매",
+                              "fill": "$muted-foreground",
+                              "content": "매매",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "WwbIo",
+                      "name": "Search Wrap",
+                      "width": "fill_container",
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "lymmw",
+                          "name": "Search Input",
+                          "width": "fill_container",
+                          "height": 36,
+                          "cornerRadius": "$radius-md",
+                          "stroke": "$input",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "gap": 8,
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "ACVkO",
+                              "name": "Search Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "search",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "C0E9I",
+                              "name": "Search Placeholder",
+                              "fill": "$muted-foreground",
+                              "content": "매물명·지역 검색",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "KOSO5",
+                      "name": "Filter Chips",
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Q7dJ7",
+                          "name": "Chip 지역 전체",
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "gap": 4,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "YGHu4",
+                              "name": "Chip Label 지역 전체",
+                              "fill": "$foreground",
+                              "content": "지역 전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "Pkhfs",
+                              "name": "Chip Chevron 지역 전체",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "chevron-down",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "BrmNg",
+                          "name": "Chip 가격 전체",
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "gap": 4,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "N0ACP",
+                              "name": "Chip Label 가격 전체",
+                              "fill": "$foreground",
+                              "content": "가격 전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "X9Gf2",
+                              "name": "Chip Chevron 가격 전체",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "chevron-down",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "NvMWN",
+                          "name": "Chip 유형 전체",
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "gap": 4,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "WKrug",
+                              "name": "Chip Label 유형 전체",
+                              "fill": "$foreground",
+                              "content": "유형 전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "HDWXW",
+                              "name": "Chip Chevron 유형 전체",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "chevron-down",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "h81cVw",
+                  "name": "Main",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    24,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "UQUjQ",
+                      "name": "Count Row",
+                      "gap": 4,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "bkVEl",
+                          "name": "Count Prefix",
+                          "fill": "$muted-foreground",
+                          "content": "매물",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "mWCCe",
+                          "name": "Count Value",
+                          "fill": "$foreground",
+                          "content": "15",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 16,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Nofne",
+                          "name": "Count Suffix",
+                          "fill": "$muted-foreground",
+                          "content": "건",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "g0AlH",
+                      "name": "Card Rail",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Fz7ip",
+                          "name": "Rail Row 1",
+                          "gap": 12,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "S3YvVp",
+                              "name": "Card 역삼 래미안",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "eBZPM",
+                                  "name": "Image 역삼 래미안",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "minhphamdesign",
+                                    "link": "https://unsplash.com/@minhphamdesign",
+                                    "author": "Minh Pham"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDN8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "Ulk10",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "x762T",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "전세",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "qpYek",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "eOyma",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$primary"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "F7UNs",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "rZw7H",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "역삼 래미안",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "m8QTlP",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "5억 5,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "Z8bM56",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "강남구 역삼동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "YZyZC",
+                              "name": "Card 잠실 엘스",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "S8rPw",
+                                  "name": "Image 잠실 엘스",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "kdarmody",
+                                    "link": "https://unsplash.com/@kdarmody",
+                                    "author": "Kate Darmody"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1649445006098-e1ab371a4aca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDR8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "B3I9o",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "L8t61",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "전세",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "a6dAWU",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "GBwCN",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "debUN",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "gkCEz",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "잠실 엘스",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "pWlgL",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "6억 8,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "ihl9V",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "송파구 잠실동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "z6TTNk",
+                              "name": "Card 한남 더힐",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "uttHW",
+                                  "name": "Image 한남 더힐",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "emmanuelblack",
+                                    "link": "https://unsplash.com/@emmanuelblack",
+                                    "author": "Emmanuel Black"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1761679296910-0a0078baa1ea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDV8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "jAsMw",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "r7HR3",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "매매",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "qcfAj",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "rp7Kk",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "JfZoW",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "V7SD9A",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "한남 더힐",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "mETtZ",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "18억 5,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "FPMUS",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "용산구 한남동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "pdeKp",
+                          "name": "Rail Row 2",
+                          "gap": 12,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "e4yJwv",
+                              "name": "Card 서교 자이",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "v5euAR",
+                                  "name": "Image 서교 자이",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "knowacki",
+                                    "link": "https://unsplash.com/@knowacki",
+                                    "author": "Konrad Nowacki"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1782061816782-cf2458b0d238?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDV8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "OR7ll",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "q0Jt79",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "매매",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "mev5u",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "KErsA",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "m31dUI",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "OQEGI",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "서교 자이",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "BJUaM",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "9억 2,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "n1zekf",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "마포구 서교동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "b2ok0R",
+                              "name": "Card 성수 트리마제",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "DKJ4i",
+                                  "name": "Image 성수 트리마제",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "kdarmody",
+                                    "link": "https://unsplash.com/@kdarmody",
+                                    "author": "Kate Darmody"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1617201929478-8eedff7508f9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDZ8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "czHFj",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "DCdak",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "매매",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "I21IL3",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "igefT",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "o5nNe",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "na7Ck",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "성수 트리마제",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "Ro0eA",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "15억 5,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "B8Nzb",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "성동구 성수동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "bGTUr",
+                              "name": "Card 강남 스카이 오피스텔",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "bkiMK",
+                                  "name": "Image 강남 스카이 오피스텔",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "aquilionproperty",
+                                    "link": "https://unsplash.com/@aquilionproperty",
+                                    "author": "Aquilion Property"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1702014859908-d48b9b844240?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDd8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "Kyd7H",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "YMhTq",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "월세",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "kCokY",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "ubzmA",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "S65YX",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "VOoQ0",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "강남 스카이 오피스텔",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "Z3jocn",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "2,000/90",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "Eow3Z",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "강남구 역삼동 · 오피스텔",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "zxr1J",
+              "name": "필터 Drawer — 모바일",
+              "clip": true,
+              "width": 390,
+              "height": 844,
+              "fill": "$background",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Hs4zi",
+                  "name": "GNB",
+                  "width": "fill_container",
+                  "height": 56,
+                  "stroke": "$border",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "padding": [
+                    0,
+                    16
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ytFrQ",
+                      "name": "Logo",
+                      "fill": "$primary",
+                      "content": "방방봐",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "zGvWP",
+                      "name": "Menu Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "menu",
+                      "library": "lucide",
+                      "fill": "$foreground"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rnypt",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    24,
+                    16
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "H2VLmt",
+                      "name": "Title Row",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Q64ZMa",
+                          "name": "Page Title",
+                          "fill": "$foreground",
+                          "content": "매물 목록",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 18,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "WtT3A",
+                          "name": "Create Button",
+                          "height": 32,
+                          "fill": "$primary",
+                          "cornerRadius": "$radius-md",
+                          "gap": 6,
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "K6soL",
+                              "name": "Plus Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "plus",
+                              "library": "lucide",
+                              "fill": "$primary-foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "HdPVQ",
+                              "name": "Create Label",
+                              "fill": "$primary-foreground",
+                              "content": "매물 등록",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aoqO0",
+                      "name": "View Toggle",
+                      "fill": "$muted",
+                      "cornerRadius": 12,
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "strokeAlignment": "inner",
+                      "padding": 6,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "d09Bw",
+                          "name": "Toggle List",
+                          "width": 128,
+                          "height": 36,
+                          "fill": "$primary",
+                          "cornerRadius": "$radius-lg",
+                          "gap": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "QA2e1",
+                              "name": "List Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "list",
+                              "library": "lucide",
+                              "fill": "$primary-foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "IDq08",
+                              "name": "List Label",
+                              "fill": "$primary-foreground",
+                              "content": "리스트형식",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "iTIsK",
+                          "name": "Toggle Map",
+                          "width": 128,
+                          "height": 36,
+                          "gap": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "x2MYRI",
+                              "name": "Map Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "map",
+                              "library": "lucide",
+                              "fill": "$foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "yW2FV",
+                              "name": "Map Label",
+                              "fill": "$foreground",
+                              "content": "지도형식",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "iImg9",
+                  "name": "Filter Section",
+                  "width": "fill_container",
+                  "stroke": "$border",
+                  "strokeWidth": {
+                    "top": 1,
+                    "bottom": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "lLz8K",
+                      "name": "Deal Chips",
+                      "gap": 4,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "bvYq2",
+                          "name": "Deal 전체",
+                          "fill": "$foreground",
+                          "cornerRadius": 999,
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "kbyG6",
+                              "name": "Deal Label 전체",
+                              "fill": "$background",
+                              "content": "전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "srckR",
+                          "name": "Deal 월세",
+                          "cornerRadius": 999,
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CRk8R",
+                              "name": "Deal Label 월세",
+                              "fill": "$muted-foreground",
+                              "content": "월세",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "P7Tra",
+                          "name": "Deal 전세",
+                          "cornerRadius": 999,
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "d4mLf",
+                              "name": "Deal Label 전세",
+                              "fill": "$muted-foreground",
+                              "content": "전세",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "DXFrD",
+                          "name": "Deal 매매",
+                          "cornerRadius": 999,
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "V2Q4L",
+                              "name": "Deal Label 매매",
+                              "fill": "$muted-foreground",
+                              "content": "매매",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fKGFu",
+                      "name": "Search Wrap",
+                      "width": "fill_container",
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "T1zBPR",
+                          "name": "Search Input",
+                          "width": "fill_container",
+                          "height": 36,
+                          "cornerRadius": "$radius-md",
+                          "stroke": "$input",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "gap": 8,
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "KAz9R",
+                              "name": "Search Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "search",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "w16Vde",
+                              "name": "Search Placeholder",
+                              "fill": "$muted-foreground",
+                              "content": "매물명·지역 검색",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nq7bi",
+                      "name": "Filter Chips",
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "bJeYB",
+                          "name": "Chip 지역 전체",
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "gap": 4,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s7kWB",
+                              "name": "Chip Label 지역 전체",
+                              "fill": "$foreground",
+                              "content": "지역 전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "uOyZ1",
+                              "name": "Chip Chevron 지역 전체",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "chevron-down",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "rH4Is",
+                          "name": "Chip 가격 전체",
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "gap": 4,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "VXuYk",
+                              "name": "Chip Label 가격 전체",
+                              "fill": "$foreground",
+                              "content": "가격 전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "ozeIc",
+                              "name": "Chip Chevron 가격 전체",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "chevron-down",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "m6aT4T",
+                          "name": "Chip 유형 전체",
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "gap": 4,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "HpxFU",
+                              "name": "Chip Label 유형 전체",
+                              "fill": "$foreground",
+                              "content": "유형 전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "O1ovp9",
+                              "name": "Chip Chevron 유형 전체",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "chevron-down",
+                              "library": "lucide",
+                              "fill": "$muted-foreground"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nczm3",
+                  "name": "Main",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    24,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "kHpf1",
+                      "name": "Count Row",
+                      "gap": 4,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Q3IDgJ",
+                          "name": "Count Prefix",
+                          "fill": "$muted-foreground",
+                          "content": "매물",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "sSdzJ",
+                          "name": "Count Value",
+                          "fill": "$foreground",
+                          "content": "15",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 16,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "uKGkv",
+                          "name": "Count Suffix",
+                          "fill": "$muted-foreground",
+                          "content": "건",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "r8AjM",
+                      "name": "Card Rail",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "bS4nf",
+                          "name": "Rail Row 1",
+                          "gap": 12,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "lbyEF",
+                              "name": "Card 역삼 래미안",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "Y65VC",
+                                  "name": "Image 역삼 래미안",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "minhphamdesign",
+                                    "link": "https://unsplash.com/@minhphamdesign",
+                                    "author": "Minh Pham"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDN8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "oZ4ow",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "LaCtz",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "전세",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "kEBYd",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "jUWRo",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$primary"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "p2ZzhZ",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "I1nudz",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "역삼 래미안",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "uWMNs",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "5억 5,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "QfeTW",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "강남구 역삼동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Eh1rF",
+                              "name": "Card 잠실 엘스",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "TQxra",
+                                  "name": "Image 잠실 엘스",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "kdarmody",
+                                    "link": "https://unsplash.com/@kdarmody",
+                                    "author": "Kate Darmody"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1649445006098-e1ab371a4aca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDR8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "peYAn",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "jsRFE",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "전세",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "i7wbI",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "R2Vm89",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "iqdLT",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "xMJnG",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "잠실 엘스",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "aEBaa",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "6억 8,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "PCzB0",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "송파구 잠실동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "f4k8aP",
+                              "name": "Card 한남 더힐",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "z4H9g",
+                                  "name": "Image 한남 더힐",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "emmanuelblack",
+                                    "link": "https://unsplash.com/@emmanuelblack",
+                                    "author": "Emmanuel Black"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1761679296910-0a0078baa1ea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDV8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "w6Z3G",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "raN47",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "매매",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "KE2ZW",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "ls9kR",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "aWnWd",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "wWJgk",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "한남 더힐",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "IEkFH",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "18억 5,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "g7Z0e",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "용산구 한남동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "BazE9",
+                          "name": "Rail Row 2",
+                          "gap": 12,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "ceIOc",
+                              "name": "Card 서교 자이",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "kzFNu",
+                                  "name": "Image 서교 자이",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "knowacki",
+                                    "link": "https://unsplash.com/@knowacki",
+                                    "author": "Konrad Nowacki"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1782061816782-cf2458b0d238?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDV8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "H6daKp",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "g2sm4",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "매매",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "PRDv6",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "P2lAbW",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "ryDuv",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "Iivi6",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "서교 자이",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "V18x60",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "9억 2,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "oOdGR",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "마포구 서교동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "A1nO7i",
+                              "name": "Card 성수 트리마제",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "wDtlS",
+                                  "name": "Image 성수 트리마제",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "kdarmody",
+                                    "link": "https://unsplash.com/@kdarmody",
+                                    "author": "Kate Darmody"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1617201929478-8eedff7508f9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDZ8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "cs4zt",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "n9sx3",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "매매",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "Xho9F",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "R58gMf",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "y3gDQ",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "e3Poxu",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "성수 트리마제",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "AKPW1",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "15억 5,000",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "wuAbg",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "성동구 성수동 · 아파트",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "SZXko",
+                              "name": "Card 강남 스카이 오피스텔",
+                              "width": 160,
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "Gep96",
+                                  "name": "Image 강남 스카이 오피스텔",
+                                  "metadata": {
+                                    "type": "unsplash",
+                                    "username": "aquilionproperty",
+                                    "link": "https://unsplash.com/@aquilionproperty",
+                                    "author": "Aquilion Property"
+                                  },
+                                  "clip": true,
+                                  "width": 160,
+                                  "height": 160,
+                                  "fill": {
+                                    "type": "image",
+                                    "enabled": true,
+                                    "url": "https://images.unsplash.com/photo-1702014859908-d48b9b844240?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODUxMTQwNDd8&ixlib=rb-4.1.0&q=80&w=1080",
+                                    "mode": "fill"
+                                  },
+                                  "cornerRadius": 12,
+                                  "layout": "none",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "kd4mP",
+                                      "x": 8,
+                                      "y": 131,
+                                      "name": "Deal Badge",
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "padding": [
+                                        2,
+                                        8
+                                      ],
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "F3kQ6",
+                                          "name": "Badge Label",
+                                          "fill": "$primary",
+                                          "content": "월세",
+                                          "fontFamily": "$font-sans",
+                                          "fontSize": 12,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "J84gny",
+                                      "x": 120,
+                                      "y": 8,
+                                      "name": "Save Button",
+                                      "width": 32,
+                                      "height": 32,
+                                      "fill": "#FFFFFFF2",
+                                      "cornerRadius": 999,
+                                      "justifyContent": "center",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "id": "T35Ak",
+                                          "name": "Heart Icon",
+                                          "width": 16,
+                                          "height": 16,
+                                          "icon": "heart",
+                                          "library": "lucide",
+                                          "fill": "$muted-foreground"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "P62RLZ",
+                                  "name": "Text Block",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "E9TvVS",
+                                      "name": "Card Title",
+                                      "fill": "$foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "강남 스카이 오피스텔",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 14,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "nt0DO",
+                                      "name": "Card Price",
+                                      "fill": "$primary",
+                                      "content": "2,000/90",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 16,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "KqFP3",
+                                      "name": "Card Info",
+                                      "fill": "$muted-foreground",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "강남구 역삼동 · 오피스텔",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "rectangle",
+                  "id": "g9wocK",
+                  "layoutPosition": "absolute",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Dim Overlay",
+                  "fill": "#00000066",
+                  "width": 390,
+                  "height": 844
+                },
+                {
+                  "type": "frame",
+                  "id": "civfK",
+                  "layoutPosition": "absolute",
+                  "x": 0,
+                  "y": 414,
+                  "name": "Bottom Sheet",
+                  "width": 390,
+                  "height": 430,
+                  "fill": "$background",
+                  "cornerRadius": [
+                    10,
+                    10,
+                    0,
+                    0
+                  ],
+                  "stroke": "$border",
+                  "strokeWidth": {
+                    "top": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "d8vbY",
+                      "name": "Handle Wrap",
+                      "width": "fill_container",
+                      "padding": [
+                        16,
+                        0,
+                        8,
+                        0
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 999,
+                          "id": "SETsV",
+                          "name": "Drag Handle",
+                          "fill": "$muted",
+                          "width": 100,
+                          "height": 8
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "K38o1",
+                      "name": "Sheet Header",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "X37F01",
+                          "name": "Sheet Title",
+                          "fill": "$foreground",
+                          "content": "지역",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 16,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gE1bo",
+                      "name": "Option List",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        16,
+                        8,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "x0vZt",
+                          "name": "Option 지역 전체",
+                          "width": "fill_container",
+                          "height": 44,
+                          "cornerRadius": "$radius-lg",
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "kYq9H",
+                              "name": "Option Label 지역 전체",
+                              "fill": "$foreground",
+                              "content": "지역 전체",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "xRxz9",
+                          "name": "Option 강남구",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "#165DFC0D",
+                          "cornerRadius": "$radius-lg",
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "m66imi",
+                              "name": "Option Label 강남구",
+                              "fill": "$primary",
+                              "content": "강남구",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "P3LnPJ",
+                              "name": "Check Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "$primary"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "S3bLHP",
+                          "name": "Option 마포구",
+                          "width": "fill_container",
+                          "height": 44,
+                          "cornerRadius": "$radius-lg",
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "uZ05e",
+                              "name": "Option Label 마포구",
+                              "fill": "$foreground",
+                              "content": "마포구",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "u8zde",
+                          "name": "Option 송파구",
+                          "width": "fill_container",
+                          "height": 44,
+                          "cornerRadius": "$radius-lg",
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "H1fewU",
+                              "name": "Option Label 송파구",
+                              "fill": "$foreground",
+                              "content": "송파구",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "bnQI2",
+                          "name": "Option 성동구",
+                          "width": "fill_container",
+                          "height": 44,
+                          "cornerRadius": "$radius-lg",
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "YFOkl",
+                              "name": "Option Label 성동구",
+                              "fill": "$foreground",
+                              "content": "성동구",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "qDm2y",
+                          "name": "Option 용산구",
+                          "width": "fill_container",
+                          "height": 44,
+                          "cornerRadius": "$radius-lg",
+                          "padding": [
+                            0,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "EUfu6",
+                              "name": "Option Label 용산구",
+                              "fill": "$foreground",
+                              "content": "용산구",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Vyebl",
+                      "name": "Sheet Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "FarD2",
+                          "name": "Apply Button",
+                          "width": "fill_container",
+                          "height": 40,
+                          "fill": "$primary",
+                          "cornerRadius": "$radius-md",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "S1iZpt",
+                              "name": "Apply Label",
+                              "fill": "$primary-foreground",
+                              "content": "매물 3건 보기",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nPG1A",
+              "name": "매물 상세 — 모바일",
+              "clip": true,
+              "width": 390,
+              "height": 844,
+              "fill": "$background",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "layout": "vertical",
+              "gap": 8,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "N5bg2f",
+                  "name": "Label",
+                  "fill": "$muted-foreground",
+                  "content": "매물 상세 — 모바일",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "Ocz6W",
+                  "name": "Size Hint",
+                  "fill": "$muted-foreground",
+                  "content": "390 × 844",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IJAyV",
+              "name": "매물 등록/수정 — 모바일",
+              "clip": true,
+              "width": 390,
+              "height": 844,
+              "fill": "$background",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "layout": "vertical",
+              "gap": 8,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "n1FlN0",
+                  "name": "Label",
+                  "fill": "$muted-foreground",
+                  "content": "매물 등록/수정 — 모바일",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "x79w5",
+                  "name": "Size Hint",
+                  "fill": "$muted-foreground",
+                  "content": "390 × 844",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "jzHTd",
+      "x": 3240,
+      "y": 4855,
+      "name": "CTA Section",
+      "width": "fill_container(1440)",
+      "layout": "vertical",
+      "padding": [
+        72,
+        0
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "dSQzk",
+          "name": "CTA Box",
+          "width": 1152,
+          "fill": "$primary",
+          "cornerRadius": 16,
+          "layout": "vertical",
+          "gap": 24,
+          "padding": [
+            56,
+            24
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "pTy6D",
+              "name": "CTA Title",
+              "fill": "$primary-foreground",
+              "content": "오늘 올라온 매물 15건, 방송으로 확인하세요",
+              "fontFamily": "$font-sans",
+              "fontSize": 32,
+              "fontWeight": "700",
+              "letterSpacing": -0.5
+            },
+            {
+              "type": "frame",
+              "id": "HUlhs",
+              "name": "CTA Button",
+              "height": 48,
+              "fill": "$secondary",
+              "cornerRadius": "$radius-md",
+              "gap": 8,
+              "padding": [
+                0,
+                28
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "T3cQ4",
+                  "name": "Label",
+                  "fill": "$secondary-foreground",
+                  "content": "매물 둘러보기",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 16,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "icon",
+                  "id": "xyt3P",
+                  "name": "Arrow",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "arrow-right",
+                  "library": "lucide",
+                  "fill": "$secondary-foreground"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "aqILm",
+      "x": 3240,
+      "y": 5231,
+      "name": "Footer",
+      "width": "fill_container(1440)",
+      "stroke": "$border",
+      "strokeWidth": {
+        "top": 1
+      },
+      "strokeAlignment": "inner",
+      "layout": "vertical",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "X7yeDC",
+          "name": "Footer Inner",
+          "width": 1152,
+          "padding": [
+            24,
+            0
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "dvp3j",
+              "name": "Footer Text",
+              "fill": "$muted-foreground",
+              "content": "방방봐 — 방을 방송으로 봐",
+              "fontFamily": "$font-sans",
+              "fontSize": 14,
+              "fontWeight": "normal"
             }
           ]
         }
