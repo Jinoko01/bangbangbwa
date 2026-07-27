@@ -8,6 +8,14 @@
 */
 @custom-variant dark (&:is(.dark *));
 
+/* 가로 스크롤은 유지하되 스크롤바만 숨긴다 (모바일 칩 행 등) */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /*
   방방봐 디자인 토큰 — design.pen 시안의 블루 신뢰 톤.
 */

@@ -288,7 +288,7 @@ async function countFacilities(
   places: KakaoPlaces,
   center: KakaoLatLng,
 ): Promise<Record<FacilityCountField, number>> {
-  const queries: Array<[FacilityCountField, PlacesQuery]> = [
+  const queries: Array<readonly [FacilityCountField, PlacesQuery]> = [
     ...Object.entries(FACILITY_CATEGORY_CODES).map(
       ([field, categoryCode]) =>
         [field as FacilityCountField, { categoryCode }] as const,

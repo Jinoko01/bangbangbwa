@@ -28,8 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { ROOM_TYPES } from "@/data/properties";
+import { Textarea } from "@/components/ui/textarea";
 import { isApiError } from "@/api/error";
 import {
   useCreateProperty,

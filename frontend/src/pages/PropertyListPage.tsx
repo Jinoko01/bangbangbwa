@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImageIcon, List, Map, Plus, SearchX } from "lucide-react";
+import { Heart, ImageIcon, List, Map, Plus, SearchX } from "lucide-react";
 
 import PropertyCard, {
   toPropertyCardItem,
@@ -8,19 +8,30 @@ import PropertyCard, {
 import PropertyFilterBar, {
   DEFAULT_FILTERS,
 } from "@/components/PropertyFilterBar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PRICE_BANDS } from "@/data/properties";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DEAL_TYPES,
+  MONTHLY_DEPOSIT_BANDS,
+  PRICE_BANDS,
+} from "@/data/properties";
 import {
   usePropertyList,
   useToggleSavedInCache,
 } from "@/hooks/queries/propertyQueries";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import type { Filters, PropertyFilters, RoomType } from "@/types";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import type { DealType, Filters, PropertyFilters, RoomType } from "@/types";
 
 const SKELETON_COUNT = 6;
 const PAGE_SIZE = 12;
+// 모바일 레일 한 페이지(2×2)에 담을 카드 수
+const RAIL_PAGE_SIZE = 4;
 type ViewMode = "list" | "map";
 type KakaoPoint = object;
 type KakaoMap = {
@@ -83,6 +94,13 @@ function loadKakaoMap(appKey: string) {
   return kakaoMapLoader;
 }
 
+// 모바일 레일을 페이지 단위 묶음으로 나눈다
+function chunkIntoPages<T>(items: T[], size: number) {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+    items.slice(index * size, index * size + size),
+  );
+}
+
 function PropertyCardSkeleton() {
   return (
     <Card className="gap-4 py-5">
@@ -99,6 +117,91 @@ function PropertyCardSkeleton() {
         <Skeleton className="mt-2 h-4 w-40" />
       </CardContent>
     </Card>
+  );
+}
+
+function PropertyCardCompactSkeleton() {
+  return (
+    <div>
+      <Skeleton className="aspect-square w-full rounded-xl" />
+      <Skeleton className="mt-2 h-4 w-full" />
+      <Skeleton className="mt-1.5 h-4 w-2/3" />
+      <Skeleton className="mt-2 h-5 w-24" />
+    </div>
+  );
+}
+
+interface PropertyCardCompactProps {
+  property: PropertyCardItem;
+  onToggleSave: (id: number) => void;
+  onOpen: (id: number) => void;
+}
+
+// 모바일 목록 전용 컴팩트 카드 — 이미지 위 거래유형 뱃지·저장 버튼, 아래로 제목·가격 순
+function PropertyCardCompact({
+  property,
+  onToggleSave,
+  onOpen,
+}: PropertyCardCompactProps) {
+  const { title, dealType, roomType, region, dong, imageUrl, saved } = property;
+
+  return (
+    <div
+      className="group cursor-pointer"
+      role="link"
+      tabIndex={0}
+      aria-label={`${title} 상세 보기`}
+      onClick={() => onOpen(property.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          onOpen(property.id);
+        }
+      }}
+    >
+      <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={`${title} 매물 사진`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span aria-hidden className="grid h-full w-full place-items-center">
+            <ImageIcon className="size-6 text-muted-foreground" />
+          </span>
+        )}
+        <Badge
+          variant="secondary"
+          className="absolute bottom-2 left-2 bg-background/95 font-semibold text-primary shadow-sm"
+        >
+          {dealType}
+        </Badge>
+        <button
+          type="button"
+          className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-background/95 shadow-sm"
+          aria-label={saved ? "매물 저장 취소" : "매물 저장"}
+          aria-pressed={saved}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSave(property.id);
+          }}
+        >
+          <Heart
+            className={cn(
+              "size-4",
+              saved ? "fill-primary text-primary" : "text-muted-foreground",
+            )}
+          />
+        </button>
+      </div>
+      <p className="mt-2 line-clamp-2 text-sm leading-snug break-keep">
+        {title}
+      </p>
+      <p className="mt-1 font-bold text-primary">{formatPrice(property)}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {region} {dong} · {roomType}
+      </p>
+    </div>
   );
 }
 
@@ -242,11 +345,16 @@ function PropertyMap({
 }
 
 // 화면 필터 → 매물 목록 API 쿼리 파라미터 (선택하지 않은 값은 보내지 않는다)
+// 월세 탭의 가격 축은 보증금 구간이라 밴드 목록이 갈린다
 function toQueryFilters(filters: Filters, query: string): PropertyFilters {
-  const band = PRICE_BANDS.find((b) => b.value === filters.price);
+  const bands =
+    filters.dealType === "월세" ? MONTHLY_DEPOSIT_BANDS : PRICE_BANDS;
+  const band = bands.find((b) => b.value === filters.price);
 
   return {
     query: query || undefined,
+    transactionType:
+      filters.dealType === "all" ? undefined : (filters.dealType as DealType),
     sigungu: filters.region === "all" ? undefined : filters.region,
     roomType:
       filters.buildingType === "all"
@@ -272,6 +380,7 @@ function PropertyListPage({
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const isMobile = useIsMobile();
   const debouncedQuery = useDebouncedValue(filters.query.trim());
   const toggleSaved = useToggleSavedInCache();
 
@@ -292,6 +401,10 @@ function PropertyListPage({
     setFilters(next);
     setPage(0);
   };
+
+  // 거래유형이 바뀌면 가격 축 의미가 달라지므로 가격 구간을 초기화
+  const handleDealTypeChange = (dealType: string) =>
+    changeFilters({ ...filters, dealType, price: "all", rent: "all" });
 
   return (
     <div className="min-h-svh bg-background">
@@ -339,7 +452,53 @@ function PropertyListPage({
 
       {/* top-14: 공통 GNB(h-14) 아래에 고정 */}
       <div className="sticky top-14 z-10 border-y bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto max-w-6xl px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
+          <div
+            className="scrollbar-hidden -mx-4 flex items-center gap-1 overflow-x-auto px-4 sm:hidden"
+            role="tablist"
+            aria-label="거래유형 필터"
+          >
+            {["all", ...DEAL_TYPES].map((dealType) => {
+              const isActive = filters.dealType === dealType;
+              return (
+                <button
+                  key={dealType}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={cn(
+                    "shrink-0 rounded-full px-4 py-1.5 text-sm whitespace-nowrap transition-colors",
+                    isActive
+                      ? "bg-foreground font-semibold text-background"
+                      : "font-medium text-muted-foreground",
+                  )}
+                  onClick={() => handleDealTypeChange(dealType)}
+                >
+                  {dealType === "all" ? "전체" : dealType}
+                </button>
+              );
+            })}
+          </div>
+          <Tabs
+            value={filters.dealType}
+            onValueChange={handleDealTypeChange}
+            className="hidden sm:block"
+          >
+            <TabsList className="w-fit" aria-label="거래유형 필터">
+              <TabsTrigger value="all" className="sm:min-w-20">
+                전체
+              </TabsTrigger>
+              {DEAL_TYPES.map((dealType) => (
+                <TabsTrigger
+                  key={dealType}
+                  value={dealType}
+                  className="sm:min-w-20"
+                >
+                  {dealType}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
           <PropertyFilterBar filters={filters} onChange={changeFilters} />
         </div>
       </div>
@@ -348,11 +507,29 @@ function PropertyListPage({
         {isPending ? (
           <>
             <Skeleton className="h-5 w-20" />
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-                <PropertyCardSkeleton key={i} />
-              ))}
-            </div>
+            {isMobile ? (
+              <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2">
+                {chunkIntoPages(
+                  Array.from({ length: SKELETON_COUNT }, (_, i) => i),
+                  RAIL_PAGE_SIZE,
+                ).map((pageIndexes) => (
+                  <div
+                    key={pageIndexes[0]}
+                    className="grid w-[92%] shrink-0 grid-cols-2 gap-3"
+                  >
+                    {pageIndexes.map((i) => (
+                      <PropertyCardCompactSkeleton key={i} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+                  <PropertyCardSkeleton key={i} />
+                ))}
+              </div>
+            )}
           </>
         ) : isError ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
@@ -389,19 +566,47 @@ function PropertyListPage({
               건
             </p>
             {viewMode === "list" ? (
-              <div
-                className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-                role="tabpanel"
-              >
-                {items.map((property) => (
-                  <PropertyCard
-                    key={property.id}
-                    property={property}
-                    onToggleSave={toggleSaved}
-                    onOpen={onOpen}
-                  />
-                ))}
-              </div>
+              isMobile ? (
+                // 2×2 카드 페이지를 가로로 스와이프하는 레일 — 카드가 왼쪽 위부터 가로 순서로 채워진다.
+                // 조회 조건이 바뀌면 key로 리마운트해 첫 매물부터 다시 보여준다
+                <div
+                  key={`${JSON.stringify(queryFilters)}-${page}`}
+                  className="-mx-4 mt-4 flex snap-x scroll-pl-4 gap-3 overflow-x-auto px-4 pb-2"
+                  role="tabpanel"
+                >
+                  {chunkIntoPages(items, RAIL_PAGE_SIZE).map(
+                    (pageProperties) => (
+                      <div
+                        key={pageProperties[0].id}
+                        className="grid w-[92%] shrink-0 snap-start grid-cols-2 gap-3"
+                      >
+                        {pageProperties.map((property) => (
+                          <PropertyCardCompact
+                            key={property.id}
+                            property={property}
+                            onToggleSave={toggleSaved}
+                            onOpen={onOpen}
+                          />
+                        ))}
+                      </div>
+                    ),
+                  )}
+                </div>
+              ) : (
+                <div
+                  className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                  role="tabpanel"
+                >
+                  {items.map((property) => (
+                    <PropertyCard
+                      key={property.id}
+                      property={property}
+                      onToggleSave={toggleSaved}
+                      onOpen={onOpen}
+                    />
+                  ))}
+                </div>
+              )
             ) : (
               <div role="tabpanel">
                 <PropertyMap properties={items} onOpen={onOpen} />
