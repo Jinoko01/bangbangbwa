@@ -71,9 +71,11 @@ const STATUS_BADGE_VARIANT: Record<
 
 type MediaStatus = "pending" | "ready" | "blocked";
 
+// 관리자는 라이브 미팅에 참여하지 않지만 타입 완결성을 위해 세입자 상대로 둔다
 const PEER_ROLE: Record<UserRole, UserRole> = {
   세입자: "중개사",
   중개사: "세입자",
+  관리자: "세입자",
 };
 
 interface SignalMessage {

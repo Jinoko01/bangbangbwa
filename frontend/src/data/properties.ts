@@ -1,4 +1,10 @@
-import type { BuildingType, DealType, PriceBand, Property } from "@/types";
+import type {
+  BuildingType,
+  DealType,
+  NearbyFacility,
+  PriceBand,
+  Property,
+} from "@/types";
 
 // PAGE-04 매물 목록 — 목데이터 15건 (PROP-02)
 // 금액 단위: 만원. deposit = 보증금(전세·월세) 또는 매매가.

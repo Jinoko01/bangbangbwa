@@ -313,6 +313,17 @@ const BROKER_VERIFICATION_DESCRIPTION: Record<
   "심사 중":
     "제출하신 서류를 관리자가 확인하고 있습니다. 승인이 완료되면 중개사 계정으로 전환됩니다.",
   "승인 완료": "중개사 인증이 완료된 계정입니다.",
+  반려: "제출하신 신청이 반려되었습니다. 아래 사유를 확인하고 다시 신청해 주세요.",
+};
+
+const BROKER_VERIFICATION_BADGE_VARIANT: Record<
+  BrokerVerificationStatus,
+  "default" | "secondary" | "destructive"
+> = {
+  미신청: "secondary",
+  "심사 중": "secondary",
+  "승인 완료": "default",
+  반려: "destructive",
 };
 
 // 중개사 인증 — 등록번호·서류 제출 후 관리자 수동 승인, 신원 레일에 배치
@@ -325,9 +336,7 @@ function BrokerVerificationPanel({ user }: { user: User }) {
         <h2 className="text-sm font-semibold">중개사 인증</h2>
         {user.brokerVerification !== "미신청" && (
           <Badge
-            variant={
-              user.brokerVerification === "승인 완료" ? "default" : "secondary"
-            }
+            variant={BROKER_VERIFICATION_BADGE_VARIANT[user.brokerVerification]}
           >
             {user.brokerVerification}
           </Badge>
@@ -336,14 +345,21 @@ function BrokerVerificationPanel({ user }: { user: User }) {
       <p className="mt-2 text-sm text-muted-foreground">
         {BROKER_VERIFICATION_DESCRIPTION[user.brokerVerification]}
       </p>
-      {user.brokerVerification === "미신청" && (
+      {user.brokerVerification === "반려" &&
+        user.brokerVerificationRejectReason && (
+          <p className="mt-2 rounded-lg bg-destructive/5 p-3 text-xs leading-5 text-destructive">
+            반려 사유: {user.brokerVerificationRejectReason}
+          </p>
+        )}
+      {(user.brokerVerification === "미신청" ||
+        user.brokerVerification === "반려") && (
         <Button
           variant="outline"
           size="sm"
           className="mt-3"
           onClick={() => setApplyOpen(true)}
         >
-          인증 신청
+          {user.brokerVerification === "반려" ? "다시 신청" : "인증 신청"}
         </Button>
       )}
       <BrokerVerificationDialog open={applyOpen} onOpenChange={setApplyOpen} />

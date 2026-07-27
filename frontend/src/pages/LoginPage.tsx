@@ -43,6 +43,7 @@ function GoogleLogo() {
 function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const loginAsMockBroker = useAuthStore((state) => state.loginAsMockBroker);
+  const loginAsMockAdmin = useAuthStore((state) => state.loginAsMockAdmin);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,6 +58,11 @@ function LoginPage() {
   const mockBrokerLogin = async (brokerId: number) => {
     await loginAsMockBroker(brokerId);
     navigate(from, { replace: true });
+  };
+
+  const mockAdminLogin = async () => {
+    await loginAsMockAdmin();
+    navigate("/admin", { replace: true });
   };
 
   return (
@@ -112,6 +118,14 @@ function LoginPage() {
                   중개사 {broker.id} · {broker.nickname} ({broker.name})
                 </Button>
               ))}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={mockAdminLogin}
+              >
+                관리자 · 인증 심사 (방방봐 운영팀)
+              </Button>
             </div>
           )}
         </CardContent>
