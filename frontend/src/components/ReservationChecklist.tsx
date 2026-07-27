@@ -116,7 +116,7 @@ function ReservationChecklist({
           onChange={(event) => setDraft(event.target.value)}
           placeholder="확인할 내용이나 질문을 입력하세요"
           aria-label="체크리스트 항목"
-          className="h-10 min-w-0 flex-1 bg-white"
+          className="h-10 min-w-0 flex-1 bg-white placeholder:text-xs"
           maxLength={60}
         />
         <Button type="submit" size="sm" className="h-10 shrink-0">

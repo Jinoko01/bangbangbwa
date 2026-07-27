@@ -16,6 +16,7 @@ import ReservationChecklist from "@/components/ReservationChecklist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { useReservationChecklist } from "@/hooks/useReservationChecklist";
 import { cn } from "@/lib/utils";
 import type { Property, Reservation } from "@/types";
@@ -25,6 +26,9 @@ interface ReservationPageProps {
   properties: Property[];
   onConfirmReservation: (reservationId: string, time: string) => void;
 }
+
+// 모바일 예약 목록 한 페이지에 보여줄 예약 수
+const MOBILE_PAGE_SIZE = 3;
 
 function ReservationStatusBadge({ status }: Pick<Reservation, "status">) {
   const confirmed = status === "예약 확정";
@@ -123,9 +127,11 @@ function ReservationPage({
   onConfirmReservation,
 }: ReservationPageProps) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<"sent" | "received" | "all">(
     "all",
   );
+  const [page, setPage] = useState(1);
   const filteredReservations = useMemo(() => {
     const visibleReservations =
       activeTab === "all"
@@ -139,6 +145,15 @@ function ReservationPage({
   const [selectedId, setSelectedId] = useState(
     filteredReservations[0]?.id ?? "",
   );
+  // 목록이 줄어 현재 페이지가 사라졌을 때를 대비해 마지막 페이지로 보정
+  const pageCount = Math.ceil(filteredReservations.length / MOBILE_PAGE_SIZE);
+  const currentPage = Math.min(page, Math.max(pageCount, 1));
+  const pagedReservations = isMobile
+    ? filteredReservations.slice(
+        (currentPage - 1) * MOBILE_PAGE_SIZE,
+        currentPage * MOBILE_PAGE_SIZE,
+      )
+    : filteredReservations;
 
   const selectedReservation =
     filteredReservations.find((reservation) => reservation.id === selectedId) ??
@@ -198,7 +213,10 @@ function ReservationPage({
                     ? "bg-white font-semibold text-primary shadow-sm"
                     : "text-muted-foreground",
                 )}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setPage(1);
+                }}
               >
                 {tab === "sent"
                   ? "보낸 예약"
@@ -235,7 +253,7 @@ function ReservationPage({
               <Badge variant="secondary">{filteredReservations.length}건</Badge>
             </CardHeader>
             <CardContent className="space-y-2 px-4">
-              {filteredReservations.map((reservation) => {
+              {pagedReservations.map((reservation) => {
                 const property = properties.find(
                   (item) => item.id === reservation.propertyId,
                 );
@@ -279,6 +297,31 @@ function ReservationPage({
                   </button>
                 );
               })}
+              {isMobile && pageCount > 1 && (
+                <nav
+                  className="flex items-center justify-center gap-1 pt-1"
+                  aria-label="예약 목록 페이지"
+                >
+                  {Array.from(
+                    { length: pageCount },
+                    (_, index) => index + 1,
+                  ).map((pageNumber) => (
+                    <Button
+                      key={pageNumber}
+                      type="button"
+                      size="sm"
+                      variant={pageNumber === currentPage ? "default" : "ghost"}
+                      className="size-8 p-0"
+                      aria-current={
+                        pageNumber === currentPage ? "page" : undefined
+                      }
+                      onClick={() => setPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </Button>
+                  ))}
+                </nav>
+              )}
             </CardContent>
           </Card>
 
@@ -366,8 +409,9 @@ function ReservationPage({
                     />
                   </div>
                   <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    중개사와 일정이 확정되었습니다. 시작 10분 전부터 입장할 수
-                    있어요.
+                    중개사와 일정이 확정되었습니다.
+                    <br />
+                    시작 10분 전부터 입장할 수 있어요.
                   </p>
                   <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-[1fr_auto] sm:items-end">
                     <div className="grid grid-cols-[70px_1fr] gap-y-2 text-xs">

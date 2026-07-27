@@ -218,7 +218,7 @@ function PropertyFilterBar({
         )}
       </div>
 
-      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:hidden">
+      <div className="scrollbar-hidden -mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:hidden">
         {fields.map((field) => (
           <FilterChipSheet
             key={field.key}
