@@ -22,7 +22,8 @@ import ReservationPage from "@/pages/ReservationPage";
 import BookingPage from "@/pages/BookingPage";
 import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
 import { PROPERTIES } from "@/data/properties";
-import { canManageProperty, isApprovedBroker } from "@/lib/auth";
+import { useMyPropertyList } from "@/hooks/queries/propertyQueries";
+import { isApprovedBroker } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
 import type { Memo, Property, Reservation } from "@/types";
 
@@ -36,20 +37,14 @@ interface MemoActions {
 }
 
 interface DetailRouteProps {
-  loading: boolean;
-  properties: Property[];
   memos: Record<number, Memo[]>;
-  onToggleSave: (id: number) => void;
   onReserve: (id: number) => void;
   onDelete: (id: number) => void;
   memoActions: MemoActions;
 }
 
 function DetailRoute({
-  loading,
-  properties,
   memos,
-  onToggleSave,
   onReserve,
   onDelete,
   memoActions,
@@ -58,15 +53,18 @@ function DetailRoute({
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const id = Number(idParam);
-  const property = properties.find((p) => p.id === id) ?? null;
+  // 매물 상세 응답에 등록 중개사 정보가 없어, 내 매물 목록에 있는지로 관리 권한을 판단한다
+  const canManage = isApprovedBroker(user);
+  const { data: myProperties } = useMyPropertyList({}, canManage);
+  const isMyProperty = Boolean(
+    myProperties?.content.some((property) => property.propertyId === id),
+  );
 
   return (
     <PropertyDetailPage
-      property={property}
-      loading={loading}
-      canManage={property !== null && canManageProperty(user, property)}
+      propertyId={id}
+      canManage={canManage && isMyProperty}
       onBack={() => navigate("/properties")}
-      onToggleSave={onToggleSave}
       onReserve={onReserve}
       onEdit={() => navigate(`/properties/${id}/edit`)}
       onDelete={() => {
@@ -279,10 +277,7 @@ function App() {
           path="/properties"
           element={
             <PropertyListPage
-              loading={loading}
-              properties={properties}
               canCreate={isApprovedBroker(user)}
-              onToggleSave={toggleSave}
               onOpen={(id) => navigate(`/properties/${id}`)}
               onCreate={() => navigate("/properties/new")}
             />
@@ -322,10 +317,7 @@ function App() {
           path="/properties/:id"
           element={
             <DetailRoute
-              loading={loading}
-              properties={properties}
               memos={memos}
-              onToggleSave={toggleSave}
               onReserve={(id) => navigate(`/booking/${id}`)}
               onDelete={deleteProperty}
               memoActions={memoActions}

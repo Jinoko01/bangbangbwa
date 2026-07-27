@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BUILDING_TYPES, PRICE_BANDS, REGIONS } from "@/data/properties";
+import { PRICE_BANDS, REGIONS, ROOM_TYPES } from "@/data/properties";
 import type { Filters } from "@/types";
 
 export const DEFAULT_FILTERS: Filters = {
@@ -80,7 +80,7 @@ function PropertyFilterBar({ filters, onChange }: PropertyFilterBarProps) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">유형 전체</SelectItem>
-          {BUILDING_TYPES.map((type) => (
+          {ROOM_TYPES.map((type) => (
             <SelectItem key={type} value={type}>
               {type}
             </SelectItem>

@@ -1,8 +1,27 @@
 import { Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import PropertyCard from "@/components/PropertyCard";
+import PropertyCard, { type PropertyCardItem } from "@/components/PropertyCard";
 import type { Property } from "@/types";
+
+// 관심 매물은 아직 백엔드 API가 없어 App이 들고 있는 목데이터를 그대로 카드 뷰모델로 옮긴다
+function toCardItem(property: Property): PropertyCardItem {
+  return {
+    id: property.id,
+    title: property.title,
+    dealType: property.dealType,
+    roomType: property.buildingType,
+    region: property.region,
+    dong: property.dong,
+    deposit: property.deposit,
+    monthlyRent: property.monthlyRent,
+    area: property.areaM2,
+    floor: property.floor,
+    totalFloor: property.totalFloors,
+    imageUrl: property.imageUrl,
+    saved: property.saved,
+  };
+}
 
 interface SavedPropertiesPageProps {
   properties: Property[];
@@ -33,7 +52,7 @@ function SavedPropertiesPage({
         {savedProperties.map((property) => (
           <PropertyCard
             key={property.id}
-            property={property}
+            property={toCardItem(property)}
             onToggleSave={onToggleSave}
             onOpen={(id) => navigate(`/properties/${id}`)}
           />

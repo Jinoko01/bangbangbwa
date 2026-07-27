@@ -13,7 +13,14 @@ import {
   getPropertiesInBounds,
   getProperty,
 } from "@/api/property";
-import type { MapBounds, PagingParams, PropertyFilters } from "@/types";
+import type {
+  MapBounds,
+  Page,
+  PagingParams,
+  PropertyDetail,
+  PropertyFilters,
+  PropertySummary,
+} from "@/types";
 
 export const propertyKeys = {
   all: ["properties"] as const,
@@ -67,8 +74,9 @@ export function usePropertyList(
   return useQuery(propertyListOptions(filters, paging));
 }
 
-export function useMyPropertyList(paging: PagingParams = {}) {
-  return useQuery(myPropertyListOptions(paging));
+// enabled: 중개사만 조회 대상이라, 권한이 없을 때는 401이 뻔한 요청을 아예 보내지 않는다
+export function useMyPropertyList(paging: PagingParams = {}, enabled = true) {
+  return useQuery({ ...myPropertyListOptions(paging), enabled });
 }
 
 export function usePropertyDetail(propertyId: number) {
@@ -77,6 +85,31 @@ export function usePropertyDetail(propertyId: number) {
 
 export function usePropertiesInBounds(bounds: MapBounds) {
   return useQuery(propertyMapOptions(bounds));
+}
+
+// PROP-04·05 저장 토글 — 백엔드에 찜 API가 아직 없어 서버 호출 없이 캐시의 표시 상태만 뒤집는다.
+// (다시 조회하면 서버 값으로 돌아간다. 엔드포인트가 생기면 useMutation으로 교체할 것)
+export function useToggleSavedInCache() {
+  const queryClient = useQueryClient();
+
+  return (propertyId: number) => {
+    queryClient.setQueriesData<Page<PropertySummary>>(
+      { queryKey: propertyKeys.lists() },
+      (page) =>
+        page && {
+          ...page,
+          content: page.content.map((property) =>
+            property.propertyId === propertyId
+              ? { ...property, saved: !property.saved }
+              : property,
+          ),
+        },
+    );
+    queryClient.setQueryData<PropertyDetail>(
+      propertyKeys.detail(propertyId),
+      (property) => property && { ...property, saved: !property.saved },
+    );
+  };
 }
 
 export function useCreateProperty() {
