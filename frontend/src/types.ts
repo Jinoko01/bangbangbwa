@@ -130,6 +130,8 @@ export interface PropertyEnvironment {
 }
 
 // latitude·longitude는 주소 입력 시 카카오 좌표 변환으로 채운다 (src/lib/kakaoLocal.ts)
+// rooms·environment는 백엔드 PropertyCreateRequest에 아직 없는 필드다 — 스키마가 확장되기 전까지는 서버가 무시한다.
+// 사진은 JSON이 아니라 등록 직후 multipart 업로드(uploadPropertyImages)로 따로 보낸다
 export interface PropertyCreateInput {
   title: string;
   transactionType: DealType;
@@ -149,6 +151,8 @@ export interface PropertyCreateInput {
   floor?: number;
   totalFloor?: number;
   description?: string;
+  rooms?: number;
+  environment?: PropertyEnvironment;
 }
 
 export interface Reservation {

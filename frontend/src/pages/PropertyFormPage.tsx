@@ -31,7 +31,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ROOM_TYPES } from "@/data/properties";
 import { isApiError } from "@/api/error";
-import { useCreateProperty } from "@/hooks/queries/propertyQueries";
+import {
+  useCreateProperty,
+  useUploadPropertyImages,
+} from "@/hooks/queries/propertyQueries";
 import { isApprovedBroker } from "@/lib/auth";
 import { readFileAsDataUrl } from "@/lib/file";
 import { formatManwonLabel } from "@/lib/format";
@@ -482,6 +485,12 @@ interface PropertyFormProps {
   onSave: (property: Property) => void;
 }
 
+// 사진 한 장 — url은 미리보기, file은 업로드용 원본 (수정 화면의 기존 사진은 file이 없다)
+interface PhotoDraft {
+  url: string;
+  file?: File;
+}
+
 interface FormInput {
   title: string;
   dealType: DealType;
@@ -564,6 +573,7 @@ function PropertyForm({
 }: PropertyFormProps) {
   const navigate = useNavigate();
   const { mutateAsync: createProperty } = useCreateProperty();
+  const { mutateAsync: uploadImages } = useUploadPropertyImages();
   const [dealType, setDealType] = useState<DealType>(
     property?.dealType ?? "전세",
   );
@@ -583,11 +593,20 @@ function PropertyForm({
   );
   const [environmentError, setEnvironmentError] = useState<string | null>(null);
   const [isLoadingEnvironment, startEnvironmentLoad] = useTransition();
-  const [previewUrl, setPreviewUrl] = useState(property?.imageUrl);
-  const [extraUrls, setExtraUrls] = useState<string[]>(
-    property?.imageUrls?.slice(1, MAX_EXTRA_PHOTOS + 1) ?? [],
+  // 미리보기용 data URL과 업로드용 원본 File을 함께 들고 간다 (수정 화면의 기존 사진은 file 없이 url만 있다)
+  const [coverPhoto, setCoverPhoto] = useState<PhotoDraft | null>(
+    property?.imageUrl ? { url: property.imageUrl } : null,
+  );
+  const [extraPhotos, setExtraPhotos] = useState<PhotoDraft[]>(
+    property?.imageUrls
+      ?.slice(1, MAX_EXTRA_PHOTOS + 1)
+      .map((url) => ({ url })) ?? [],
   );
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // 등록은 성공했는데 사진 업로드만 실패한 경우 — 다시 제출해도 매물이 중복 생성되지 않게 id를 기억한다
+  const [createdPropertyId, setCreatedPropertyId] = useState<number | null>(
+    null,
+  );
   const [formVersion, setFormVersion] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -597,10 +616,9 @@ function PropertyForm({
       return;
     }
     try {
-      setPreviewUrl(await readFileAsDataUrl(file));
+      setCoverPhoto({ url: await readFileAsDataUrl(file), file });
       setPhotoError(null);
     } catch {
-      setPreviewUrl(property?.imageUrl);
       setPhotoError("이미지를 처리하지 못했습니다. 잠시 후 다시 시도해주세요");
     }
   };
@@ -611,12 +629,15 @@ function PropertyForm({
     if (files.length === 0) {
       return;
     }
-    const remaining = MAX_EXTRA_PHOTOS - extraUrls.length;
+    const remaining = MAX_EXTRA_PHOTOS - extraPhotos.length;
     try {
-      const urls = await Promise.all(
-        files.slice(0, remaining).map(readFileAsDataUrl),
+      const added = await Promise.all(
+        files.slice(0, remaining).map(async (file) => ({
+          url: await readFileAsDataUrl(file),
+          file,
+        })),
       );
-      setExtraUrls((prev) => [...prev, ...urls].slice(0, MAX_EXTRA_PHOTOS));
+      setExtraPhotos((prev) => [...prev, ...added].slice(0, MAX_EXTRA_PHOTOS));
       setPhotoError(
         files.length > remaining
           ? `추가 사진은 최대 ${MAX_EXTRA_PHOTOS}장까지 등록할 수 있어요`
@@ -628,7 +649,7 @@ function PropertyForm({
   };
 
   const handleExtraRemove = (index: number) => {
-    setExtraUrls((prev) => prev.filter((_, i) => i !== index));
+    setExtraPhotos((prev) => prev.filter((_, i) => i !== index));
     setPhotoError(null);
   };
 
@@ -656,7 +677,8 @@ function PropertyForm({
     }
   };
 
-  // 등록: POST /api/properties — 좌표는 주소 검색 결과에서 가져온다
+  // 등록: POST /api/properties — 좌표·주변 편의시설은 주소 검색 결과에서 가져온다.
+  // 사진은 매물 id가 나온 뒤 multipart로 따로 올린다 (실패해도 매물 등록 자체는 유효)
   const submitCreate = async (input: FormInput, resolved: GeocodedAddress) => {
     const body: PropertyCreateInput = {
       title: input.title,
@@ -677,17 +699,28 @@ function PropertyForm({
       floor: input.floor,
       totalFloor: input.totalFloors,
       description: input.description || undefined,
+      rooms: input.rooms,
+      environment: environment ?? undefined,
     };
-    await createProperty(body);
+    const created = await createProperty(body);
+    setCreatedPropertyId(created.propertyId);
+    return created.propertyId;
   };
+
+  // 대표 사진이 첫 장 — 백엔드가 이 순서로 대표 사진을 정한다
+  const collectPhotoFiles = () =>
+    [coverPhoto, ...extraPhotos]
+      .map((photo) => photo?.file)
+      .filter((file): file is File => file !== undefined);
 
   // 수정: 백엔드에 매물 수정 API가 없어 아직 로컬 상태만 갱신한다
   const saveLocally = (input: FormInput, resolved: GeocodedAddress) => {
-    const imageUrl = previewUrl;
+    const imageUrl = coverPhoto?.url;
+    const extraUrls = extraPhotos.map((photo) => photo.url);
     const imageUrls = imageUrl
       ? [imageUrl, ...extraUrls]
       : extraUrls.length > 0
-        ? [...extraUrls]
+        ? extraUrls
         : undefined;
     onSave({
       id: property?.id ?? nextId,
@@ -752,26 +785,48 @@ function PropertyForm({
       // validate가 address를 검증했으므로 여기서는 항상 값이 있다
       const resolved = address as GeocodedAddress;
 
-      try {
-        if (property) {
-          saveLocally(input, resolved);
-          navigate(`/properties/${property.id}`, { replace: true });
-        } else {
-          await submitCreate(input, resolved);
-          navigate("/properties", { replace: true });
-        }
+      if (property) {
+        saveLocally(input, resolved);
+        navigate(`/properties/${property.id}`, { replace: true });
         return null;
-      } catch (failure) {
-        setFormVersion((version) => version + 1);
-        return {
-          errors: {
-            submit: isApiError(failure)
-              ? failure.message
-              : "매물을 등록하지 못했습니다. 잠시 후 다시 시도해주세요",
-          },
-          values,
-        };
       }
+
+      let propertyId = createdPropertyId;
+      if (propertyId === null) {
+        try {
+          propertyId = await submitCreate(input, resolved);
+        } catch (failure) {
+          setFormVersion((version) => version + 1);
+          return {
+            errors: {
+              submit: isApiError(failure)
+                ? failure.message
+                : "매물을 등록하지 못했습니다. 잠시 후 다시 시도해주세요",
+            },
+            values,
+          };
+        }
+      }
+
+      const files = collectPhotoFiles();
+      if (files.length > 0) {
+        try {
+          await uploadImages({ propertyId, files });
+        } catch {
+          // 매물은 이미 등록됐으므로 다시 제출하면 사진 업로드만 재시도한다
+          setFormVersion((version) => version + 1);
+          return {
+            errors: {
+              submit:
+                "매물은 등록됐지만 사진 업로드에 실패했어요. 저장을 다시 누르면 사진만 다시 올립니다",
+            },
+            values,
+          };
+        }
+      }
+
+      navigate("/properties", { replace: true });
+      return null;
     },
     null,
   );
@@ -976,9 +1031,9 @@ function PropertyForm({
       </FormSection>
 
       <FormSection title="사진">
-        <PhotoField imageUrl={previewUrl} onSelect={handleImageChange} />
+        <PhotoField imageUrl={coverPhoto?.url} onSelect={handleImageChange} />
         <ExtraPhotoField
-          urls={extraUrls}
+          urls={extraPhotos.map((photo) => photo.url)}
           onSelect={handleExtraSelect}
           onRemove={handleExtraRemove}
         />

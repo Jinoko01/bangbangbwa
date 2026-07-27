@@ -12,6 +12,7 @@ import {
   getProperties,
   getPropertiesInBounds,
   getProperty,
+  uploadPropertyImages,
 } from "@/api/property";
 import type {
   MapBounds,
@@ -118,7 +119,6 @@ export function useCreateProperty() {
   return useMutation({
     mutationFn: createProperty,
     onSuccess: (property) => {
-      console.log(property);
       queryClient.setQueryData(
         propertyKeys.detail(property.propertyId),
         property,
@@ -126,6 +126,28 @@ export function useCreateProperty() {
       queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
       queryClient.invalidateQueries({ queryKey: propertyKeys.myLists() });
       queryClient.invalidateQueries({ queryKey: propertyKeys.maps() });
+    },
+  });
+}
+
+// 매물 등록 직후 사진 업로드 — 매물은 이미 만들어진 뒤라 실패해도 등록 자체는 유효하다
+export function useUploadPropertyImages() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      propertyId,
+      files,
+    }: {
+      propertyId: number;
+      files: File[];
+    }) => uploadPropertyImages(propertyId, files),
+    onSuccess: (_images, { propertyId }) => {
+      queryClient.invalidateQueries({
+        queryKey: propertyKeys.detail(propertyId),
+      });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.myLists() });
     },
   });
 }

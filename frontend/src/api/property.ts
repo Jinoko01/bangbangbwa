@@ -63,3 +63,18 @@ export function createProperty(
 ): Promise<PropertyDetail> {
   return api.post<PropertyDetail>({ path: PROPERTIES_PATH, body: input });
 }
+
+// PROP-07 매물 사진 업로드 — 등록으로 매물 id가 나온 뒤 파일만 multipart로 따로 보낸다.
+// 첫 번째 파일이 목록·상세의 대표 사진이 된다. 응답은 저장된 사진 URL 목록.
+export function uploadPropertyImages(
+  propertyId: number,
+  files: File[],
+): Promise<string[]> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("images", file));
+
+  return api.post<string[]>({
+    path: `${PROPERTIES_PATH}/${propertyId}/images`,
+    body: formData,
+  });
+}

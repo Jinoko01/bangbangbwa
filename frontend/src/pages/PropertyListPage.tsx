@@ -200,7 +200,8 @@ function PropertyMap({
           <div className="rounded-xl border bg-background p-6 shadow-sm">
             <p className="font-semibold">카카오맵 설정이 필요합니다</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              {mapError ?? ".env 파일에 VITE_KAKAO_KEY를 등록해 주세요."}
+              {mapError ??
+                "예상치 못한 에러가 발생했습니다. 관리자에게 문의해 주세요."}
             </p>
           </div>
         </div>
