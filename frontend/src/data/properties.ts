@@ -1,4 +1,10 @@
-import type { BuildingType, DealType, PriceBand, Property } from "@/types";
+import type {
+  BuildingType,
+  DealType,
+  NearbyFacility,
+  PriceBand,
+  Property,
+} from "@/types";
 
 // PAGE-04 매물 목록 — 목데이터 15건 (PROP-02)
 // 금액 단위: 만원. deposit = 보증금(전세·월세) 또는 매매가.
@@ -289,11 +295,80 @@ const PROPERTY_IMAGES = [
   "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=80",
 ];
 
+const createNearbyFacilities = (
+  property: Property,
+  index: number,
+): NearbyFacility[] => {
+  const stationName = `${property.dong.replace(/동$/, "")}역`;
+  const variants = [
+    { distanceM: 320, walkingMinutes: 5, direction: "북서쪽" },
+    { distanceM: 410, walkingMinutes: 6, direction: "동쪽" },
+    { distanceM: 270, walkingMinutes: 4, direction: "남쪽" },
+  ];
+  const station = variants[index % variants.length];
+
+  return [
+    {
+      id: `${property.id}-subway`,
+      category: "지하철",
+      name: stationName,
+      ...station,
+      address: `${property.region} ${property.dong} 지하철역`,
+    },
+    {
+      id: `${property.id}-store`,
+      category: "편의점",
+      name: index % 2 === 0 ? "CU" : "GS25",
+      distanceM: 110 + (index % 3) * 20,
+      walkingMinutes: 2,
+      direction: "건물 출입구 오른쪽",
+      address: `${property.region} ${property.dong} 골목`,
+    },
+    {
+      id: `${property.id}-cafe`,
+      category: "카페",
+      name: index % 2 === 0 ? "메가MGC커피" : "컴포즈커피",
+      distanceM: 210 + (index % 3) * 30,
+      walkingMinutes: 3 + (index % 2),
+      direction: "대로변 사거리",
+      address: `${property.region} ${property.dong} 중앙로`,
+    },
+    {
+      id: `${property.id}-laundry`,
+      category: "빨래방",
+      name: "런드리24 셀프빨래방",
+      distanceM: 360 + (index % 3) * 40,
+      walkingMinutes: 5 + (index % 2),
+      direction: "남동쪽 주택가",
+      address: `${property.region} ${property.dong} 생활권`,
+    },
+    {
+      id: `${property.id}-mart`,
+      category: "마트",
+      name: `${property.dong} 우리마트`,
+      distanceM: 480 + (index % 2) * 60,
+      walkingMinutes: 7 + (index % 2),
+      direction: "북쪽 큰길 건너",
+      address: `${property.region} ${property.dong} 시장길`,
+    },
+    {
+      id: `${property.id}-pharmacy`,
+      category: "약국",
+      name: "온누리약국",
+      distanceM: 290 + (index % 3) * 20,
+      walkingMinutes: 4,
+      direction: "역 방향 대로변",
+      address: `${property.region} ${property.dong} 역세권`,
+    },
+  ];
+};
+
 PROPERTIES.forEach((property, index) => {
   property.imageUrl = PROPERTY_IMAGES[index % PROPERTY_IMAGES.length];
   property.imageUrls = PROPERTY_IMAGES.map(
     (_, offset) => PROPERTY_IMAGES[(index + offset) % PROPERTY_IMAGES.length],
   );
+  property.nearbyFacilities = createNearbyFacilities(property, index);
 });
 
 // 지역 필터 옵션은 데이터에서 파생 (등장 순서 유지)
