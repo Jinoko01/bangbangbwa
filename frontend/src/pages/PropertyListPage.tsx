@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Heart, List, Map, Plus, SearchX } from "lucide-react";
+import { Heart, ImageIcon, List, Map, Plus, SearchX } from "lucide-react";
 
-import PropertyCard from "@/components/PropertyCard";
+import PropertyCard, {
+  toPropertyCardItem,
+  type PropertyCardItem,
+} from "@/components/PropertyCard";
 import PropertyFilterBar, {
   DEFAULT_FILTERS,
 } from "@/components/PropertyFilterBar";
@@ -10,14 +13,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DEAL_TYPES } from "@/data/properties";
+import {
+  DEAL_TYPES,
+  MONTHLY_DEPOSIT_BANDS,
+  PRICE_BANDS,
+} from "@/data/properties";
+import {
+  usePropertyList,
+  useToggleSavedInCache,
+} from "@/hooks/queries/propertyQueries";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { filterProperties } from "@/lib/filterProperties";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Property } from "@/types";
+import type { DealType, Filters, PropertyFilters, RoomType } from "@/types";
 
 const SKELETON_COUNT = 6;
+const PAGE_SIZE = 12;
 // 모바일 레일 한 페이지(2×2)에 담을 카드 수
 const RAIL_PAGE_SIZE = 4;
 type ViewMode = "list" | "map";
@@ -120,7 +132,7 @@ function PropertyCardCompactSkeleton() {
 }
 
 interface PropertyCardCompactProps {
-  property: Property;
+  property: PropertyCardItem;
   onToggleSave: (id: number) => void;
   onOpen: (id: number) => void;
 }
@@ -131,7 +143,7 @@ function PropertyCardCompact({
   onToggleSave,
   onOpen,
 }: PropertyCardCompactProps) {
-  const { title, dealType, buildingType, region, dong, saved } = property;
+  const { title, dealType, roomType, region, dong, imageUrl, saved } = property;
 
   return (
     <div
@@ -147,11 +159,17 @@ function PropertyCardCompact({
       }}
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-        <img
-          src={property.imageUrl}
-          alt={`${title} 매물 사진`}
-          className="h-full w-full object-cover"
-        />
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={`${title} 매물 사진`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span aria-hidden className="grid h-full w-full place-items-center">
+            <ImageIcon className="size-6 text-muted-foreground" />
+          </span>
+        )}
         <Badge
           variant="secondary"
           className="absolute bottom-2 left-2 bg-background/95 font-semibold text-primary shadow-sm"
@@ -181,7 +199,7 @@ function PropertyCardCompact({
       </p>
       <p className="mt-1 font-bold text-primary">{formatPrice(property)}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">
-        {region} {dong} · {buildingType}
+        {region} {dong} · {roomType}
       </p>
     </div>
   );
@@ -191,7 +209,7 @@ function PropertyMap({
   properties,
   onOpen,
 }: {
-  properties: Property[];
+  properties: PropertyCardItem[];
   onOpen: (id: number) => void;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -285,7 +303,8 @@ function PropertyMap({
           <div className="rounded-xl border bg-background p-6 shadow-sm">
             <p className="font-semibold">카카오맵 설정이 필요합니다</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              {mapError ?? ".env 파일에 VITE_KAKAO_KEY를 등록해 주세요."}
+              {mapError ??
+                "예상치 못한 에러가 발생했습니다. 관리자에게 문의해 주세요."}
             </p>
           </div>
         </div>
@@ -297,17 +316,26 @@ function PropertyMap({
           className="absolute bottom-4 left-4 right-4 z-20 flex max-w-md items-center gap-3 rounded-xl border bg-background p-3 text-left shadow-md transition-shadow hover:shadow-lg sm:right-auto"
           onClick={() => onOpen(selected.id)}
         >
-          <img
-            src={selected.imageUrl}
-            alt=""
-            className="size-16 shrink-0 rounded-lg object-cover"
-          />
+          {selected.imageUrl ? (
+            <img
+              src={selected.imageUrl}
+              alt=""
+              className="size-16 shrink-0 rounded-lg object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="grid size-16 shrink-0 place-items-center rounded-lg bg-muted"
+            >
+              <ImageIcon className="size-5 text-muted-foreground" />
+            </span>
+          )}
           <span className="min-w-0">
             <span className="block truncate font-semibold">
               {selected.title}
             </span>
             <span className="mt-1 block text-sm text-muted-foreground">
-              {selected.region} {selected.dong} · {selected.buildingType}
+              {selected.region} {selected.dong} · {selected.roomType}
             </span>
           </span>
         </button>
@@ -316,36 +344,67 @@ function PropertyMap({
   );
 }
 
+// 화면 필터 → 매물 목록 API 쿼리 파라미터 (선택하지 않은 값은 보내지 않는다)
+// 월세 탭의 가격 축은 보증금 구간이라 밴드 목록이 갈린다
+function toQueryFilters(filters: Filters, query: string): PropertyFilters {
+  const bands =
+    filters.dealType === "월세" ? MONTHLY_DEPOSIT_BANDS : PRICE_BANDS;
+  const band = bands.find((b) => b.value === filters.price);
+
+  return {
+    query: query || undefined,
+    transactionType:
+      filters.dealType === "all" ? undefined : (filters.dealType as DealType),
+    sigungu: filters.region === "all" ? undefined : filters.region,
+    roomType:
+      filters.buildingType === "all"
+        ? undefined
+        : (filters.buildingType as RoomType),
+    minDeposit: band && band.min > 0 ? band.min : undefined,
+    maxDeposit: band && Number.isFinite(band.max) ? band.max : undefined,
+  };
+}
+
 interface PropertyListPageProps {
-  loading: boolean;
-  properties: Property[];
   canCreate: boolean;
-  onToggleSave: (id: number) => void;
   onOpen: (id: number) => void;
   onCreate: () => void;
 }
 
-// PAGE-04 매물 목록 — 목록 조회(PROP-02) 및 필터. 매물 상태는 App이 소유.
+// PAGE-04 매물 목록 — 목록 조회(PROP-02) 및 필터. 검색·필터·페이지는 서버(GET /api/properties)가 처리한다.
 function PropertyListPage({
-  loading,
-  properties,
   canCreate,
-  onToggleSave,
   onOpen,
   onCreate,
 }: PropertyListPageProps) {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const isMobile = useIsMobile();
+  const debouncedQuery = useDebouncedValue(filters.query.trim());
+  const toggleSaved = useToggleSavedInCache();
 
-  const filtered = useMemo(
-    () => filterProperties(properties, filters),
-    [properties, filters],
+  const queryFilters = useMemo(
+    () => toQueryFilters(filters, debouncedQuery),
+    [filters, debouncedQuery],
+  );
+  const { data, isPending, isError, refetch } = usePropertyList(queryFilters, {
+    page,
+    size: PAGE_SIZE,
+  });
+  const items = useMemo(
+    () => data?.content.map(toPropertyCardItem) ?? [],
+    [data],
   );
 
-  // 거래유형이 바뀌면 가격 축 의미가 달라지므로 가격·월세 구간을 초기화
+  const changeFilters = (next: Filters) => {
+    setFilters(next);
+    setPage(0);
+  };
+
+  // 거래유형이 바뀌면 가격 축 의미가 달라지므로 가격 구간을 초기화
   const handleDealTypeChange = (dealType: string) =>
-    setFilters({ ...filters, dealType, price: "all", rent: "all" });
+    changeFilters({ ...filters, dealType, price: "all", rent: "all" });
 
   return (
     <div className="min-h-svh bg-background">
@@ -440,16 +499,12 @@ function PropertyListPage({
               ))}
             </TabsList>
           </Tabs>
-          <PropertyFilterBar
-            filters={filters}
-            properties={properties}
-            onChange={setFilters}
-          />
+          <PropertyFilterBar filters={filters} onChange={changeFilters} />
         </div>
       </div>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        {loading ? (
+        {isPending ? (
           <>
             <Skeleton className="h-5 w-20" />
             {isMobile ? (
@@ -476,7 +531,17 @@ function PropertyListPage({
               </div>
             )}
           </>
-        ) : filtered.length === 0 ? (
+        ) : isError ? (
+          <div className="flex flex-col items-center gap-3 py-24 text-center">
+            <p className="font-medium">매물 목록을 불러오지 못했습니다</p>
+            <p className="text-sm text-muted-foreground">
+              잠시 후 다시 시도해 주세요.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              다시 시도
+            </Button>
+          </div>
+        ) : items.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
             <SearchX className="size-10 text-muted-foreground" />
             <p className="font-medium">조건에 맞는 매물이 없습니다</p>
@@ -486,7 +551,7 @@ function PropertyListPage({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setFilters(DEFAULT_FILTERS)}
+              onClick={() => changeFilters(DEFAULT_FILTERS)}
             >
               필터 초기화
             </Button>
@@ -496,20 +561,20 @@ function PropertyListPage({
             <p className="text-sm text-muted-foreground">
               매물{" "}
               <span className="text-base font-semibold text-foreground">
-                {filtered.length}
+                {data.totalElements}
               </span>
               건
             </p>
             {viewMode === "list" ? (
               isMobile ? (
                 // 2×2 카드 페이지를 가로로 스와이프하는 레일 — 카드가 왼쪽 위부터 가로 순서로 채워진다.
-                // 필터가 바뀌면 key로 리마운트해 첫 매물부터 다시 보여준다
+                // 조회 조건이 바뀌면 key로 리마운트해 첫 매물부터 다시 보여준다
                 <div
-                  key={JSON.stringify(filters)}
+                  key={`${JSON.stringify(queryFilters)}-${page}`}
                   className="-mx-4 mt-4 flex snap-x scroll-pl-4 gap-3 overflow-x-auto px-4 pb-2"
                   role="tabpanel"
                 >
-                  {chunkIntoPages(filtered, RAIL_PAGE_SIZE).map(
+                  {chunkIntoPages(items, RAIL_PAGE_SIZE).map(
                     (pageProperties) => (
                       <div
                         key={pageProperties[0].id}
@@ -519,7 +584,7 @@ function PropertyListPage({
                           <PropertyCardCompact
                             key={property.id}
                             property={property}
-                            onToggleSave={onToggleSave}
+                            onToggleSave={toggleSaved}
                             onOpen={onOpen}
                           />
                         ))}
@@ -529,14 +594,14 @@ function PropertyListPage({
                 </div>
               ) : (
                 <div
-                  className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                  className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
                   role="tabpanel"
                 >
-                  {filtered.map((property) => (
+                  {items.map((property) => (
                     <PropertyCard
                       key={property.id}
                       property={property}
-                      onToggleSave={onToggleSave}
+                      onToggleSave={toggleSaved}
                       onOpen={onOpen}
                     />
                   ))}
@@ -544,7 +609,30 @@ function PropertyListPage({
               )
             ) : (
               <div role="tabpanel">
-                <PropertyMap properties={filtered} onOpen={onOpen} />
+                <PropertyMap properties={items} onOpen={onOpen} />
+              </div>
+            )}
+            {data.totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={data.first}
+                  onClick={() => setPage((current) => current - 1)}
+                >
+                  이전
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {data.number + 1} / {data.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={data.last}
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  다음
+                </Button>
               </div>
             )}
           </>

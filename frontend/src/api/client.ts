@@ -1,6 +1,7 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 
 import { ApiError, isApiError } from "@/api/error";
+import { clearAccessToken, getAccessToken } from "@/lib/authToken";
 
 // 백엔드 공통 응답 envelope — 통신 계층(client.ts) 밖으로 노출하지 않는다.
 interface ApiResponse<T> {
@@ -14,12 +15,21 @@ interface ApiResponse<T> {
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 10_000,
+  // ngrok 무료 도메인의 브라우저 경고 인터스티셜 우회 (JSON 응답을 바로 받기 위함)
+  headers: { "ngrok-skip-browser-warning": "true" },
 });
 
-// TBD: accessToken·refreshToken 보관 위치 확정 후 주석 해제 (docs/api-module-plan.md §4-3)
+// accessToken은 localStorage(src/lib/authToken.ts)에 보관 — 요청마다 Bearer로 주입.
+client.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token) {
+    config.headers.set("Authorization", `Bearer ${token}`);
+  }
+  return config;
+});
 
-// TBD: refresh 엔드포인트·토큰 보관 위치 확정 후 구현 (docs/api-module-plan.md §4-5)
-// 동시에 여러 요청이 401을 받아도 refresh는 한 번만 나가야 한다 (single-flight).
+// TBD: refreshToken은 로그인 응답에 없음 — accessToken 만료(401) 시 재로그인 유도.
+// refresh 엔드포인트가 생기면 401 → refreshOnce() → 원 요청 1회 재시도(single-flight) 구현.
 
 client.interceptors.response.use(
   (response) => {
@@ -41,7 +51,10 @@ client.interceptors.response.use(
       );
     }
 
-    // TBD: 토큰 보관 위치 확정 후 401 → refreshOnce() → 원 요청 1회 재시도
+    // 만료·무효 토큰: 로컬 토큰을 비워 로그아웃 상태로 되돌린다 (refresh 미지원)
+    if (error.response.status === 401) {
+      clearAccessToken();
+    }
 
     const body = error.response.data as ApiResponse<never> | undefined;
     return Promise.reject(

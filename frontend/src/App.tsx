@@ -10,10 +10,12 @@ import {
 } from "react-router-dom";
 
 import GlobalNav from "@/components/GlobalNav";
+import RequireAuth from "@/components/RequireAuth";
 import AdminPage from "@/pages/AdminPage";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import MyPage from "@/pages/MyPage";
+import OAuthCallbackPage from "@/pages/OAuthCallbackPage";
 import PropertyDetailPage from "@/pages/PropertyDetailPage";
 import PropertyFormPage from "@/pages/PropertyFormPage";
 import PropertyListPage from "@/pages/PropertyListPage";
@@ -22,7 +24,8 @@ import ReservationPage from "@/pages/ReservationPage";
 import BookingPage from "@/pages/BookingPage";
 import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
 import { PROPERTIES } from "@/data/properties";
-import { canManageProperty, isApprovedBroker } from "@/lib/auth";
+import { useMyPropertyList } from "@/hooks/queries/propertyQueries";
+import { isApprovedBroker } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
 import type { Memo, Property, Reservation } from "@/types";
 
@@ -45,20 +48,14 @@ interface MemoActions {
 }
 
 interface DetailRouteProps {
-  loading: boolean;
-  properties: Property[];
   memos: Record<number, Memo[]>;
-  onToggleSave: (id: number) => void;
   onReserve: (id: number) => void;
   onDelete: (id: number) => void;
   memoActions: MemoActions;
 }
 
 function DetailRoute({
-  loading,
-  properties,
   memos,
-  onToggleSave,
   onReserve,
   onDelete,
   memoActions,
@@ -67,15 +64,18 @@ function DetailRoute({
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const id = Number(idParam);
-  const property = properties.find((p) => p.id === id) ?? null;
+  // 매물 상세 응답에 등록 중개사 정보가 없어, 내 매물 목록에 있는지로 관리 권한을 판단한다
+  const canManage = isApprovedBroker(user);
+  const { data: myProperties } = useMyPropertyList({}, canManage);
+  const isMyProperty = Boolean(
+    myProperties?.content.some((property) => property.propertyId === id),
+  );
 
   return (
     <PropertyDetailPage
-      property={property}
-      loading={loading}
-      canManage={property !== null && canManageProperty(user, property)}
+      propertyId={id}
+      canManage={canManage && isMyProperty}
       onBack={() => navigate("/properties")}
-      onToggleSave={onToggleSave}
       onReserve={onReserve}
       onEdit={() => navigate(`/properties/${id}/edit`)}
       onDelete={() => {
@@ -152,6 +152,7 @@ function App() {
   ]);
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const restoreSession = useAuthStore((state) => state.restoreSession);
   const location = useLocation();
   // 라이브 세션 중에는 GNB 링크 한 번에 확인 없이 통화가 끊기므로 아예 노출하지 않는다.
   // 이 화면을 벗어나는 길은 확인 다이얼로그가 붙은 나가기 버튼 하나뿐이다
@@ -164,6 +165,11 @@ function App() {
     }, MOCK_LOADING_MS);
     return () => clearTimeout(timer);
   }, []);
+
+  // 저장된 accessToken이 있으면 내 정보 조회로 로그인 상태 복원
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
 
   // PROP-04·05 매물 저장·저장 취소
   const toggleSave = (id: number) =>
@@ -219,10 +225,16 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/oauth/callback/:provider"
+          element={<OAuthCallbackPage />}
+        />
         <Route path="/admin" element={<AdminRoute />} />
         <Route
           path="/mypage"
-          element={<MyPage loading={loading} properties={properties} />}
+          element={
+            <RequireAuth>{(user) => <MyPage user={user} />}</RequireAuth>
+          }
         />
         <Route
           path="/reservations"
@@ -277,10 +289,7 @@ function App() {
           path="/properties"
           element={
             <PropertyListPage
-              loading={loading}
-              properties={properties}
               canCreate={isApprovedBroker(user)}
-              onToggleSave={toggleSave}
               onOpen={(id) => navigate(`/properties/${id}`)}
               onCreate={() => navigate("/properties/new")}
             />
@@ -289,31 +298,38 @@ function App() {
         <Route
           path="/properties/new"
           element={
-            <PropertyFormPage
-              loading={loading}
-              properties={properties}
-              onSave={saveProperty}
-            />
+            <RequireAuth>
+              {(user) => (
+                <PropertyFormPage
+                  user={user}
+                  loading={loading}
+                  properties={properties}
+                  onSave={saveProperty}
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route
           path="/properties/:id/edit"
           element={
-            <PropertyFormPage
-              loading={loading}
-              properties={properties}
-              onSave={saveProperty}
-            />
+            <RequireAuth>
+              {(user) => (
+                <PropertyFormPage
+                  user={user}
+                  loading={loading}
+                  properties={properties}
+                  onSave={saveProperty}
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route
           path="/properties/:id"
           element={
             <DetailRoute
-              loading={loading}
-              properties={properties}
               memos={memos}
-              onToggleSave={toggleSave}
               onReserve={(id) => navigate(`/booking/${id}`)}
               onDelete={deleteProperty}
               memoActions={memoActions}

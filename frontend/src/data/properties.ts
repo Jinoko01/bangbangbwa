@@ -4,6 +4,7 @@ import type {
   NearbyFacility,
   PriceBand,
   Property,
+  RoomType,
 } from "@/types";
 
 // PAGE-04 매물 목록 — 목데이터 15건 (PROP-02)
@@ -18,6 +19,9 @@ export const BUILDING_TYPES: BuildingType[] = [
   "빌라",
   "원룸",
 ];
+
+// 매물 등록 폼 선택지 — 백엔드 roomType enum이 받는 값만 노출한다 ("아파트" 미지원)
+export const ROOM_TYPES: RoomType[] = ["오피스텔", "빌라", "원룸"];
 
 export const PRICE_BANDS: PriceBand[] = [
   { value: "all", label: "가격 전체", min: 0, max: Infinity },

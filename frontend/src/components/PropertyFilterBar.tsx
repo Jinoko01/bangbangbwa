@@ -19,15 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  BUILDING_TYPES,
   MONTHLY_DEPOSIT_BANDS,
   PRICE_BANDS,
   REGIONS,
-  RENT_BANDS,
+  ROOM_TYPES,
 } from "@/data/properties";
-import { filterProperties } from "@/lib/filterProperties";
 import { cn } from "@/lib/utils";
-import type { Filters, Property } from "@/types";
+import type { Filters } from "@/types";
 
 export const DEFAULT_FILTERS: Filters = {
   query: "",
@@ -44,7 +42,7 @@ interface FilterOption {
 }
 
 interface FilterField {
-  key: "region" | "price" | "rent" | "buildingType";
+  key: "region" | "price" | "buildingType";
   title: string;
   options: FilterOption[];
 }
@@ -54,25 +52,24 @@ const REGION_OPTIONS: FilterOption[] = [
   ...REGIONS.map((region) => ({ value: region, label: region })),
 ];
 
-const BUILDING_TYPE_OPTIONS: FilterOption[] = [
+// 유형 선택지는 백엔드 roomType enum이 받는 값만 노출한다
+const ROOM_TYPE_OPTIONS: FilterOption[] = [
   { value: "all", label: "유형 전체" },
-  ...BUILDING_TYPES.map((type) => ({ value: type, label: type })),
+  ...ROOM_TYPES.map((type) => ({ value: type, label: type })),
 ];
 
-// 월세 탭에서는 가격이 보증금 × 월세 2축으로 갈라진다
+// 월세 탭에서 가격 축은 매매가가 아니라 보증금 구간이 된다
 function getFilterFields(dealType: string): FilterField[] {
-  const priceFields: FilterField[] =
-    dealType === "월세"
-      ? [
-          { key: "price", title: "보증금", options: MONTHLY_DEPOSIT_BANDS },
-          { key: "rent", title: "월세", options: RENT_BANDS },
-        ]
-      : [{ key: "price", title: "가격", options: PRICE_BANDS }];
+  const isMonthlyRent = dealType === "월세";
 
   return [
     { key: "region", title: "지역", options: REGION_OPTIONS },
-    ...priceFields,
-    { key: "buildingType", title: "유형", options: BUILDING_TYPE_OPTIONS },
+    {
+      key: "price",
+      title: isMonthlyRent ? "보증금" : "가격",
+      options: isMonthlyRent ? MONTHLY_DEPOSIT_BANDS : PRICE_BANDS,
+    },
+    { key: "buildingType", title: "유형", options: ROOM_TYPE_OPTIONS },
   ];
 }
 
@@ -81,16 +78,14 @@ interface FilterChipSheetProps {
   options: FilterOption[];
   value: string;
   onApply: (value: string) => void;
-  countWith: (value: string) => number;
 }
 
-// 모바일 전용 — 칩을 탭하면 바텀시트에서 옵션을 고르고 결과 수를 확인한 뒤 적용
+// 모바일 전용 — 칩을 탭하면 바텀시트에서 옵션을 고른 뒤 적용
 function FilterChipSheet({
   title,
   options,
   value,
   onApply,
-  countWith,
 }: FilterChipSheetProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -148,7 +143,7 @@ function FilterChipSheet({
               setOpen(false);
             }}
           >
-            매물 {countWith(draft)}건 보기
+            적용
           </Button>
         </DrawerFooter>
       </DrawerContent>
@@ -158,16 +153,11 @@ function FilterChipSheet({
 
 interface PropertyFilterBarProps {
   filters: Filters;
-  properties: Property[];
   onChange: (filters: Filters) => void;
 }
 
 // 검색 Input + 필터(sm 이상: Select 행 / 미만: 칩 + 바텀시트). 상태는 부모(page)가 소유.
-function PropertyFilterBar({
-  filters,
-  properties,
-  onChange,
-}: PropertyFilterBarProps) {
+function PropertyFilterBar({ filters, onChange }: PropertyFilterBarProps) {
   const set = (key: keyof Filters) => (value: string) =>
     onChange({ ...filters, [key]: value });
   const fields = getFilterFields(filters.dealType);
@@ -226,10 +216,6 @@ function PropertyFilterBar({
             options={field.options}
             value={filters[field.key]}
             onApply={set(field.key)}
-            countWith={(value) =>
-              filterProperties(properties, { ...filters, [field.key]: value })
-                .length
-            }
           />
         ))}
         {!isDefault && (

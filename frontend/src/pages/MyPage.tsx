@@ -5,7 +5,7 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ImageIcon, LogOut } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,17 +20,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMyPropertyList } from "@/hooks/queries/propertyQueries";
 import { useAuthStore } from "@/stores/authStore";
 import { isApprovedBroker } from "@/lib/auth";
 import { readFileAsDataUrl } from "@/lib/file";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type {
-  AuthProvider,
-  BrokerVerificationStatus,
-  Property,
-  User,
-} from "@/types";
+import type { AuthProvider, BrokerVerificationStatus, User } from "@/types";
 
 const PROVIDER_LABEL: Record<AuthProvider, string> = {
   kakao: "카카오",
@@ -63,7 +59,7 @@ function ProfileAvatar({
         className,
       )}
     >
-      {user.nickname[0]}
+      {user.nickname.charAt(0) || user.name.charAt(0) || "?"}
     </span>
   );
 }
@@ -76,7 +72,9 @@ function IdentityRail({ user }: { user: User }) {
         <ProfileAvatar user={user} />
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <p className="text-xl font-semibold">{user.nickname}</p>
+            <p className="text-xl font-semibold">
+              {user.nickname || user.name || "내 계정"}
+            </p>
             <Badge>{user.role}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">{user.email}</p>
@@ -146,7 +144,14 @@ function ProfileSection({ user }: { user: User }) {
               aria-hidden
               className="min-w-8 flex-1 border-b border-dotted border-border"
             />
-            <dd className="text-sm font-medium">{value}</dd>
+            <dd
+              className={cn(
+                "text-sm font-medium",
+                !value && "font-normal text-muted-foreground",
+              )}
+            >
+              {value || "미입력"}
+            </dd>
           </div>
         ))}
       </dl>
@@ -447,21 +452,17 @@ function BrokerVerificationDialog({
   );
 }
 
-// PROP-10 내가 올린 매물 — 중개사 본인이 등록한 매물만 모아 보여준다
-function MyListingsSection({
-  loading,
-  properties,
-}: {
-  loading: boolean;
-  properties: Property[];
-}) {
+// PROP-10 내가 올린 매물 — 중개사 본인이 등록한 매물만 모아 보여준다 (GET /api/properties/me)
+function MyListingsSection() {
   const navigate = useNavigate();
+  const { data, isPending, isError, refetch } = useMyPropertyList();
+  const properties = data?.content ?? [];
 
   return (
     <section>
       <SectionHeader
         title={
-          loading ? "내가 올린 매물" : `내가 올린 매물 (${properties.length})`
+          data ? `내가 올린 매물 (${data.totalElements})` : "내가 올린 매물"
         }
         action={
           <Button
@@ -473,10 +474,19 @@ function MyListingsSection({
           </Button>
         }
       />
-      {loading ? (
+      {isPending ? (
         <div className="flex flex-col gap-3 py-4">
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-start gap-3 py-6">
+          <p className="text-sm text-muted-foreground">
+            매물 목록을 불러오지 못했어요.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            다시 시도
+          </Button>
         </div>
       ) : properties.length === 0 ? (
         <p className="py-6 text-sm text-muted-foreground">
@@ -486,41 +496,40 @@ function MyListingsSection({
         <ul>
           {properties.map((property) => (
             <li
-              key={property.id}
+              key={property.propertyId}
               className="flex items-center gap-4 border-b py-3 last:border-b-0"
             >
-              {property.imageUrl ? (
-                <img
-                  src={property.imageUrl}
-                  alt={`${property.title} 대표 사진`}
-                  className="h-12 w-16 shrink-0 rounded-lg object-cover"
-                />
-              ) : (
-                <span
-                  aria-hidden
-                  className="grid h-12 w-16 shrink-0 place-items-center rounded-lg bg-muted"
-                >
-                  <ImageIcon className="size-4 text-muted-foreground" />
-                </span>
-              )}
+              <span
+                aria-hidden
+                className="grid h-12 w-16 shrink-0 place-items-center rounded-lg bg-muted"
+              >
+                <ImageIcon className="size-4 text-muted-foreground" />
+              </span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <button
                   type="button"
                   className="max-w-full self-start truncate text-sm font-medium hover:underline"
-                  onClick={() => navigate(`/properties/${property.id}`)}
+                  onClick={() => navigate(`/properties/${property.propertyId}`)}
                 >
                   {property.title}
                 </button>
                 <p className="truncate text-xs text-muted-foreground">
-                  {property.region} {property.dong} · {property.buildingType} ·{" "}
-                  {property.dealType} {formatPrice(property)}
+                  {property.sigungu} {property.dong} · {property.roomType} ·{" "}
+                  {property.transactionType}{" "}
+                  {formatPrice({
+                    dealType: property.transactionType,
+                    deposit: property.deposit,
+                    monthlyRent: property.monthlyRent,
+                  })}
                 </p>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 className="shrink-0"
-                onClick={() => navigate(`/properties/${property.id}/edit`)}
+                onClick={() =>
+                  navigate(`/properties/${property.propertyId}/edit`)
+                }
               >
                 수정
               </Button>
@@ -627,21 +636,9 @@ function AccountSection() {
   );
 }
 
-interface MyPageProps {
-  loading: boolean;
-  properties: Property[];
-}
-
 // PAGE-02 마이페이지 — 내 정보 조회·수정·중개사 인증·내가 올린 매물(중개사)·탈퇴·로그아웃
-function MyPage({ loading, properties }: MyPageProps) {
-  const user = useAuthStore((state) => state.user);
-
-  if (!user) {
-    return <Navigate to="/login" state={{ from: "/mypage" }} replace />;
-  }
-
-  const myListings = properties.filter((p) => p.brokerId === user.id);
-
+// 로그인 여부는 라우트의 RequireAuth가 보장하고, user는 그쪽에서 내려받는다
+function MyPage({ user }: { user: User }) {
   return (
     <main className="min-h-[calc(100svh-3.5rem)] px-4 py-12">
       <h1 className="sr-only">마이페이지</h1>
@@ -649,9 +646,7 @@ function MyPage({ loading, properties }: MyPageProps) {
         <IdentityRail user={user} />
         <div className="flex min-w-0 flex-col gap-12">
           <ProfileSection user={user} />
-          {isApprovedBroker(user) && (
-            <MyListingsSection loading={loading} properties={myListings} />
-          )}
+          {isApprovedBroker(user) && <MyListingsSection />}
           <AccountSection />
         </div>
       </div>

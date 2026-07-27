@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Heart,
+  ImageIcon,
   Pill,
   Pencil,
   ShoppingBasket,
@@ -37,9 +38,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPrice, formatPriceLabel, toPyeong } from "@/lib/format";
+import { isApiError } from "@/api/error";
+import {
+  usePropertyDetail,
+  useToggleSavedInCache,
+} from "@/hooks/queries/propertyQueries";
+import {
+  formatManwonLabel,
+  formatPrice,
+  formatPriceLabel,
+  toPyeong,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { FacilityCategory, Memo, NearbyFacility, Property } from "@/types";
+import type { FacilityCategory, Memo, NearbyFacility } from "@/types";
 
 // shadcn Textarea 미설치 → Input과 동일 토큰으로 스타일링한 로컬 textarea
 function MemoTextarea(props: ComponentProps<"textarea">) {
@@ -1072,11 +1083,9 @@ function DetailSkeleton() {
 }
 
 interface PropertyDetailPageProps {
-  property: Property | null;
-  loading: boolean;
+  propertyId: number;
   canManage: boolean;
   onBack: () => void;
-  onToggleSave: (id: number) => void;
   onReserve: (id: number) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -1086,14 +1095,12 @@ interface PropertyDetailPageProps {
   onDeleteMemo: (memoId: number) => void;
 }
 
-// PAGE-05 매물 상세 — 매물 정보(PROP-03), 저장(PROP-04·05), 예약, 메모(MEMO-01~04),
-// 중개사 전용 수정·삭제(PROP-08·09)
+// PAGE-05 매물 상세 — 매물 정보(PROP-03, GET /api/properties/{id}), 저장(PROP-04·05), 예약,
+// 메모(MEMO-01~04), 중개사 전용 수정·삭제(PROP-08·09)
 function PropertyDetailPage({
-  property,
-  loading,
+  propertyId,
   canManage,
   onBack,
-  onToggleSave,
   onReserve,
   onEdit,
   onDelete,
@@ -1103,15 +1110,28 @@ function PropertyDetailPage({
   onDeleteMemo,
 }: PropertyDetailPageProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const {
+    data: property,
+    isPending,
+    error,
+    refetch,
+  } = usePropertyDetail(propertyId);
+  const toggleSaved = useToggleSavedInCache();
 
   const priceLabel = property
     ? { 매매: "매매가", 전세: "전세 보증금", 월세: "보증금 / 월세" }[
-        property.dealType
+        property.transactionType
       ]
     : "";
+  const price = property && {
+    dealType: property.transactionType,
+    deposit: property.deposit,
+    monthlyRent: property.monthlyRent,
+  };
 
-  const photoUrls =
-    property?.imageUrls ?? (property?.imageUrl ? [property.imageUrl] : []);
+  // 매물 상세 응답에 아직 사진 필드가 없다 — 이미지 API가 생기면 이 배열만 채우면 캐러셀이 살아난다
+  const photoUrls: string[] = [];
+  const isNotFound = isApiError(error) && error.status === 404;
 
   return (
     <div className="min-h-svh bg-background">
@@ -1134,14 +1154,24 @@ function PropertyDetailPage({
       </header>
 
       <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
-        {loading ? (
+        {isPending ? (
           <DetailSkeleton />
         ) : !property ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
-            <p className="font-medium">매물을 찾을 수 없습니다</p>
-            <Button variant="outline" size="sm" onClick={onBack}>
-              목록으로 돌아가기
-            </Button>
+            <p className="font-medium">
+              {isNotFound
+                ? "매물을 찾을 수 없습니다"
+                : "매물 정보를 불러오지 못했습니다"}
+            </p>
+            {isNotFound ? (
+              <Button variant="outline" size="sm" onClick={onBack}>
+                목록으로 돌아가기
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                다시 시도
+              </Button>
+            )}
           </div>
         ) : (
           <>
@@ -1153,36 +1183,70 @@ function PropertyDetailPage({
                   onPhotoClick={setSelectedPhoto}
                 />
               ) : (
-                <img
-                  src={property.imageUrl}
-                  alt={`${property.title} 매물 사진`}
-                  className="h-64 w-full object-cover"
-                />
+                <div
+                  aria-hidden
+                  className="grid h-64 w-full place-items-center bg-muted"
+                >
+                  <ImageIcon className="size-10 text-muted-foreground" />
+                </div>
               )}
               <CardHeader className="pt-4">
                 <div className="flex items-center gap-1.5">
-                  <Badge>{property.dealType}</Badge>
-                  <Badge variant="secondary">{property.buildingType}</Badge>
+                  <Badge>{property.transactionType}</Badge>
+                  <Badge variant="secondary">{property.roomType}</Badge>
+                  {property.status && (
+                    <Badge variant="outline">{property.status}</Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{property.title}</CardTitle>
               </CardHeader>
               <CardContent className="pb-6">
                 <p className="text-3xl font-bold text-primary">
-                  {formatPriceLabel(property)}
+                  {price && formatPriceLabel(price)}
                 </p>
                 <dl className="mt-4 divide-y">
-                  <InfoRow label={priceLabel}>{formatPrice(property)}</InfoRow>
+                  <InfoRow label={priceLabel}>
+                    {price && formatPrice(price)}
+                  </InfoRow>
                   <InfoRow label="위치">
-                    {property.region} {property.dong}
+                    {property.sigungu} {property.dong}
                   </InfoRow>
-                  <InfoRow label="전용면적">
-                    {property.areaM2}㎡ ({toPyeong(property.areaM2)}평)
-                  </InfoRow>
-                  <InfoRow label="층수">
-                    {property.floor}층 / 전체 {property.totalFloors}층
-                  </InfoRow>
-                  <InfoRow label="방 개수">방{property.rooms}</InfoRow>
+                  {property.roadAddress && (
+                    <InfoRow label="주소">{property.roadAddress}</InfoRow>
+                  )}
+                  {property.complexName && (
+                    <InfoRow label="단지명">{property.complexName}</InfoRow>
+                  )}
+                  {property.area !== undefined && (
+                    <InfoRow label="전용면적">
+                      {property.area}㎡ ({toPyeong(property.area)}평)
+                    </InfoRow>
+                  )}
+                  {property.floor !== undefined && (
+                    <InfoRow label="층수">
+                      {property.floor}층
+                      {property.totalFloor
+                        ? ` / 전체 ${property.totalFloor}층`
+                        : ""}
+                    </InfoRow>
+                  )}
+                  {property.maintenanceFee !== undefined && (
+                    <InfoRow label="관리비">
+                      {formatManwonLabel(property.maintenanceFee)}
+                    </InfoRow>
+                  )}
+                  {property.builtYear !== undefined && (
+                    <InfoRow label="준공연도">{property.builtYear}년</InfoRow>
+                  )}
                 </dl>
+                {property.description && (
+                  <div className="mt-6 border-t pt-4">
+                    <h2 className="text-sm font-semibold">상세 설명</h2>
+                    <p className="mt-2 text-sm whitespace-pre-wrap text-muted-foreground">
+                      {property.description}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -1191,7 +1255,7 @@ function PropertyDetailPage({
                 variant="outline"
                 className="h-11 flex-1"
                 aria-pressed={property.saved}
-                onClick={() => onToggleSave(property.id)}
+                onClick={() => toggleSaved(property.propertyId)}
               >
                 <Heart
                   className={
@@ -1204,7 +1268,7 @@ function PropertyDetailPage({
               </Button>
               <Button
                 className="h-11 flex-1"
-                onClick={() => onReserve(property.id)}
+                onClick={() => onReserve(property.propertyId)}
               >
                 <CalendarPlus />
                 미팅 예약

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { MOCK_BROKER_ACCOUNTS } from "@/api/auth";
+import { redirectToSocialLogin, saveReturnTo } from "@/lib/oauth";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthProvider } from "@/types";
 
@@ -39,9 +40,8 @@ function GoogleLogo() {
   );
 }
 
-// PAGE-01 로그인 — 카카오·구글 소셜 로그인 (AUTH-01). OAuth 실연동 전 스텁 동작.
+// PAGE-01 로그인 — 카카오·구글 소셜 로그인 (AUTH-01). 인가 코드 흐름은 /oauth/callback에서 마무리.
 function LoginPage() {
-  const login = useAuthStore((state) => state.login);
   const loginAsMockBroker = useAuthStore((state) => state.loginAsMockBroker);
   const loginAsMockAdmin = useAuthStore((state) => state.loginAsMockAdmin);
   const navigate = useNavigate();
@@ -50,9 +50,10 @@ function LoginPage() {
   // GNB 로그인 버튼이 넘겨준 이전 경로. 없으면 "/"
   const from = location.state?.from ?? "/";
 
-  const mockLogin = async (provider: AuthProvider) => {
-    await login(provider);
-    navigate(from, { replace: true });
+  // provider 인가 페이지로 이동. redirect로 라우터 state가 날아가므로 복귀 경로를 세션에 저장
+  const startSocialLogin = (provider: AuthProvider) => {
+    saveReturnTo(from);
+    redirectToSocialLogin(provider);
   };
 
   const mockBrokerLogin = async (brokerId: number) => {
@@ -81,7 +82,7 @@ function LoginPage() {
           <Button
             size="lg"
             className="w-full bg-[#FEE500] text-[#000000]/85 hover:bg-[#FEE500]/90"
-            onClick={() => mockLogin("kakao")}
+            onClick={() => startSocialLogin("kakao")}
           >
             <KakaoSymbol />
             카카오로 시작하기
@@ -90,7 +91,7 @@ function LoginPage() {
             size="lg"
             variant="outline"
             className="w-full bg-white text-foreground"
-            onClick={() => mockLogin("google")}
+            onClick={() => startSocialLogin("google")}
           >
             <GoogleLogo />
             Google로 시작하기
