@@ -25,15 +25,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BUILDING_TYPES, REGIONS } from "@/data/properties";
+import { BUILDING_TYPES, DEAL_TYPES, REGIONS } from "@/data/properties";
 import { isApprovedBroker } from "@/lib/auth";
 import { readFileAsDataUrl } from "@/lib/file";
 import { formatManwonLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import type { BuildingType, DealType, Property } from "@/types";
-
-const DEAL_TYPES: DealType[] = ["전세", "월세", "매매"];
 
 const DEPOSIT_LABEL: Record<DealType, string> = {
   전세: "전세 보증금 (만원)",
