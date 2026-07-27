@@ -114,6 +114,12 @@ function AuthArea({
 function GlobalNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = () => setMenuOpen(false);
+  const user = useAuthStore((state) => state.user);
+  // ADMIN-01 인증 심사 메뉴는 관리자 계정에만 노출
+  const navItems =
+    user?.role === "관리자"
+      ? [...NAV_ITEMS, { label: "인증 심사", to: "/admin" }]
+      : NAV_ITEMS;
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -132,7 +138,7 @@ function GlobalNav() {
         </Link>
 
         <div className="hidden items-center gap-6 sm:flex">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavItem key={item.label} item={item} />
           ))}
         </div>
@@ -154,7 +160,7 @@ function GlobalNav() {
 
         {menuOpen && (
           <div className="absolute inset-x-0 top-full flex flex-col gap-4 border-b bg-background px-4 py-4 shadow-md sm:hidden">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <NavItem key={item.label} item={item} onNavigate={closeMenu} />
             ))}
             <div className="border-t pt-4">
