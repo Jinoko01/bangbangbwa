@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 
 import GlobalNav from "@/components/GlobalNav";
+import RequireAuth from "@/components/RequireAuth";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import MyPage from "@/pages/MyPage";
@@ -221,7 +222,9 @@ function App() {
         />
         <Route
           path="/mypage"
-          element={<MyPage loading={loading} properties={properties} />}
+          element={
+            <RequireAuth>{(user) => <MyPage user={user} />}</RequireAuth>
+          }
         />
         <Route
           path="/reservations"
@@ -288,21 +291,31 @@ function App() {
         <Route
           path="/properties/new"
           element={
-            <PropertyFormPage
-              loading={loading}
-              properties={properties}
-              onSave={saveProperty}
-            />
+            <RequireAuth>
+              {(user) => (
+                <PropertyFormPage
+                  user={user}
+                  loading={loading}
+                  properties={properties}
+                  onSave={saveProperty}
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route
           path="/properties/:id/edit"
           element={
-            <PropertyFormPage
-              loading={loading}
-              properties={properties}
-              onSave={saveProperty}
-            />
+            <RequireAuth>
+              {(user) => (
+                <PropertyFormPage
+                  user={user}
+                  loading={loading}
+                  properties={properties}
+                  onSave={saveProperty}
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route

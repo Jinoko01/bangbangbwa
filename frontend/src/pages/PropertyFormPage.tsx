@@ -7,12 +7,7 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
-import {
-  Navigate,
-  useLocation,
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   ChevronLeft,
   ImageIcon,
@@ -46,13 +41,13 @@ import {
   type GeocodedAddress,
 } from "@/lib/kakaoLocal";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/stores/authStore";
 import type {
   DealType,
   Property,
   PropertyCreateInput,
   PropertyEnvironment,
   RoomType,
+  User,
 } from "@/types";
 
 const DEAL_TYPES: DealType[] = ["전세", "월세", "매매"];
@@ -1034,6 +1029,7 @@ function FormPageSkeleton() {
 }
 
 interface PropertyFormPageProps {
+  user: User;
   loading: boolean;
   properties: Property[];
   onSave: (property: Property) => void;
@@ -1041,19 +1037,16 @@ interface PropertyFormPageProps {
 
 // PAGE-07 매물 등록·수정 — 중개사(승인 완료) 전용, 등록(PROP-07)과 수정(PROP-08)이 같은 폼을 공유
 // 수정은 본인이 등록한 매물만 가능 — 남의 매물 URL로 진입하면 상세로 돌려보낸다
+// 로그인 여부는 라우트의 RequireAuth가 보장하고, user는 그쪽에서 내려받는다
 function PropertyFormPage({
+  user,
   loading,
   properties,
   onSave,
 }: PropertyFormPageProps) {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const user = useAuthStore((state) => state.user);
 
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  }
   if (!isApprovedBroker(user)) {
     return <Navigate to="/properties" replace />;
   }

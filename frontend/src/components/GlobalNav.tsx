@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LogOut, Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -60,9 +61,15 @@ function AuthArea({
   onNavigate?: () => void;
 }) {
   const user = useAuthStore((state) => state.user);
+  const isSessionRestored = useAuthStore((state) => state.isSessionRestored);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 세션 복원 전에는 로그인 버튼을 먼저 보여줬다가 아바타로 바뀌는 깜빡임이 생긴다
+  if (!isSessionRestored) {
+    return <Skeleton className="h-8 w-24" />;
+  }
 
   if (!user) {
     return (
@@ -91,9 +98,11 @@ function AuthArea({
           aria-hidden
           className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
         >
-          {user.name[0]}
+          {user.name.charAt(0) || user.nickname.charAt(0) || "?"}
         </span>
-        <span className="text-sm font-medium">{user.name}</span>
+        <span className="text-sm font-medium">
+          {user.name || user.nickname || "내 계정"}
+        </span>
       </Link>
       <Button
         variant="ghost"

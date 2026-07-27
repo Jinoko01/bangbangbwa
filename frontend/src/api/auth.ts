@@ -21,7 +21,6 @@ function socialLogin(
   provider: AuthProvider,
   authorizationCode: string,
 ): Promise<TokenResponse> {
-  console.log(`socialLogin(${provider}, ${{ authorizationCode }})`);
   return api.post<TokenResponse>({
     path: `/api/auth/${provider}`,
     body: { authorizationCode },
