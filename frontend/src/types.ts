@@ -194,9 +194,10 @@ export interface Filters {
 
 export type AuthProvider = "kakao" | "google";
 
-export type UserRole = "세입자" | "중개사";
+export type UserRole = "세입자" | "중개사" | "관리자";
 
-export type BrokerVerificationStatus = "미신청" | "심사 중" | "승인 완료";
+export type BrokerVerificationStatus =
+  "미신청" | "심사 중" | "승인 완료" | "반려";
 
 export interface User {
   id: number;
@@ -208,6 +209,7 @@ export interface User {
   profileImageUrl?: string;
   role: UserRole;
   brokerVerification: BrokerVerificationStatus;
+  brokerVerificationRejectReason?: string;
   provider: AuthProvider;
 }
 
@@ -219,4 +221,28 @@ export type UserProfileChanges = Pick<
 export interface BrokerVerificationRequest {
   registrationNumber: string;
   documentName: string;
+}
+
+export type BrokerApplicationStatus = "심사 중" | "승인 완료" | "반려";
+
+export interface BrokerApplicationDocument {
+  type: string;
+  fileName: string;
+  previewUrl: string;
+}
+
+// ADMIN-01~03 중개사 인증 신청 건 — 관리자 심사 대상
+export interface BrokerApplication {
+  id: number;
+  applicantId: number;
+  applicantName: string;
+  nickname: string;
+  email: string;
+  phone: string;
+  registrationNumber: string;
+  documents: BrokerApplicationDocument[];
+  status: BrokerApplicationStatus;
+  appliedAt: string;
+  processedAt?: string;
+  rejectReason?: string;
 }

@@ -65,6 +65,18 @@ const MOCK_BROKERS: Array<Omit<User, "provider">> = [
   },
 ];
 
+// ADMIN-01~03 심사용 관리자 계정 — 실제 관리자 인증 연동 전 개발용
+const MOCK_ADMIN: Omit<User, "provider"> = {
+  id: 900,
+  name: "관리자",
+  birth: "1985-01-01",
+  nickname: "방방봐 운영팀",
+  email: "admin@bangbangbwa.com",
+  phone: "010-0000-0000",
+  role: "관리자",
+  brokerVerification: "미신청",
+};
+
 // 로그인 페이지의 개발용 테스트 계정 버튼에 노출할 중개사 목록
 export const MOCK_BROKER_ACCOUNTS = MOCK_BROKERS.map(
   ({ id, name, nickname }) => ({ id, name, nickname }),
@@ -74,6 +86,11 @@ export const MOCK_BROKER_ACCOUNTS = MOCK_BROKERS.map(
 export async function loginWithMockBroker(brokerId: number): Promise<User> {
   const broker = MOCK_BROKERS.find((b) => b.id === brokerId) ?? MOCK_BROKERS[0];
   return { ...broker, provider: "google" };
+}
+
+// 개발용 — 인증 심사 페이지 테스트를 위한 관리자 로그인
+export async function loginWithMockAdmin(): Promise<User> {
+  return { ...MOCK_ADMIN, provider: "google" };
 }
 
 // TODO: USER-02 내 정보 수정 API 연동
@@ -90,5 +107,10 @@ export async function applyBrokerVerification(
   request: BrokerVerificationRequest,
 ): Promise<User> {
   void request;
-  return { ...user, brokerVerification: "심사 중" };
+  // 재신청 시 이전 반려 사유는 초기화
+  return {
+    ...user,
+    brokerVerification: "심사 중",
+    brokerVerificationRejectReason: undefined,
+  };
 }

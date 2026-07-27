@@ -43,6 +43,7 @@ function GoogleLogo() {
 // PAGE-01 로그인 — 카카오·구글 소셜 로그인 (AUTH-01). 인가 코드 흐름은 /oauth/callback에서 마무리.
 function LoginPage() {
   const loginAsMockBroker = useAuthStore((state) => state.loginAsMockBroker);
+  const loginAsMockAdmin = useAuthStore((state) => state.loginAsMockAdmin);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -58,6 +59,11 @@ function LoginPage() {
   const mockBrokerLogin = async (brokerId: number) => {
     await loginAsMockBroker(brokerId);
     navigate(from, { replace: true });
+  };
+
+  const mockAdminLogin = async () => {
+    await loginAsMockAdmin();
+    navigate("/admin", { replace: true });
   };
 
   return (
@@ -113,6 +119,14 @@ function LoginPage() {
                   중개사 {broker.id} · {broker.nickname} ({broker.name})
                 </Button>
               ))}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={mockAdminLogin}
+              >
+                관리자 · 인증 심사 (방방봐 운영팀)
+              </Button>
             </div>
           )}
         </CardContent>

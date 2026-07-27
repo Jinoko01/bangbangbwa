@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Navigate,
   Route,
   Routes,
   matchPath,
@@ -10,6 +11,7 @@ import {
 
 import GlobalNav from "@/components/GlobalNav";
 import RequireAuth from "@/components/RequireAuth";
+import AdminPage from "@/pages/AdminPage";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import MyPage from "@/pages/MyPage";
@@ -29,6 +31,15 @@ import type { Memo, Property, Reservation } from "@/types";
 
 // API 연동 전 목데이터 로딩 시뮬레이션 시간(ms)
 const MOCK_LOADING_MS = 600;
+
+// ADMIN 페이지 가드 — 관리자 계정이 아니면 랜딩으로 돌려보낸다
+function AdminRoute() {
+  const user = useAuthStore((state) => state.user);
+  if (user?.role !== "관리자") {
+    return <Navigate to="/" replace />;
+  }
+  return <AdminPage />;
+}
 
 interface MemoActions {
   add: (propertyId: number, text: string) => void;
@@ -218,6 +229,7 @@ function App() {
           path="/oauth/callback/:provider"
           element={<OAuthCallbackPage />}
         />
+        <Route path="/admin" element={<AdminRoute />} />
         <Route
           path="/mypage"
           element={
