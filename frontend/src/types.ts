@@ -50,8 +50,10 @@ export interface ChecklistItem {
 
 export interface Filters {
   query: string;
+  dealType: string;
   region: string;
   price: string;
+  rent: string;
   buildingType: string;
 }
 
