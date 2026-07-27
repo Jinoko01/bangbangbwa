@@ -4850,6 +4850,590 @@
                 },
                 {
                   "type": "frame",
+                  "id": "WDvFp",
+                  "name": "Facilities Card",
+                  "width": "fill_container",
+                  "fill": "$card",
+                  "cornerRadius": "$radius-xl",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#0000000D",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "blur": 2
+                  },
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "UcVme",
+                      "name": "Facilities Header",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "MyCh1",
+                          "name": "Facilities Title",
+                          "fill": "$foreground",
+                          "content": "주변 편의시설",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 16,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "ASdiE",
+                          "name": "Facilities Hint",
+                          "fill": "$muted-foreground",
+                          "content": "5km 이내 가까운 3곳",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "im045",
+                      "name": "Category Chips",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "iL7s1",
+                          "name": "Chip 편의점",
+                          "height": 28,
+                          "fill": "$primary",
+                          "cornerRadius": 999,
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "UYIzY",
+                              "name": "Chip Label 편의점",
+                              "fill": "$primary-foreground",
+                              "content": "편의점",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "hnEq9",
+                          "name": "Chip 지하철",
+                          "height": 28,
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "qppDD",
+                              "name": "Chip Label 지하철",
+                              "fill": "$foreground",
+                              "content": "지하철",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "q9hZEf",
+                          "name": "Chip 카페",
+                          "height": 28,
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "QIyFV",
+                              "name": "Chip Label 카페",
+                              "fill": "$foreground",
+                              "content": "카페",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "mcp7n",
+                          "name": "Chip 빨래방",
+                          "height": 28,
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "hn7xx",
+                              "name": "Chip Label 빨래방",
+                              "fill": "$foreground",
+                              "content": "빨래방",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "NZqfN",
+                          "name": "Chip 마트",
+                          "height": 28,
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "sikfU",
+                              "name": "Chip Label 마트",
+                              "fill": "$foreground",
+                              "content": "마트",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "vAtAr",
+                          "name": "Chip 약국",
+                          "height": 28,
+                          "fill": "$background",
+                          "cornerRadius": 999,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "strokeAlignment": "inner",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "FHAPl",
+                              "name": "Chip Label 약국",
+                              "fill": "$foreground",
+                              "content": "약국",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "u7yHX",
+                      "name": "Kakao Map",
+                      "clip": true,
+                      "width": "fill_container",
+                      "height": 260,
+                      "fill": "$muted",
+                      "cornerRadius": "$radius-lg",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "QLwAN",
+                          "x": 334,
+                          "y": 96,
+                          "name": "Property Pin",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "FRWe0",
+                              "name": "Property Marker",
+                              "width": 30,
+                              "height": 30,
+                              "icon": "map-pin",
+                              "library": "lucide",
+                              "fill": "$primary"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "TkWGH",
+                              "name": "Pin Label",
+                              "fill": "#FFFFFF",
+                              "cornerRadius": 999,
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "#00000014",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 1
+                                },
+                                "blur": 2
+                              },
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "fkmMS",
+                                  "name": "Pin Label Text",
+                                  "fill": "$foreground",
+                                  "content": "역삼 래미안",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon",
+                          "id": "TvKek",
+                          "x": 180,
+                          "y": 60,
+                          "name": "Facility Marker 1",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "map-pin",
+                          "library": "lucide",
+                          "fill": "#059669"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "P8bpN",
+                          "x": 470,
+                          "y": 150,
+                          "name": "Facility Marker 2",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "map-pin",
+                          "library": "lucide",
+                          "fill": "#059669"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "IULmQ",
+                          "x": 250,
+                          "y": 185,
+                          "name": "Facility Marker 3",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "map-pin",
+                          "library": "lucide",
+                          "fill": "#059669"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CDhJL",
+                      "name": "Facility List",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "hvbWh",
+                          "name": "List Col 1",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "X0wlJ",
+                              "name": "Facility GS25 역삼점",
+                              "width": "fill_container",
+                              "fill": "$muted",
+                              "cornerRadius": "$radius-md",
+                              "stroke": "$border",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "strokeAlignment": "inner",
+                              "gap": 8,
+                              "padding": [
+                                8,
+                                4
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "R4UMA",
+                                  "name": "Icon Tile",
+                                  "width": 32,
+                                  "height": 32,
+                                  "fill": "#ECFDF5",
+                                  "cornerRadius": "$radius-md",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "r99TV",
+                                      "name": "Store Icon",
+                                      "width": 16,
+                                      "height": 16,
+                                      "icon": "store",
+                                      "library": "lucide",
+                                      "fill": "#047857"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "QBK2i",
+                                  "name": "Facility Text",
+                                  "layout": "vertical",
+                                  "gap": 2,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "sb2A3",
+                                      "name": "Facility Name",
+                                      "fill": "$foreground",
+                                      "content": "GS25 역삼점",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "m4Q7cM",
+                                      "name": "Facility Dist",
+                                      "fill": "$muted-foreground",
+                                      "content": "142m · 도보 2분",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "c9Hy7",
+                              "name": "Facility CU 역삼중앙점",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-md",
+                              "stroke": "$border",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "strokeAlignment": "inner",
+                              "gap": 8,
+                              "padding": [
+                                8,
+                                4
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "e9zKG",
+                                  "name": "Icon Tile",
+                                  "width": 32,
+                                  "height": 32,
+                                  "fill": "#ECFDF5",
+                                  "cornerRadius": "$radius-md",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "h87ZY3",
+                                      "name": "Store Icon",
+                                      "width": 16,
+                                      "height": 16,
+                                      "icon": "store",
+                                      "library": "lucide",
+                                      "fill": "#047857"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "sn5tB",
+                                  "name": "Facility Text",
+                                  "layout": "vertical",
+                                  "gap": 2,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "v0op1",
+                                      "name": "Facility Name",
+                                      "fill": "$foreground",
+                                      "content": "CU 역삼중앙점",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "wUSpS",
+                                      "name": "Facility Dist",
+                                      "fill": "$muted-foreground",
+                                      "content": "231m · 도보 4분",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "QijZh",
+                          "name": "List Col 2",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "hO56w",
+                              "name": "Facility 세븐일레븐 역삼1호점",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-md",
+                              "stroke": "$border",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "strokeAlignment": "inner",
+                              "gap": 8,
+                              "padding": [
+                                8,
+                                4
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "j6jHo",
+                                  "name": "Icon Tile",
+                                  "width": 32,
+                                  "height": 32,
+                                  "fill": "#ECFDF5",
+                                  "cornerRadius": "$radius-md",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "WfJeu",
+                                      "name": "Store Icon",
+                                      "width": 16,
+                                      "height": 16,
+                                      "icon": "store",
+                                      "library": "lucide",
+                                      "fill": "#047857"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "v8ewjs",
+                                  "name": "Facility Text",
+                                  "layout": "vertical",
+                                  "gap": 2,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "vB3hM",
+                                      "name": "Facility Name",
+                                      "fill": "$foreground",
+                                      "content": "세븐일레븐 역삼1호점",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "THf8J",
+                                      "name": "Facility Dist",
+                                      "fill": "$muted-foreground",
+                                      "content": "385m · 도보 6분",
+                                      "fontFamily": "$font-sans",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "KOieL",
                   "name": "Memo Card",
                   "width": "fill_container",
