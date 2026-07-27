@@ -12,6 +12,7 @@ import GlobalNav from "@/components/GlobalNav";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import MyPage from "@/pages/MyPage";
+import OAuthCallbackPage from "@/pages/OAuthCallbackPage";
 import PropertyDetailPage from "@/pages/PropertyDetailPage";
 import PropertyFormPage from "@/pages/PropertyFormPage";
 import PropertyListPage from "@/pages/PropertyListPage";
@@ -141,6 +142,7 @@ function App() {
   ]);
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const restoreSession = useAuthStore((state) => state.restoreSession);
   const location = useLocation();
   // 라이브 세션 중에는 GNB 링크 한 번에 확인 없이 통화가 끊기므로 아예 노출하지 않는다.
   // 이 화면을 벗어나는 길은 확인 다이얼로그가 붙은 나가기 버튼 하나뿐이다
@@ -153,6 +155,11 @@ function App() {
     }, MOCK_LOADING_MS);
     return () => clearTimeout(timer);
   }, []);
+
+  // 저장된 accessToken이 있으면 내 정보 조회로 로그인 상태 복원
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
 
   // PROP-04·05 매물 저장·저장 취소
   const toggleSave = (id: number) =>
@@ -208,6 +215,10 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/oauth/callback/:provider"
+          element={<OAuthCallbackPage />}
+        />
         <Route
           path="/mypage"
           element={<MyPage loading={loading} properties={properties} />}

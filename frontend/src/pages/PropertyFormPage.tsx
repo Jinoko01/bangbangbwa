@@ -3,6 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useTransition,
   type ChangeEvent,
   type ReactNode,
 } from "react";
@@ -12,7 +13,14 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { ChevronLeft, ImageIcon, ImagePlus, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ImageIcon,
+  ImagePlus,
+  MapPin,
+  TrainFront,
+  X,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,13 +33,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BUILDING_TYPES, REGIONS } from "@/data/properties";
+import { Textarea } from "@/components/ui/textarea";
+import { ROOM_TYPES } from "@/data/properties";
+import { isApiError } from "@/api/error";
+import { useCreateProperty } from "@/hooks/queries/propertyQueries";
 import { isApprovedBroker } from "@/lib/auth";
 import { readFileAsDataUrl } from "@/lib/file";
 import { formatManwonLabel } from "@/lib/format";
+import {
+  searchAddress,
+  searchPropertyEnvironment,
+  type GeocodedAddress,
+} from "@/lib/kakaoLocal";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
-import type { BuildingType, DealType, Property } from "@/types";
+import type {
+  DealType,
+  Property,
+  PropertyCreateInput,
+  PropertyEnvironment,
+  RoomType,
+} from "@/types";
 
 const DEAL_TYPES: DealType[] = ["전세", "월세", "매매"];
 
@@ -95,6 +117,197 @@ function FormField({
         <span className="text-xs font-normal text-destructive">{error}</span>
       )}
     </label>
+  );
+}
+
+// 주소 검색 — 카카오 좌표 변환으로 위도·경도와 시군구·동·지번·도로명 주소를 한 번에 채운다.
+// 등록 요청의 latitude·longitude는 이 검색 결과에서만 나온다 (직접 입력 불가)
+function AddressField({
+  query,
+  resolved,
+  error,
+  onQueryChange,
+  onResolve,
+}: {
+  query: string;
+  resolved: GeocodedAddress | null;
+  error?: string;
+  onQueryChange: (query: string) => void;
+  onResolve: (address: GeocodedAddress | null) => void;
+}) {
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [isSearching, startSearch] = useTransition();
+
+  const search = () => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      onResolve(null);
+      setSearchError("주소를 입력해주세요");
+      return;
+    }
+    startSearch(async () => {
+      try {
+        onResolve(await searchAddress(trimmed));
+        setSearchError(null);
+      } catch (failure) {
+        onResolve(null);
+        setSearchError(
+          failure instanceof Error
+            ? failure.message
+            : "주소를 검색하지 못했습니다. 잠시 후 다시 시도해주세요",
+        );
+      }
+    });
+  };
+
+  const message = searchError ?? error;
+
+  return (
+    <div className="flex flex-col gap-2 text-sm font-medium sm:col-span-2">
+      <label htmlFor="address">
+        주소
+        <span aria-hidden className="ml-0.5 text-destructive">
+          *
+        </span>
+      </label>
+      <div className="flex gap-2">
+        <Input
+          id="address"
+          value={query}
+          placeholder="예) 서울 강남구 테헤란로 212"
+          aria-invalid={message ? true : undefined}
+          onChange={(event) => {
+            onQueryChange(event.target.value);
+            // 주소가 바뀌면 이전 좌표는 더 이상 유효하지 않다
+            onResolve(null);
+            setSearchError(null);
+          }}
+          onKeyDown={(event) => {
+            // 주소 입력 중 Enter가 폼 전체를 제출하지 않도록 검색으로 대체
+            if (event.key === "Enter") {
+              event.preventDefault();
+              search();
+            }
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isSearching}
+          onClick={search}
+        >
+          {isSearching ? "검색 중..." : "주소 검색"}
+        </Button>
+      </div>
+      {resolved && (
+        <span className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0" />
+          {resolved.roadAddress || resolved.addressName} · 위도{" "}
+          {resolved.latitude.toFixed(6)} / 경도 {resolved.longitude.toFixed(6)}
+        </span>
+      )}
+      {message && (
+        <span className="text-xs font-normal text-destructive">{message}</span>
+      )}
+    </div>
+  );
+}
+
+// property_environment의 개수 항목 — 표시 순서와 라벨
+const FACILITY_COUNT_LABELS: Array<[keyof PropertyEnvironment, string]> = [
+  ["convenienceStoreCount", "편의점"],
+  ["martCount", "마트"],
+  ["hospitalCount", "병원"],
+  ["pharmacyCount", "약국"],
+  ["cafeCount", "카페"],
+  ["policeCount", "경찰서"],
+  ["parkCount", "공원"],
+  ["bankCount", "은행"],
+  ["laundryCount", "빨래방"],
+  ["schoolCount", "학교"],
+];
+
+// 주변 편의시설 — 주소 검색으로 좌표가 잡히면 카카오 장소 검색으로 자동 집계된다
+function EnvironmentSection({
+  environment,
+  isLoading,
+  error,
+  hasAddress,
+  onRetry,
+}: {
+  environment: PropertyEnvironment | null;
+  isLoading: boolean;
+  error: string | null;
+  hasAddress: boolean;
+  onRetry: () => void;
+}) {
+  if (!hasAddress) {
+    return (
+      <p className="text-sm font-normal text-muted-foreground sm:col-span-2">
+        주소를 검색하면 반경 500m 안의 편의시설과 가장 가까운 지하철역을
+        자동으로 가져옵니다.
+      </p>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-2 sm:col-span-2">
+        <Skeleton className="h-5 w-56" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-3 sm:col-span-2">
+        <p className="text-sm font-normal text-destructive">{error}</p>
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          다시 시도
+        </Button>
+      </div>
+    );
+  }
+
+  if (!environment) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-4 sm:col-span-2">
+      <p className="flex items-center gap-1.5 text-sm font-normal">
+        <TrainFront className="size-4 shrink-0 text-muted-foreground" />
+        {environment.nearestStationName ? (
+          <span>
+            <span className="font-medium">
+              {environment.nearestStationName}
+            </span>{" "}
+            <span className="text-muted-foreground">
+              {environment.stationDistanceMeter}m · 도보{" "}
+              {environment.stationWalkingMinutes}분
+            </span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            반경 3km 안에 지하철역이 없습니다
+          </span>
+        )}
+      </p>
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {FACILITY_COUNT_LABELS.map(([field, label]) => (
+          <div
+            key={field}
+            className="flex items-baseline justify-between gap-2 rounded-xl bg-muted px-3 py-2"
+          >
+            <dt className="text-xs font-normal text-muted-foreground">
+              {label}
+            </dt>
+            <dd className="text-sm font-semibold">{environment[field] ?? 0}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -274,17 +487,22 @@ interface PropertyFormProps {
   onSave: (property: Property) => void;
 }
 
-function validate(input: {
+interface FormInput {
   title: string;
   dealType: DealType;
   deposit: number;
   monthlyRent: number;
-  dong: string;
+  maintenanceFee?: number;
+  complexName: string;
+  builtYear?: number;
+  description: string;
   areaM2: number;
   floor: number;
   totalFloors?: number;
   rooms: number;
-}) {
+}
+
+function validate(input: FormInput, address: GeocodedAddress | null) {
   const errors: FormErrors = {};
   if (!input.title) {
     errors.title = "매물명을 입력해주세요";
@@ -298,8 +516,24 @@ function validate(input: {
   ) {
     errors.monthlyRent = "월세를 입력해주세요";
   }
-  if (!input.dong) {
-    errors.dong = "동(법정동)을 입력해주세요";
+  if (!address) {
+    errors.address = "주소를 검색해 위치를 확인해주세요";
+  } else if (!address.sigungu || !address.dong) {
+    errors.address = "동 단위까지 포함된 주소로 다시 검색해주세요";
+  }
+  if (
+    input.builtYear !== undefined &&
+    (!Number.isInteger(input.builtYear) ||
+      input.builtYear < 1900 ||
+      input.builtYear > 2100)
+  ) {
+    errors.builtYear = "준공 연도를 1900~2100 사이로 입력해주세요";
+  }
+  if (
+    input.maintenanceFee !== undefined &&
+    (!Number.isFinite(input.maintenanceFee) || input.maintenanceFee < 0)
+  ) {
+    errors.maintenanceFee = "관리비를 올바르게 입력해주세요";
   }
   if (!Number.isFinite(input.areaM2) || input.areaM2 <= 0) {
     errors.areaM2 = "전용면적을 입력해주세요";
@@ -334,13 +568,26 @@ function PropertyForm({
   onSave,
 }: PropertyFormProps) {
   const navigate = useNavigate();
+  const { mutateAsync: createProperty } = useCreateProperty();
   const [dealType, setDealType] = useState<DealType>(
     property?.dealType ?? "전세",
   );
-  const [buildingType, setBuildingType] = useState<BuildingType>(
-    property?.buildingType ?? "아파트",
+  const [roomType, setRoomType] = useState<RoomType>(
+    // 목데이터의 "아파트"는 백엔드 enum에 없어 등록 가능한 유형으로 대체한다
+    property && property.buildingType !== "아파트"
+      ? property.buildingType
+      : ROOM_TYPES[0],
   );
-  const [region, setRegion] = useState(property?.region ?? REGIONS[0]);
+  const [address, setAddress] = useState<GeocodedAddress | null>(null);
+  // 검증 실패 시 폼이 리마운트되므로 주소 입력값은 폼 바깥에서 보관한다
+  const [addressQuery, setAddressQuery] = useState(
+    property ? `${property.region} ${property.dong}` : "",
+  );
+  const [environment, setEnvironment] = useState<PropertyEnvironment | null>(
+    null,
+  );
+  const [environmentError, setEnvironmentError] = useState<string | null>(null);
+  const [isLoadingEnvironment, startEnvironmentLoad] = useTransition();
   const [previewUrl, setPreviewUrl] = useState(property?.imageUrl);
   const [extraUrls, setExtraUrls] = useState<string[]>(
     property?.imageUrls?.slice(1, MAX_EXTRA_PHOTOS + 1) ?? [],
@@ -390,6 +637,83 @@ function PropertyForm({
     setPhotoError(null);
   };
 
+  const loadEnvironment = (resolved: GeocodedAddress) => {
+    startEnvironmentLoad(async () => {
+      try {
+        setEnvironment(await searchPropertyEnvironment(resolved));
+        setEnvironmentError(null);
+      } catch {
+        setEnvironment(null);
+        setEnvironmentError(
+          "주변 편의시설 정보를 가져오지 못했습니다. 다시 시도해주세요",
+        );
+      }
+    });
+  };
+
+  // 주소가 확정되면 좌표 기준으로 주변 편의시설을 함께 조회한다
+  const handleAddressResolve = (resolved: GeocodedAddress | null) => {
+    setAddress(resolved);
+    setEnvironment(null);
+    setEnvironmentError(null);
+    if (resolved) {
+      loadEnvironment(resolved);
+    }
+  };
+
+  // 등록: POST /api/properties — 좌표는 주소 검색 결과에서 가져온다
+  const submitCreate = async (input: FormInput, resolved: GeocodedAddress) => {
+    const body: PropertyCreateInput = {
+      title: input.title,
+      transactionType: input.dealType,
+      roomType,
+      deposit: input.deposit,
+      monthlyRent: input.monthlyRent,
+      maintenanceFee: input.maintenanceFee,
+      sigungu: resolved.sigungu,
+      dong: resolved.dong,
+      lotNumber: resolved.lotNumber || undefined,
+      roadAddress: resolved.roadAddress || undefined,
+      complexName: input.complexName || undefined,
+      builtYear: input.builtYear,
+      latitude: resolved.latitude,
+      longitude: resolved.longitude,
+      area: input.areaM2,
+      floor: input.floor,
+      totalFloor: input.totalFloors,
+      description: input.description || undefined,
+    };
+    await createProperty(body);
+  };
+
+  // 수정: 백엔드에 매물 수정 API가 없어 아직 로컬 상태만 갱신한다
+  const saveLocally = (input: FormInput, resolved: GeocodedAddress) => {
+    const imageUrl = previewUrl;
+    const imageUrls = imageUrl
+      ? [imageUrl, ...extraUrls]
+      : extraUrls.length > 0
+        ? [...extraUrls]
+        : undefined;
+    onSave({
+      id: property?.id ?? nextId,
+      brokerId,
+      title: input.title,
+      dealType: input.dealType,
+      buildingType: roomType,
+      deposit: input.deposit,
+      monthlyRent: input.monthlyRent,
+      region: resolved.sigungu,
+      dong: resolved.dong,
+      areaM2: input.areaM2,
+      floor: input.floor,
+      totalFloors: input.totalFloors,
+      rooms: input.rooms,
+      saved: property?.saved ?? false,
+      imageUrl,
+      imageUrls,
+    });
+  };
+
   const [formState, submitAction, isPending] = useActionState(
     async (_prev: FormState | null, formData: FormData) => {
       const values = Object.fromEntries(
@@ -397,19 +721,27 @@ function PropertyForm({
           "title",
           "deposit",
           "monthlyRent",
-          "dong",
+          "maintenanceFee",
+          "complexName",
+          "builtYear",
+          "description",
           "areaM2",
           "floor",
           "totalFloors",
           "rooms",
         ].map((key) => [key, String(formData.get(key) ?? "")]),
       );
-      const input = {
+      const input: FormInput = {
         title: values.title.trim(),
         dealType,
         deposit: Number(values.deposit),
         monthlyRent: dealType === "월세" ? Number(values.monthlyRent) : 0,
-        dong: values.dong.trim(),
+        maintenanceFee: values.maintenanceFee
+          ? Number(values.maintenanceFee)
+          : undefined,
+        complexName: values.complexName.trim(),
+        builtYear: values.builtYear ? Number(values.builtYear) : undefined,
+        description: values.description.trim(),
         areaM2: Number(values.areaM2),
         floor: Number(values.floor),
         totalFloors: values.totalFloors
@@ -417,31 +749,34 @@ function PropertyForm({
           : undefined,
         rooms: Number(values.rooms),
       };
-      const errors = validate(input);
+      const errors = validate(input, address);
       if (Object.keys(errors).length > 0) {
         setFormVersion((version) => version + 1);
         return { errors, values };
       }
+      // validate가 address를 검증했으므로 여기서는 항상 값이 있다
+      const resolved = address as GeocodedAddress;
 
-      const imageUrl = previewUrl;
-      const imageUrls = imageUrl
-        ? [imageUrl, ...extraUrls]
-        : extraUrls.length > 0
-          ? [...extraUrls]
-          : undefined;
-      const next: Property = {
-        ...input,
-        id: property?.id ?? nextId,
-        brokerId,
-        buildingType,
-        region,
-        saved: property?.saved ?? false,
-        imageUrl,
-        imageUrls,
-      };
-      onSave(next);
-      navigate(`/properties/${next.id}`, { replace: true });
-      return null;
+      try {
+        if (property) {
+          saveLocally(input, resolved);
+          navigate(`/properties/${property.id}`, { replace: true });
+        } else {
+          await submitCreate(input, resolved);
+          navigate("/properties", { replace: true });
+        }
+        return null;
+      } catch (failure) {
+        setFormVersion((version) => version + 1);
+        return {
+          errors: {
+            submit: isApiError(failure)
+              ? failure.message
+              : "매물을 등록하지 못했습니다. 잠시 후 다시 시도해주세요",
+          },
+          values,
+        };
+      }
     },
     null,
   );
@@ -493,14 +828,14 @@ function PropertyForm({
         </FormField>
         <FormField label="건물 유형">
           <Select
-            value={buildingType}
-            onValueChange={(value) => setBuildingType(value as BuildingType)}
+            value={roomType}
+            onValueChange={(value) => setRoomType(value as RoomType)}
           >
             <SelectTrigger aria-label="건물 유형" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {BUILDING_TYPES.map((type) => (
+              {ROOM_TYPES.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
                 </SelectItem>
@@ -542,27 +877,53 @@ function PropertyForm({
       </FormSection>
 
       <FormSection title="위치 정보">
-        <FormField label="지역 (구)">
-          <Select value={region} onValueChange={setRegion}>
-            <SelectTrigger aria-label="지역" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {REGIONS.map((regionOption) => (
-                <SelectItem key={regionOption} value={regionOption}>
-                  {regionOption}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormField>
-        <FormField label="동" required error={errors?.dong}>
+        <AddressField
+          query={addressQuery}
+          resolved={address}
+          error={errors?.address}
+          onQueryChange={setAddressQuery}
+          onResolve={handleAddressResolve}
+        />
+        {address && (
+          <>
+            <FormField label="시군구">
+              <Input value={address.sigungu} readOnly disabled />
+            </FormField>
+            <FormField label="동 (법정동)">
+              <Input value={address.dong} readOnly disabled />
+            </FormField>
+            <FormField label="지번">
+              <Input value={address.lotNumber || "-"} readOnly disabled />
+            </FormField>
+          </>
+        )}
+        <FormField label="단지·건물명">
           <Input
-            name="dong"
-            defaultValue={values?.dong ?? property?.dong}
-            aria-invalid={errors?.dong ? true : undefined}
+            name="complexName"
+            defaultValue={values?.complexName}
+            placeholder="예) 래미안 1단지"
           />
         </FormField>
+        <FormField label="준공 연도" error={errors?.builtYear}>
+          <Input
+            name="builtYear"
+            type="number"
+            min={1900}
+            max={2100}
+            defaultValue={values?.builtYear}
+            aria-invalid={errors?.builtYear ? true : undefined}
+          />
+        </FormField>
+      </FormSection>
+
+      <FormSection title="주변 편의시설">
+        <EnvironmentSection
+          environment={environment}
+          isLoading={isLoadingEnvironment}
+          error={environmentError}
+          hasAddress={address !== null}
+          onRetry={() => address && loadEnvironment(address)}
+        />
       </FormSection>
 
       <FormSection title="상세 정보">
@@ -602,6 +963,21 @@ function PropertyForm({
             aria-invalid={errors?.totalFloors ? true : undefined}
           />
         </FormField>
+        <FormField label="관리비 (만원)" error={errors?.maintenanceFee}>
+          <PriceInput
+            name="maintenanceFee"
+            defaultValue={values?.maintenanceFee}
+            invalid={Boolean(errors?.maintenanceFee)}
+          />
+        </FormField>
+        <FormField label="상세 설명" className="sm:col-span-2">
+          <Textarea
+            name="description"
+            rows={4}
+            defaultValue={values?.description}
+            placeholder="채광·옵션·주변 환경 등 세입자가 궁금해할 정보를 적어주세요"
+          />
+        </FormField>
       </FormSection>
 
       <FormSection title="사진">
@@ -616,15 +992,22 @@ function PropertyForm({
         )}
       </FormSection>
 
-      {errors && Object.keys(errors).length > 0 && (
-        <p className="text-sm text-destructive">
-          입력하지 않은 항목이 있어요. 표시된 필드를 확인해주세요
-        </p>
+      {errors?.submit ? (
+        <p className="text-sm text-destructive">{errors.submit}</p>
+      ) : (
+        errors &&
+        Object.keys(errors).length > 0 && (
+          <p className="text-sm text-destructive">
+            입력하지 않은 항목이 있어요. 표시된 필드를 확인해주세요
+          </p>
+        )
       )}
 
       <div className="flex items-center justify-between gap-4 border-t pt-4">
         <p className="text-sm text-muted-foreground">
-          저장하면 매물 목록·상세에 바로 반영됩니다.
+          {property
+            ? "저장하면 매물 목록·상세에 바로 반영됩니다."
+            : "등록하면 서버에 매물이 저장됩니다."}
         </p>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>

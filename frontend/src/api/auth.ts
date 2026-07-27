@@ -1,25 +1,46 @@
+import { api } from "@/api/client";
 import type {
+  AuthProvider,
   BrokerVerificationRequest,
   User,
   UserProfileChanges,
 } from "@/types";
 
-// AUTH-01·02, USER-01~03 인증·회원 API 스텁.
-// 백엔드 완성 후 이 파일만 교체하면 됨.
-// 카카오/구글 키는 .env(VITE_KAKAO_KEY 등)에서 읽을 것, 코드에 하드코딩 금지.
+// AUTH-01 소셜 로그인 / AUTH-02 로그아웃 (/api/auth/*).
+// 프로필 수정·중개사 인증은 백엔드 미완성이라 아직 목 스텁으로 남겨둔다.
 
-// 데모용 계정 분리 — 카카오: 세입자, 구글: 승인 완료 중개사(1번).
-// 실제 중개사 인증(관리자 승인) 연동 시 하나의 계정 흐름으로 되돌릴 것.
-const MOCK_TENANT: Omit<User, "provider"> = {
-  id: 100,
-  name: "김방방",
-  birth: "1998-03-14",
-  nickname: "방방이",
-  email: "bangbang@example.com",
-  phone: "010-1234-5678",
-  role: "세입자",
-  brokerVerification: "미신청",
-};
+// AUTH-01 소셜 로그인 응답 — accessToken은 authStore가 localStorage에 저장한다.
+interface TokenResponse {
+  tokenType: string;
+  accessToken: string;
+  expiresIn: number;
+  newUser: boolean;
+}
+
+function socialLogin(
+  provider: AuthProvider,
+  authorizationCode: string,
+): Promise<TokenResponse> {
+  console.log(`socialLogin(${provider}, ${{ authorizationCode }})`);
+  return api.post<TokenResponse>({
+    path: `/api/auth/${provider}`,
+    body: { authorizationCode },
+  });
+}
+
+// 카카오/구글 인가 코드를 백엔드로 넘겨 accessToken을 발급받는다.
+export function kakaoLogin(authorizationCode: string): Promise<TokenResponse> {
+  return socialLogin("kakao", authorizationCode);
+}
+
+export function googleLogin(authorizationCode: string): Promise<TokenResponse> {
+  return socialLogin("google", authorizationCode);
+}
+
+// AUTH-02 로그아웃 — 서버 세션·토큰 무효화 (로컬 토큰 정리는 authStore 책임)
+export function logout(): Promise<void> {
+  return api.post<void>({ path: "/api/auth/logout" });
+}
 
 // id는 data/properties.ts의 brokerId와 연결됨 — 중개사별 매물 구분 테스트용 2계정
 const MOCK_BROKERS: Array<Omit<User, "provider">> = [
@@ -50,24 +71,11 @@ export const MOCK_BROKER_ACCOUNTS = MOCK_BROKERS.map(
   ({ id, name, nickname }) => ({ id, name, nickname }),
 );
 
-// TODO: 카카오 OAuth 연동 (import.meta.env.VITE_KAKAO_KEY)
-export async function loginWithKakao(): Promise<User> {
-  return { ...MOCK_TENANT, provider: "kakao" };
-}
-
-// TODO: 구글 OAuth 연동 (import.meta.env.VITE_GOOGLE_CLIENT_ID)
-export async function loginWithGoogle(): Promise<User> {
-  return { ...MOCK_BROKERS[0], provider: "google" };
-}
-
 // 개발용 — 중개사별 매물 구분 테스트를 위해 특정 목 중개사로 로그인
 export async function loginWithMockBroker(brokerId: number): Promise<User> {
   const broker = MOCK_BROKERS.find((b) => b.id === brokerId) ?? MOCK_BROKERS[0];
   return { ...broker, provider: "google" };
 }
-
-// TODO: 세션·토큰 무효화
-export async function logout() {}
 
 // TODO: USER-02 내 정보 수정 API 연동
 export async function updateProfile(
@@ -85,6 +93,3 @@ export async function applyBrokerVerification(
   void request;
   return { ...user, brokerVerification: "심사 중" };
 }
-
-// TODO: USER-03 회원 탈퇴 API 연동
-export async function withdraw() {}

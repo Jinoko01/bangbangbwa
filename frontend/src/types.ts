@@ -36,6 +36,121 @@ export interface Property {
   nearbyFacilities?: NearbyFacility[];
 }
 
+// ── 매물 API 계약 (Swagger /api/properties) ──────────────────────────────
+// 백엔드 roomType enum이 허용하는 값 — BuildingType 중 "아파트"는 아직 미지원
+export type RoomType = Exclude<BuildingType, "아파트">;
+
+export interface Page<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+}
+
+export interface PagingParams {
+  page?: number;
+  size?: number;
+  // Spring 정렬 표기 — "createdAt,DESC"
+  sort?: string;
+}
+
+export interface PropertyFilters {
+  query?: string;
+  sigungu?: string;
+  transactionType?: DealType;
+  roomType?: RoomType;
+  minDeposit?: number;
+  maxDeposit?: number;
+}
+
+export interface MapBounds {
+  swLat: number;
+  swLng: number;
+  neLat: number;
+  neLng: number;
+}
+
+export interface PropertySummary {
+  propertyId: number;
+  title: string;
+  transactionType: DealType;
+  roomType: RoomType;
+  deposit: number;
+  monthlyRent: number;
+  sigungu: string;
+  dong: string;
+  complexName?: string;
+  area?: number;
+  floor?: number;
+  totalFloor?: number;
+  status: string;
+  saved: boolean;
+}
+
+export interface PropertyDetail extends PropertySummary {
+  maintenanceFee?: number;
+  lotNumber?: string;
+  roadAddress?: string;
+  builtYear?: number;
+  latitude?: number;
+  longitude?: number;
+  description?: string;
+  createdAt: string;
+}
+
+export interface PropertyMapPin {
+  propertyId: number;
+  title: string;
+  latitude: number;
+  longitude: number;
+  transactionType: DealType;
+  deposit: number;
+  monthlyRent: number;
+}
+
+// property_environment 테이블 — 주소 좌표를 기준으로 카카오 장소 검색에서 집계한다
+export interface PropertyEnvironment {
+  nearestStationName?: string;
+  stationDistanceMeter?: number;
+  stationWalkingMinutes?: number;
+  convenienceStoreCount: number;
+  martCount: number;
+  hospitalCount: number;
+  pharmacyCount: number;
+  cafeCount: number;
+  policeCount: number;
+  parkCount: number;
+  bankCount: number;
+  laundryCount: number;
+  schoolCount: number;
+}
+
+// latitude·longitude는 주소 입력 시 카카오 좌표 변환으로 채운다 (src/lib/kakaoLocal.ts)
+export interface PropertyCreateInput {
+  title: string;
+  transactionType: DealType;
+  roomType: RoomType;
+  deposit: number;
+  monthlyRent?: number;
+  maintenanceFee?: number;
+  sigungu: string;
+  dong: string;
+  lotNumber?: string;
+  roadAddress?: string;
+  complexName?: string;
+  builtYear?: number;
+  latitude?: number;
+  longitude?: number;
+  area?: number;
+  floor?: number;
+  totalFloor?: number;
+  description?: string;
+}
+
 export interface Reservation {
   id: string;
   propertyId: number;
