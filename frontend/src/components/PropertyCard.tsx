@@ -24,7 +24,7 @@ export interface PropertyCardItem {
   saved: boolean;
 }
 
-// 매물 목록 API 응답 → 카드 뷰모델 (응답에 사진 필드가 없어 imageUrl은 비워 둔다)
+// 매물 목록 응답 → 카드 뷰모델 (사진이 없는 매물은 imageUrl 없이 플레이스홀더를 그린다)
 export function toPropertyCardItem(summary: PropertySummary): PropertyCardItem {
   return {
     id: summary.propertyId,
@@ -38,6 +38,7 @@ export function toPropertyCardItem(summary: PropertySummary): PropertyCardItem {
     area: summary.area,
     floor: summary.floor,
     totalFloor: summary.totalFloor,
+    imageUrl: summary.imageUrl,
     saved: summary.saved,
   };
 }

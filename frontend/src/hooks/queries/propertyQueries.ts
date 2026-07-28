@@ -6,14 +6,18 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
+// 매물 API를 잠시 끄고 목데이터를 보여주는 중이다.
+// 서버에 다시 붙일 때는 아래 import를 "@/api/property"로 되돌리고,
+// useToggleSavedInCache의 toggleMockSaved 호출만 지우면 된다.
 import {
   createProperty,
   getMyProperties,
   getProperties,
   getPropertiesInBounds,
   getProperty,
+  toggleMockSaved,
   uploadPropertyImages,
-} from "@/api/property";
+} from "@/data/mockPropertyApi";
 import type {
   MapBounds,
   Page,
@@ -88,12 +92,13 @@ export function usePropertiesInBounds(bounds: MapBounds) {
   return useQuery(propertyMapOptions(bounds));
 }
 
-// PROP-04·05 저장 토글 — 백엔드에 찜 API가 아직 없어 서버 호출 없이 캐시의 표시 상태만 뒤집는다.
-// (다시 조회하면 서버 값으로 돌아간다. 엔드포인트가 생기면 useMutation으로 교체할 것)
+// PROP-04·05 저장 토글 — 찜 API가 아직 없어 목데이터와 캐시의 표시 상태만 뒤집는다.
+// (엔드포인트가 생기면 useMutation으로 교체할 것)
 export function useToggleSavedInCache() {
   const queryClient = useQueryClient();
 
   return (propertyId: number) => {
+    toggleMockSaved(propertyId);
     queryClient.setQueriesData<Page<PropertySummary>>(
       { queryKey: propertyKeys.lists() },
       (page) =>

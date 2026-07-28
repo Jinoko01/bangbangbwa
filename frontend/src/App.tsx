@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Navigate,
   Route,
@@ -23,8 +24,12 @@ import ReservationLivePage from "@/pages/ReservationLivePage";
 import ReservationPage from "@/pages/ReservationPage";
 import BookingPage from "@/pages/BookingPage";
 import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
+import { removeMockProperty, upsertMockProperty } from "@/data/mockPropertyApi";
 import { PROPERTIES } from "@/data/properties";
-import { useMyPropertyList } from "@/hooks/queries/propertyQueries";
+import {
+  propertyKeys,
+  useMyPropertyList,
+} from "@/hooks/queries/propertyQueries";
 import { isApprovedBroker } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
 import type { Memo, Property, Reservation } from "@/types";
@@ -151,6 +156,7 @@ function App() {
     },
   ]);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const restoreSession = useAuthStore((state) => state.restoreSession);
   const location = useLocation();
@@ -177,13 +183,17 @@ function App() {
       prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)),
     );
 
-  // PROP-07·08 매물 등록·수정 — 같은 id가 있으면 교체, 없으면 맨 앞에 추가
-  const saveProperty = (property: Property) =>
+  // PROP-07·08 매물 등록·수정 — 같은 id가 있으면 교체, 없으면 맨 앞에 추가.
+  // 목록·상세는 목데이터 사본을 따로 보므로 그쪽에도 같은 변경을 반영한다
+  const saveProperty = (property: Property) => {
     setProperties((prev) =>
       prev.some((p) => p.id === property.id)
         ? prev.map((p) => (p.id === property.id ? property : p))
         : [property, ...prev],
     );
+    upsertMockProperty(property);
+    queryClient.invalidateQueries({ queryKey: propertyKeys.all });
+  };
 
   // PROP-09 매물 삭제 — 연결된 예약·메모도 함께 정리
   const deleteProperty = (id: number) => {
@@ -193,6 +203,8 @@ function App() {
       const { [id]: _removed, ...rest } = prev;
       return rest;
     });
+    removeMockProperty(id);
+    queryClient.invalidateQueries({ queryKey: propertyKeys.all });
   };
 
   // MEMO-01~03 메모 작성·수정·삭제
