@@ -67,6 +67,7 @@ function DetailRoute({
 }: DetailRouteProps) {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const id = Number(idParam);
   // 매물 상세 응답에 등록 중개사 정보가 없어, 내 매물 목록에 있는지로 관리 권한을 판단한다
@@ -80,7 +81,10 @@ function DetailRoute({
     <PropertyDetailPage
       propertyId={id}
       canManage={canManage && isMyProperty}
-      onBack={() => navigate("/properties")}
+      // 히스토리 뒤로가기로 지도 탭·찜 목록 등 이전 화면을 유지, 직접 진입 시엔 목록으로 폴백
+      onBack={() =>
+        location.key === "default" ? navigate("/properties") : navigate(-1)
+      }
       onReserve={onReserve}
       onEdit={() => navigate(`/properties/${id}/edit`)}
       onDelete={() => {

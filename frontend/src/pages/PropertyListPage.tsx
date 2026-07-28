@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Heart, ImageIcon, List, Map, Plus, SearchX } from "lucide-react";
 
 import PropertyCard, {
@@ -379,7 +380,10 @@ function PropertyListPage({
 }: PropertyListPageProps) {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [searchParams, setSearchParams] = useSearchParams();
+  // 탭은 URL 쿼리(?view=map)로 관리 — 상세에서 뒤로 왔을 때 지도/리스트 선택이 유지된다
+  const viewMode: ViewMode =
+    searchParams.get("view") === "map" ? "map" : "list";
   const isMobile = useIsMobile();
   const debouncedQuery = useDebouncedValue(filters.query.trim());
   const toggleSaved = useToggleSavedInCache();
@@ -406,6 +410,22 @@ function PropertyListPage({
   const handleDealTypeChange = (dealType: string) =>
     changeFilters({ ...filters, dealType, price: "all", rent: "all" });
 
+  // 탭 전환은 히스토리를 쌓지 않는다(replace) — 뒤로가기는 항상 페이지 이탈
+  const changeViewMode = (next: ViewMode) => {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        if (next === "map") {
+          params.set("view", "map");
+        } else {
+          params.delete("view");
+        }
+        return params;
+      },
+      { replace: true },
+    );
+  };
+
   return (
     <div className="min-h-svh bg-background">
       <header>
@@ -431,7 +451,7 @@ function PropertyListPage({
               variant={viewMode === "list" ? "default" : "ghost"}
               className="min-w-28 rounded-lg font-semibold"
               aria-selected={viewMode === "list"}
-              onClick={() => setViewMode("list")}
+              onClick={() => changeViewMode("list")}
             >
               <List /> 리스트형식
             </Button>
@@ -442,7 +462,7 @@ function PropertyListPage({
               variant={viewMode === "map" ? "default" : "ghost"}
               className="min-w-28 rounded-lg font-semibold"
               aria-selected={viewMode === "map"}
-              onClick={() => setViewMode("map")}
+              onClick={() => changeViewMode("map")}
             >
               <Map /> 지도형식
             </Button>
