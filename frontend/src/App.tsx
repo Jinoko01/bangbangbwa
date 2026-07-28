@@ -251,50 +251,66 @@ function App() {
         <Route
           path="/reservations"
           element={
-            <ReservationPage
-              reservations={reservations}
-              properties={properties}
-              onConfirmReservation={(reservationId, time) =>
-                setReservations((previous) =>
-                  previous.map((reservation) =>
-                    reservation.id === reservationId &&
-                    reservation.direction === "received" &&
-                    reservation.status === "예약 대기"
-                      ? { ...reservation, time, status: "예약 확정" }
-                      : reservation,
-                  ),
-                )
-              }
-            />
+            <RequireAuth>
+              {() => (
+                <ReservationPage
+                  reservations={reservations}
+                  properties={properties}
+                  onConfirmReservation={(reservationId, time) =>
+                    setReservations((previous) =>
+                      previous.map((reservation) =>
+                        reservation.id === reservationId &&
+                        reservation.direction === "received" &&
+                        reservation.status === "예약 대기"
+                          ? { ...reservation, time, status: "예약 확정" }
+                          : reservation,
+                      ),
+                    )
+                  }
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route
           path="/booking/:id"
           element={
-            <BookingPage
-              properties={properties}
-              onConfirm={(reservation) =>
-                setReservations((previous) => [reservation, ...previous])
-              }
-            />
+            <RequireAuth>
+              {() => (
+                <BookingPage
+                  properties={properties}
+                  onConfirm={(reservation) =>
+                    setReservations((previous) => [reservation, ...previous])
+                  }
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route
           path="/saved"
           element={
-            <SavedPropertiesPage
-              properties={properties}
-              onToggleSave={toggleSave}
-            />
+            <RequireAuth>
+              {() => (
+                <SavedPropertiesPage
+                  properties={properties}
+                  onToggleSave={toggleSave}
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route
           path="/reservation/:slug"
           element={
-            <ReservationLivePage
-              reservations={reservations}
-              properties={properties}
-            />
+            <RequireAuth>
+              {() => (
+                <ReservationLivePage
+                  reservations={reservations}
+                  properties={properties}
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route

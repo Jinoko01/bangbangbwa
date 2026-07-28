@@ -26,6 +26,7 @@ interface AuthStore {
     authorizationCode: string,
   ) => Promise<User>;
   loginAsMockBroker: (brokerId: number) => Promise<User>;
+  loginAsMockTenant: () => Promise<User>;
   loginAsMockAdmin: () => Promise<User>;
   logout: () => Promise<void>;
   updateProfile: (changes: UserProfileChanges) => Promise<User>;
@@ -89,6 +90,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
   loginAsMockBroker: async (brokerId) => {
     const user = await authApi.loginWithMockBroker(brokerId);
+    set({ user, isSessionRestored: true });
+    return user;
+  },
+  loginAsMockTenant: async () => {
+    const user = await authApi.loginWithMockTenant();
     set({ user, isSessionRestored: true });
     return user;
   },

@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useReservationChecklist } from "@/hooks/useReservationChecklist";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 import type { Property, Reservation } from "@/types";
 
 interface ReservationPageProps {
@@ -128,20 +129,30 @@ function ReservationPage({
 }: ReservationPageProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isBroker = useAuthStore((state) => state.user?.role === "중개사");
   const [activeTab, setActiveTab] = useState<"sent" | "received" | "all">(
     "all",
   );
   const [page, setPage] = useState(1);
+  const roleVisibleReservations = useMemo(
+    () =>
+      isBroker
+        ? reservations
+        : reservations.filter(
+            (reservation) => reservation.direction === "sent",
+          ),
+    [isBroker, reservations],
+  );
   const filteredReservations = useMemo(() => {
     const visibleReservations =
       activeTab === "all"
-        ? reservations
-        : reservations.filter(
+        ? roleVisibleReservations
+        : roleVisibleReservations.filter(
             (reservation) => reservation.direction === activeTab,
           );
 
     return [...visibleReservations].sort(sortByNearest);
-  }, [activeTab, reservations]);
+  }, [activeTab, roleVisibleReservations]);
   const [selectedId, setSelectedId] = useState(
     filteredReservations[0]?.id ?? "",
   );
@@ -178,7 +189,7 @@ function ReservationPage({
             <Badge variant="secondary" className="hidden sm:flex">
               <ShieldCheck /> 확정 예약{" "}
               {
-                reservations.filter(
+                roleVisibleReservations.filter(
                   (reservation) => reservation.status === "예약 확정",
                 ).length
               }
@@ -196,11 +207,14 @@ function ReservationPage({
 
       <div className="mx-auto max-w-7xl px-4 pt-4">
         <div className="inline-flex rounded-xl bg-slate-100 p-1">
-          {(["all", "sent", "received"] as const).map((tab) => {
+          {(isBroker
+            ? (["all", "sent", "received"] as const)
+            : (["all", "sent"] as const)
+          ).map((tab) => {
             const count =
               tab === "all"
-                ? reservations.length
-                : reservations.filter(
+                ? roleVisibleReservations.length
+                : roleVisibleReservations.filter(
                     (reservation) => reservation.direction === tab,
                   ).length;
             return (

@@ -10,12 +10,13 @@ import { useAuthStore } from "@/stores/authStore";
 interface NavItemConfig {
   label: string;
   to: string | null;
+  authRequired?: boolean;
 }
 
 const NAV_ITEMS: NavItemConfig[] = [
   { label: "매물 목록", to: "/properties" },
-  { label: "관심 매물", to: "/saved" },
-  { label: "예약 확인", to: "/reservations" },
+  { label: "관심 매물", to: "/saved", authRequired: true },
+  { label: "예약 확인", to: "/reservations", authRequired: true },
 ];
 
 function NavItem({
@@ -125,10 +126,10 @@ function GlobalNav() {
   const closeMenu = () => setMenuOpen(false);
   const user = useAuthStore((state) => state.user);
   // ADMIN-01 인증 심사 메뉴는 관리자 계정에만 노출
-  const navItems =
-    user?.role === "관리자"
-      ? [...NAV_ITEMS, { label: "인증 심사", to: "/admin" }]
-      : NAV_ITEMS;
+  const navItems = NAV_ITEMS.filter((item) => user || !item.authRequired);
+  if (user?.role === "관리자") {
+    navItems.push({ label: "인증 심사", to: "/admin" });
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">

@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { MOCK_BROKER_ACCOUNTS } from "@/api/auth";
+import { MOCK_BROKER_ACCOUNTS, MOCK_TENANT_ACCOUNT } from "@/api/auth";
 import { redirectToSocialLogin, saveReturnTo } from "@/lib/oauth";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthProvider } from "@/types";
@@ -43,6 +43,7 @@ function GoogleLogo() {
 // PAGE-01 로그인 — 카카오·구글 소셜 로그인 (AUTH-01). 인가 코드 흐름은 /oauth/callback에서 마무리.
 function LoginPage() {
   const loginAsMockBroker = useAuthStore((state) => state.loginAsMockBroker);
+  const loginAsMockTenant = useAuthStore((state) => state.loginAsMockTenant);
   const loginAsMockAdmin = useAuthStore((state) => state.loginAsMockAdmin);
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,6 +65,11 @@ function LoginPage() {
   const mockAdminLogin = async () => {
     await loginAsMockAdmin();
     navigate("/admin", { replace: true });
+  };
+
+  const mockTenantLogin = async () => {
+    await loginAsMockTenant();
+    navigate(from, { replace: true });
   };
 
   return (
@@ -119,6 +125,15 @@ function LoginPage() {
                   중개사 {broker.id} · {broker.nickname} ({broker.name})
                 </Button>
               ))}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={mockTenantLogin}
+              >
+                세입자 · {MOCK_TENANT_ACCOUNT.nickname} (
+                {MOCK_TENANT_ACCOUNT.name})
+              </Button>
               <Button
                 variant="secondary"
                 size="sm"
