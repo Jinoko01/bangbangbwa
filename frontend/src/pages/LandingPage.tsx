@@ -533,52 +533,21 @@ function FeatureVisual({ index }: { index: number }) {
 }
 
 // 핵심 기능 쇼케이스 — 활성 기능이 메인 카드로 크게 표시된다
-// (lg 이상은 스크롤 구간별 전환, 미만·모션 축소 시엔 카드 클릭 전환)
+// (lg 이상은 커서 hover/focus, 미만은 카드 클릭으로 전환)
 function FeaturesSection() {
-  const runwayRef = useRef<HTMLElement>(null);
-  const isDesktop = useIsDesktop();
   const reducedMotion = useReducedMotion();
-  const animated = isDesktop && !reducedMotion;
   const [selected, setSelected] = useState(0);
-  const scrollStep = useSyncExternalStore(subscribeToWindowScroll, () =>
-    animated ? getRunwayStep(runwayRef.current, FEATURES.length) : 0,
-  );
-  const active = animated ? scrollStep : selected;
+  const active = selected;
   const { icon: ActiveIcon, title, description } = FEATURES[active];
 
-  // 스크롤 모드에서는 선택한 기능의 러너웨이 구간 중앙으로 이동시켜
-  // 활성 산출(getRunwayStep)과 어긋나지 않게 한다
   const selectFeature = (index: number) => {
-    if (!animated) {
-      setSelected(index);
-      return;
-    }
-    const runway = runwayRef.current;
-    if (!runway) {
-      return;
-    }
-    const range = runway.offsetHeight - window.innerHeight;
-    const top = window.scrollY + runway.getBoundingClientRect().top;
-    window.scrollTo({
-      top: top + (range * (index + 0.5)) / FEATURES.length,
-      behavior: "smooth",
-    });
+    setSelected(index);
   };
 
   return (
-    <section ref={runwayRef} className={cn(animated && "lg:h-[300vh]")}>
-      <div
-        className={cn(
-          animated &&
-            "lg:sticky lg:top-14 lg:flex lg:h-[calc(100svh-3.5rem)] lg:items-center",
-        )}
-      >
-        <div
-          className={cn(
-            "mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8",
-            animated ? "lg:py-0" : "lg:py-32",
-          )}
-        >
+    <section>
+      <div>
+        <div className="mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold tracking-wider text-primary">
               핵심 기능
@@ -626,16 +595,30 @@ function FeaturesSection() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.article
                 key={active}
-                initial={reducedMotion ? false : { opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reducedMotion ? {} : { opacity: 0, y: -16 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
+                initial={
+                  reducedMotion ? false : { opacity: 0, x: -12, scale: 0.985 }
+                }
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={reducedMotion ? {} : { opacity: 0, x: 12, scale: 0.985 }}
+                transition={{
+                  duration: reducedMotion ? 0 : 0.32,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 className={cn(
-                  "flex flex-col gap-6 rounded-2xl border bg-card p-7 sm:flex-row sm:items-center",
+                  "relative isolate flex flex-col gap-6 overflow-hidden rounded-2xl border bg-card p-7 sm:flex-row sm:items-center",
                   FEATURE_TINTED_SHADOW,
                 )}
               >
-                <div className="flex-1">
+                {!reducedMotion && (
+                  <motion.div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl"
+                    initial={{ left: "-20%", opacity: 0 }}
+                    animate={{ left: "72%", opacity: [0, 0.9, 0.35] }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                  />
+                )}
+                <div className="relative z-10 flex-1">
                   <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
                     <ActiveIcon className="size-5" />
                   </div>
@@ -644,9 +627,17 @@ function FeaturesSection() {
                     {description}
                   </p>
                 </div>
-                <div className="relative h-[220px] w-full shrink-0 overflow-hidden rounded-xl bg-slate-900 sm:h-[260px] sm:w-[300px] lg:w-[380px]">
+                <motion.div
+                  className="relative z-10 h-[220px] w-full shrink-0 overflow-hidden rounded-xl bg-slate-900 sm:h-[260px] sm:w-[300px] lg:w-[380px]"
+                  initial={reducedMotion ? false : { scale: 0.96 }}
+                  animate={{ scale: 1 }}
+                  transition={{
+                    duration: reducedMotion ? 0 : 0.45,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
                   <FeatureVisual index={active} />
-                </div>
+                </motion.div>
               </motion.article>
             </AnimatePresence>
 
@@ -662,18 +653,43 @@ function FeaturesSection() {
                 ) => {
                   const isActive = active === index;
                   return (
-                    <button
+                    <motion.button
                       type="button"
                       key={itemTitle}
                       onClick={() => selectFeature(index)}
+                      onPointerEnter={() => selectFeature(index)}
+                      onFocus={() => selectFeature(index)}
                       aria-current={isActive ? "true" : undefined}
+                      animate={{
+                        x: isActive && !reducedMotion ? -6 : 0,
+                        scale: isActive && !reducedMotion ? 1.015 : 1,
+                      }}
+                      whileHover={reducedMotion ? undefined : { x: -4 }}
+                      whileTap={reducedMotion ? undefined : { scale: 0.985 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 320,
+                        damping: 26,
+                      }}
                       className={cn(
-                        "rounded-xl border bg-card p-5 text-left transition-all duration-300",
+                        "relative overflow-hidden rounded-xl border bg-card p-5 text-left transition-[border-color,box-shadow,background-color] duration-300",
                         isActive
-                          ? cn("border-primary/50", FEATURE_TINTED_SHADOW)
-                          : "shadow-sm hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-8px_rgba(22,93,252,0.15)]",
+                          ? cn(
+                              "border-primary/50 bg-primary/[0.025]",
+                              FEATURE_TINTED_SHADOW,
+                            )
+                          : "shadow-sm hover:shadow-[0_16px_40px_-8px_rgba(22,93,252,0.15)]",
                       )}
                     >
+                      <motion.span
+                        aria-hidden="true"
+                        className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-primary"
+                        animate={{
+                          scaleY: isActive ? 1 : 0,
+                          opacity: isActive ? 1 : 0,
+                        }}
+                        transition={{ duration: 0.22, ease: "easeOut" }}
+                      />
                       <span className="flex items-center gap-2.5">
                         <span
                           className={cn(
@@ -697,7 +713,7 @@ function FeaturesSection() {
                       <span className="mt-2 block text-sm leading-relaxed break-keep text-muted-foreground">
                         {itemDescription}
                       </span>
-                    </button>
+                    </motion.button>
                   );
                 },
               )}
