@@ -309,8 +309,8 @@ function ChecklistPanel({ checklist, onChecklistChange }: ChecklistPanelProps) {
   const completedCount = checklist.filter((item) => item.completed).length;
 
   return (
-    <section>
-      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+    <section className="flex h-full min-h-0 flex-col">
+      <h2 className="mb-2 flex shrink-0 items-center gap-1.5 text-sm font-semibold">
         <ListChecks className="size-4" />
         체크리스트
         <span className="font-normal text-muted-foreground">
@@ -625,7 +625,7 @@ function ReservationLivePage({
 
   return (
     // GNB를 숨기는 화면이라 뷰포트 전체를 쓴다 (App의 hideGlobalNav와 짝)
-    <main className="flex h-svh flex-col bg-slate-50">
+    <main className="flex h-svh flex-col overflow-hidden bg-slate-50">
       <section className="shrink-0 border-b bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -657,7 +657,8 @@ function ReservationLivePage({
 
       <div
         className={cn(
-          "relative mx-auto min-h-0 w-full max-w-7xl flex-1 lg:grid lg:gap-4 lg:p-4",
+          // grid-rows를 명시하지 않으면 행이 내용 높이로 늘어나 패널이 화면 밖으로 새어나간다
+          "relative mx-auto min-h-0 w-full max-w-7xl flex-1 lg:grid lg:grid-rows-[minmax(0,1fr)] lg:gap-4 lg:p-4",
           showPanel ? "lg:grid-cols-[minmax(0,1fr)_370px]" : "lg:grid-cols-1",
         )}
       >
@@ -793,7 +794,7 @@ function ReservationLivePage({
             </button>
             <CardContent
               className={cn(
-                "min-h-0 flex-1 overflow-y-auto px-4 pb-4 lg:block lg:pb-0",
+                "min-h-0 flex-1 overflow-hidden px-4 pb-4 lg:block lg:pb-0",
                 sheetOpen ? "block" : "hidden",
               )}
             >

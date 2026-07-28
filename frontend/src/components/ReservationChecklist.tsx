@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { ChecklistItem } from "@/types";
 
+const MAX_CHECKLIST_ITEMS = 20;
+
 interface ReservationChecklistProps {
   items: ChecklistItem[];
   onChange: (items: ChecklistItem[]) => void;
@@ -22,11 +24,12 @@ function ReservationChecklist({
   const isBare = variant === "bare";
   const [draft, setDraft] = useState("");
   const completedCount = items.filter((item) => item.completed).length;
+  const isFull = items.length >= MAX_CHECKLIST_ITEMS;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const text = draft.trim();
-    if (!text) {
+    if (!text || isFull) {
       return;
     }
     onChange([...items, { id: crypto.randomUUID(), text, completed: false }]);
@@ -46,9 +49,15 @@ function ReservationChecklist({
   };
 
   return (
-    <div className={cn(!isBare && "rounded-xl border bg-slate-50/70 p-4")}>
+    // 항목이 늘어나도 페이지가 아니라 목록만 스크롤되도록 높이를 여기서 가둔다
+    <div
+      className={cn(
+        "flex min-h-0 flex-col",
+        isBare ? "flex-1" : "rounded-xl border bg-slate-50/70 p-4",
+      )}
+    >
       {!isBare && (
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex shrink-0 items-start justify-between gap-3">
           <div>
             <strong className="text-sm text-slate-900">예약 체크리스트</strong>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -64,14 +73,20 @@ function ReservationChecklist({
       {items.length === 0 ? (
         <p
           className={cn(
-            "rounded-lg border border-dashed bg-white px-3 py-6 text-center text-xs text-muted-foreground",
+            "shrink-0 rounded-lg border border-dashed bg-white px-3 py-6 text-center text-xs text-muted-foreground",
             !isBare && "mt-4",
           )}
         >
           아직 체크리스트 항목이 없습니다. 아래에서 추가하세요.
         </p>
       ) : (
-        <ul className={cn("space-y-2", !isBare && "mt-4")}>
+        <ul
+          className={cn(
+            "min-h-0 space-y-2 overflow-y-auto pr-1",
+            // 부모가 높이를 주지 않는 카드 형태에서는 목록 자체에 상한을 둔다
+            isBare ? "flex-1" : "mt-4 max-h-80",
+          )}
+        >
           {items.map((item) => (
             <li
               key={item.id}
@@ -110,7 +125,7 @@ function ReservationChecklist({
         </ul>
       )}
 
-      <form className="mt-3 flex gap-2" onSubmit={handleSubmit}>
+      <form className="mt-3 flex shrink-0 gap-2" onSubmit={handleSubmit}>
         <Input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -118,11 +133,26 @@ function ReservationChecklist({
           aria-label="체크리스트 항목"
           className="h-10 min-w-0 flex-1 bg-white placeholder:text-xs"
           maxLength={60}
+          disabled={isFull}
         />
-        <Button type="submit" size="sm" className="h-10 shrink-0">
+        <Button
+          type="submit"
+          size="sm"
+          className="h-10 shrink-0"
+          disabled={isFull}
+        >
           <Plus /> 추가
         </Button>
       </form>
+
+      {isFull && (
+        <p
+          role="status"
+          className="mt-2 shrink-0 text-xs text-muted-foreground"
+        >
+          체크리스트는 최대 {MAX_CHECKLIST_ITEMS}개까지 등록할 수 있어요.
+        </p>
+      )}
     </div>
   );
 }
