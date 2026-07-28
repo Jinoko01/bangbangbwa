@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MAX_CHECKLIST_ITEMS } from "@/hooks/useReservationChecklist";
 import { cn } from "@/lib/utils";
 import type { ChecklistItem } from "@/types";
 
@@ -22,11 +23,12 @@ function ReservationChecklist({
   const isBare = variant === "bare";
   const [draft, setDraft] = useState("");
   const completedCount = items.filter((item) => item.completed).length;
+  const reachedItemLimit = items.length >= MAX_CHECKLIST_ITEMS;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const text = draft.trim();
-    if (!text) {
+    if (!text || reachedItemLimit) {
       return;
     }
     onChange([...items, { id: crypto.randomUUID(), text, completed: false }]);
@@ -56,7 +58,7 @@ function ReservationChecklist({
             </p>
           </div>
           <Badge variant="secondary">
-            {completedCount}/{items.length}
+            {completedCount}/{items.length} · 최대 {MAX_CHECKLIST_ITEMS}개
           </Badge>
         </div>
       )}
@@ -114,15 +116,31 @@ function ReservationChecklist({
         <Input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="확인할 내용이나 질문을 입력하세요"
+          placeholder={
+            reachedItemLimit
+              ? "체크리스트는 최대 20개까지 작성할 수 있습니다"
+              : "확인할 내용이나 질문을 입력하세요"
+          }
           aria-label="체크리스트 항목"
+          disabled={reachedItemLimit}
           className="h-10 min-w-0 flex-1 bg-white placeholder:text-xs"
           maxLength={60}
         />
-        <Button type="submit" size="sm" className="h-10 shrink-0">
+        <Button
+          type="submit"
+          size="sm"
+          className="h-10 shrink-0"
+          disabled={reachedItemLimit || !draft.trim()}
+        >
           <Plus /> 추가
         </Button>
       </form>
+      {reachedItemLimit && (
+        <p className="mt-2 text-xs text-muted-foreground" role="status">
+          최대 작성 개수에 도달했습니다. 새 항목을 추가하려면 기존 항목을 삭제해
+          주세요.
+        </p>
+      )}
     </div>
   );
 }

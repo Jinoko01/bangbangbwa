@@ -4,6 +4,7 @@ import { readStoredJson, writeStoredJson } from "@/lib/storage";
 import type { ChecklistItem } from "@/types";
 
 const CHECKLIST_STORAGE_KEY = "bangbangbwa:reservation-checklists";
+export const MAX_CHECKLIST_ITEMS = 20;
 const DEFAULT_CHECKLIST_TEXTS = [
   "벽지·천장 곰팡이 확인",
   "등기부등본 근저당 확인",
@@ -34,7 +35,10 @@ export function useReservationChecklist(reservationId: string | undefined) {
       if (!reservationId) {
         return;
       }
-      setChecklists((current) => ({ ...current, [reservationId]: items }));
+      setChecklists((current) => ({
+        ...current,
+        [reservationId]: items.slice(0, MAX_CHECKLIST_ITEMS),
+      }));
     },
     [reservationId],
   );
