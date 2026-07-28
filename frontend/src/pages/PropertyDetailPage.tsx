@@ -1129,8 +1129,8 @@ function PropertyDetailPage({
     monthlyRent: property.monthlyRent,
   };
 
-  // 매물 상세 응답에 아직 사진 필드가 없다 — 이미지 API가 생기면 이 배열만 채우면 캐러셀이 살아난다
-  const photoUrls: string[] = [];
+  const photoUrls =
+    property?.imageUrls ?? (property?.imageUrl ? [property.imageUrl] : []);
   const isNotFound = isApiError(error) && error.status === 404;
 
   return (
@@ -1230,6 +1230,9 @@ function PropertyDetailPage({
                         : ""}
                     </InfoRow>
                   )}
+                  {property.rooms !== undefined && (
+                    <InfoRow label="방 개수">방{property.rooms}</InfoRow>
+                  )}
                   {property.maintenanceFee !== undefined && (
                     <InfoRow label="관리비">
                       {formatManwonLabel(property.maintenanceFee)}
@@ -1274,6 +1277,25 @@ function PropertyDetailPage({
                 미팅 예약
               </Button>
             </div>
+
+            {property.nearbyFacilities &&
+              property.nearbyFacilities.length > 0 && (
+                <NearbyFacilitiesSection
+                  facilities={property.nearbyFacilities}
+                  propertyTitle={property.title}
+                  propertyAddress={
+                    property.roadAddress ??
+                    `${property.sigungu} ${property.dong}`
+                  }
+                />
+              )}
+
+            <MemoSection
+              memos={memos}
+              onAdd={onAddMemo}
+              onUpdate={onUpdateMemo}
+              onDelete={onDeleteMemo}
+            />
 
             <PhotoDialog
               title={property.title}

@@ -89,6 +89,8 @@ export interface PropertySummary {
   totalFloor?: number;
   status: string;
   saved: boolean;
+  // 사진은 백엔드 목록 응답에 아직 없다 — 지금은 목데이터에서 채운다
+  imageUrl?: string;
 }
 
 export interface PropertyDetail extends PropertySummary {
@@ -100,6 +102,10 @@ export interface PropertyDetail extends PropertySummary {
   longitude?: number;
   description?: string;
   createdAt: string;
+  // 방 개수·사진·주변 편의시설은 백엔드 상세 응답에 아직 없다 — 지금은 목데이터에서 채운다
+  rooms?: number;
+  imageUrls?: string[];
+  nearbyFacilities?: NearbyFacility[];
 }
 
 export interface PropertyMapPin {
