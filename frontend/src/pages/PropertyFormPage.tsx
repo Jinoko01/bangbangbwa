@@ -43,6 +43,13 @@ import {
   searchPropertyEnvironment,
   type GeocodedAddress,
 } from "@/lib/kakaoLocal";
+import {
+  DEPOSIT_LABEL,
+  PROPERTY_LIMITS,
+  validateImageFile,
+  validatePropertyForm,
+  type PropertyFormInput,
+} from "@/lib/propertyValidation";
 import { cn } from "@/lib/utils";
 import type {
   DealType,
@@ -54,12 +61,6 @@ import type {
 } from "@/types";
 
 const DEAL_TYPES: DealType[] = ["전세", "월세", "매매"];
-
-const DEPOSIT_LABEL: Record<DealType, string> = {
-  전세: "전세 보증금 (만원)",
-  월세: "보증금 (만원)",
-  매매: "매매가 (만원)",
-};
 
 // 대표 사진을 제외하고 캐러셀에 추가로 넣을 수 있는 사진 수 (총 5장)
 const MAX_EXTRA_PHOTOS = 4;
@@ -313,11 +314,13 @@ function EnvironmentSection({
 function PriceInput({
   name,
   defaultValue,
+  max,
   disabled,
   invalid,
 }: {
   name: string;
   defaultValue?: number | string;
+  max?: number;
   disabled?: boolean;
   invalid?: boolean;
 }) {
@@ -329,6 +332,7 @@ function PriceInput({
         name={name}
         type="number"
         min={1}
+        max={max}
         defaultValue={defaultValue}
         disabled={disabled}
         aria-invalid={invalid || undefined}
@@ -491,80 +495,6 @@ interface PhotoDraft {
   file?: File;
 }
 
-interface FormInput {
-  title: string;
-  dealType: DealType;
-  deposit: number;
-  monthlyRent: number;
-  maintenanceFee?: number;
-  complexName: string;
-  builtYear?: number;
-  description: string;
-  areaM2: number;
-  floor: number;
-  totalFloors?: number;
-  rooms: number;
-}
-
-function validate(input: FormInput, address: GeocodedAddress | null) {
-  const errors: FormErrors = {};
-  if (!input.title) {
-    errors.title = "매물명을 입력해주세요";
-  }
-  if (!Number.isFinite(input.deposit) || input.deposit <= 0) {
-    errors.deposit = `${DEPOSIT_LABEL[input.dealType]}을 입력해주세요`;
-  }
-  if (
-    input.dealType === "월세" &&
-    (!Number.isFinite(input.monthlyRent) || input.monthlyRent <= 0)
-  ) {
-    errors.monthlyRent = "월세를 입력해주세요";
-  }
-  if (!address) {
-    errors.address = "주소를 검색해 위치를 확인해주세요";
-  } else if (!address.sigungu || !address.dong) {
-    errors.address = "동 단위까지 포함된 주소로 다시 검색해주세요";
-  }
-  if (
-    input.builtYear !== undefined &&
-    (!Number.isInteger(input.builtYear) ||
-      input.builtYear < 1900 ||
-      input.builtYear > 2100)
-  ) {
-    errors.builtYear = "준공 연도를 1900~2100 사이로 입력해주세요";
-  }
-  if (
-    input.maintenanceFee !== undefined &&
-    (!Number.isFinite(input.maintenanceFee) || input.maintenanceFee < 0)
-  ) {
-    errors.maintenanceFee = "관리비를 올바르게 입력해주세요";
-  }
-  if (!Number.isFinite(input.areaM2) || input.areaM2 <= 0) {
-    errors.areaM2 = "전용면적을 입력해주세요";
-  }
-  if (!Number.isFinite(input.floor) || input.floor <= 0) {
-    errors.floor = "층수를 입력해주세요";
-  }
-  if (
-    input.totalFloors !== undefined &&
-    (!Number.isFinite(input.totalFloors) || input.totalFloors <= 0)
-  ) {
-    errors.totalFloors = "총 층수를 올바르게 입력해주세요";
-  }
-  if (
-    !errors.floor &&
-    !errors.totalFloors &&
-    input.totalFloors !== undefined &&
-    input.floor > input.totalFloors
-  ) {
-    errors.floor = "층수는 총 층수보다 클 수 없습니다";
-  }
-  if (!Number.isFinite(input.rooms) || input.rooms <= 0) {
-    errors.rooms = "방 개수를 입력해주세요";
-  }
-  return errors;
-}
-
 function PropertyForm({
   property,
   nextId,
@@ -615,6 +545,12 @@ function PropertyForm({
     if (!file) {
       return;
     }
+    const fileError = validateImageFile(file);
+    if (fileError) {
+      event.target.value = "";
+      setPhotoError(fileError);
+      return;
+    }
     try {
       setCoverPhoto({ url: await readFileAsDataUrl(file), file });
       setPhotoError(null);
@@ -629,19 +565,23 @@ function PropertyForm({
     if (files.length === 0) {
       return;
     }
+    const fileErrors = files.map(validateImageFile);
+    const firstFileError = fileErrors.find((error) => error !== null) ?? null;
+    const validFiles = files.filter((_, index) => !fileErrors[index]);
     const remaining = MAX_EXTRA_PHOTOS - extraPhotos.length;
     try {
       const added = await Promise.all(
-        files.slice(0, remaining).map(async (file) => ({
+        validFiles.slice(0, remaining).map(async (file) => ({
           url: await readFileAsDataUrl(file),
           file,
         })),
       );
       setExtraPhotos((prev) => [...prev, ...added].slice(0, MAX_EXTRA_PHOTOS));
       setPhotoError(
-        files.length > remaining
-          ? `추가 사진은 최대 ${MAX_EXTRA_PHOTOS}장까지 등록할 수 있어요`
-          : null,
+        firstFileError ??
+          (validFiles.length > remaining
+            ? `추가 사진은 최대 ${MAX_EXTRA_PHOTOS}장까지 등록할 수 있어요`
+            : null),
       );
     } catch {
       setPhotoError("이미지를 처리하지 못했습니다. 잠시 후 다시 시도해주세요");
@@ -679,7 +619,10 @@ function PropertyForm({
 
   // 등록: POST /api/properties — 좌표·주변 편의시설은 주소 검색 결과에서 가져온다.
   // 사진은 매물 id가 나온 뒤 multipart로 따로 올린다 (실패해도 매물 등록 자체는 유효)
-  const submitCreate = async (input: FormInput, resolved: GeocodedAddress) => {
+  const submitCreate = async (
+    input: PropertyFormInput,
+    resolved: GeocodedAddress,
+  ) => {
     const body: PropertyCreateInput = {
       title: input.title,
       transactionType: input.dealType,
@@ -714,7 +657,7 @@ function PropertyForm({
       .filter((file): file is File => file !== undefined);
 
   // 수정: 백엔드에 매물 수정 API가 없어 아직 로컬 상태만 갱신한다
-  const saveLocally = (input: FormInput, resolved: GeocodedAddress) => {
+  const saveLocally = (input: PropertyFormInput, resolved: GeocodedAddress) => {
     const imageUrl = coverPhoto?.url;
     const extraUrls = extraPhotos.map((photo) => photo.url);
     const imageUrls = imageUrl
@@ -759,7 +702,7 @@ function PropertyForm({
           "rooms",
         ].map((key) => [key, String(formData.get(key) ?? "")]),
       );
-      const input: FormInput = {
+      const input: PropertyFormInput = {
         title: values.title.trim(),
         dealType,
         deposit: Number(values.deposit),
@@ -777,7 +720,7 @@ function PropertyForm({
           : undefined,
         rooms: Number(values.rooms),
       };
-      const errors = validate(input, address);
+      const errors = validatePropertyForm(input, address);
       if (Object.keys(errors).length > 0) {
         setFormVersion((version) => version + 1);
         return { errors, values };
@@ -869,6 +812,7 @@ function PropertyForm({
         >
           <Input
             name="title"
+            maxLength={PROPERTY_LIMITS.titleMax}
             defaultValue={values?.title ?? property?.title}
             aria-invalid={errors?.title ? true : undefined}
           />
@@ -900,6 +844,7 @@ function PropertyForm({
         >
           <PriceInput
             name="deposit"
+            max={PROPERTY_LIMITS.priceMax}
             defaultValue={values?.deposit ?? property?.deposit}
             invalid={Boolean(errors?.deposit)}
           />
@@ -912,6 +857,7 @@ function PropertyForm({
         >
           <PriceInput
             name="monthlyRent"
+            max={PROPERTY_LIMITS.monthlyRentMax}
             defaultValue={
               values?.monthlyRent ?? (property?.monthlyRent || undefined)
             }
@@ -950,6 +896,7 @@ function PropertyForm({
         <FormField label="단지·건물명">
           <Input
             name="complexName"
+            maxLength={PROPERTY_LIMITS.complexNameMax}
             defaultValue={values?.complexName}
             placeholder="예) 래미안 1단지"
           />
@@ -958,8 +905,8 @@ function PropertyForm({
           <Input
             name="builtYear"
             type="number"
-            min={1900}
-            max={2100}
+            min={PROPERTY_LIMITS.builtYearMin}
+            max={PROPERTY_LIMITS.builtYearMax}
             defaultValue={values?.builtYear}
             aria-invalid={errors?.builtYear ? true : undefined}
           />
@@ -982,15 +929,18 @@ function PropertyForm({
             name="areaM2"
             type="number"
             min={1}
+            max={PROPERTY_LIMITS.areaMax}
+            step={0.01}
             defaultValue={values?.areaM2 ?? property?.areaM2}
             aria-invalid={errors?.areaM2 ? true : undefined}
           />
         </FormField>
-        <FormField label="방 개수" error={errors?.rooms}>
+        <FormField label="방 개수" required error={errors?.rooms}>
           <Input
             name="rooms"
             type="number"
             min={1}
+            max={PROPERTY_LIMITS.roomsMax}
             defaultValue={values?.rooms ?? property?.rooms}
             aria-invalid={errors?.rooms ? true : undefined}
           />
@@ -1000,6 +950,7 @@ function PropertyForm({
             name="floor"
             type="number"
             min={1}
+            max={PROPERTY_LIMITS.floorMax}
             defaultValue={values?.floor ?? property?.floor}
             aria-invalid={errors?.floor ? true : undefined}
           />
@@ -1009,6 +960,7 @@ function PropertyForm({
             name="totalFloors"
             type="number"
             min={1}
+            max={PROPERTY_LIMITS.floorMax}
             defaultValue={values?.totalFloors ?? property?.totalFloors}
             aria-invalid={errors?.totalFloors ? true : undefined}
           />
@@ -1016,16 +968,23 @@ function PropertyForm({
         <FormField label="관리비 (만원)" error={errors?.maintenanceFee}>
           <PriceInput
             name="maintenanceFee"
+            max={PROPERTY_LIMITS.maintenanceFeeMax}
             defaultValue={values?.maintenanceFee}
             invalid={Boolean(errors?.maintenanceFee)}
           />
         </FormField>
-        <FormField label="상세 설명" className="sm:col-span-2">
+        <FormField
+          label="상세 설명"
+          error={errors?.description}
+          className="sm:col-span-2"
+        >
           <Textarea
             name="description"
             rows={4}
+            maxLength={PROPERTY_LIMITS.descriptionMax}
             defaultValue={values?.description}
             placeholder="채광·옵션·주변 환경 등 세입자가 궁금해할 정보를 적어주세요"
+            aria-invalid={errors?.description ? true : undefined}
           />
         </FormField>
       </FormSection>
@@ -1048,7 +1007,7 @@ function PropertyForm({
         errors &&
         Object.keys(errors).length > 0 && (
           <p className="text-sm text-destructive">
-            입력하지 않은 항목이 있어요. 표시된 필드를 확인해주세요
+            잘못 입력된 항목이 있어요. 표시된 필드를 확인해주세요
           </p>
         )
       )}
