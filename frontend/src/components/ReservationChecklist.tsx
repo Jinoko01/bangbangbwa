@@ -8,8 +8,6 @@ import { MAX_CHECKLIST_ITEMS } from "@/hooks/useReservationChecklist";
 import { cn } from "@/lib/utils";
 import type { ChecklistItem } from "@/types";
 
-const MAX_CHECKLIST_ITEMS = 20;
-
 interface ReservationChecklistProps {
   items: ChecklistItem[];
   onChange: (items: ChecklistItem[]) => void;
@@ -131,15 +129,14 @@ function ReservationChecklist({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder={
-            reachedItemLimit
-              ? "최대 20개까지 작성 가능"
+            isFull
+              ? `최대 ${MAX_CHECKLIST_ITEMS}개까지 작성 가능`
               : "확인할 내용이나 질문을 입력하세요"
           }
           aria-label="체크리스트 항목"
-          disabled={reachedItemLimit}
+          disabled={isFull}
           className="h-11 min-w-0 flex-1 bg-white py-2 text-sm leading-6 placeholder:text-sm placeholder:leading-6"
           maxLength={60}
-          disabled={isFull}
         />
         <Button
           type="submit"
