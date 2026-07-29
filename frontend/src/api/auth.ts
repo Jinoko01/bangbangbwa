@@ -1,13 +1,8 @@
 import { api } from "@/api/client";
-import type {
-  AuthProvider,
-  BrokerVerificationRequest,
-  User,
-  UserProfileChanges,
-} from "@/types";
+import type { AuthProvider, BrokerVerificationRequest, User } from "@/types";
 
 // AUTH-01 소셜 로그인 / AUTH-02 로그아웃 (/api/auth/*).
-// 프로필 수정·중개사 인증은 백엔드 미완성이라 아직 목 스텁으로 남겨둔다.
+// 중개사 인증은 백엔드 미완성이라 아직 목 스텁으로 남겨둔다.
 
 // AUTH-01 소셜 로그인 응답 — accessToken은 authStore가 localStorage에 저장한다.
 interface TokenResponse {
@@ -112,14 +107,6 @@ export async function loginWithMockTenant(): Promise<User> {
 // 개발용 — 인증 심사 페이지 테스트를 위한 관리자 로그인
 export async function loginWithMockAdmin(): Promise<User> {
   return { ...MOCK_ADMIN, provider: "google" };
-}
-
-// TODO: USER-02 내 정보 수정 API 연동
-export async function updateProfile(
-  user: User,
-  changes: UserProfileChanges,
-): Promise<User> {
-  return { ...user, ...changes };
 }
 
 // TODO: 중개사 인증 신청 API 연동 (등록번호·서류 업로드, 관리자 수동 승인)

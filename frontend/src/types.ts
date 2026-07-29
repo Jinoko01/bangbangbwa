@@ -223,10 +223,8 @@ export interface User {
   provider: AuthProvider;
 }
 
-export type UserProfileChanges = Pick<
-  User,
-  "birth" | "nickname" | "phone" | "profileImageUrl"
->;
+// 프로필 이미지는 엔드포인트가 따로라 여기 포함하지 않는다 (파일로 별도 전송)
+export type UserProfileChanges = Pick<User, "birth" | "nickname" | "phone">;
 
 export interface BrokerVerificationRequest {
   registrationNumber: string;
