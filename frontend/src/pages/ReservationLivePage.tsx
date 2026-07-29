@@ -35,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useReservationChecklist } from "@/hooks/useReservationChecklist";
+import { useChecklist } from "@/hooks/queries/checklistQueries";
 import {
   type SessionCapture,
   useSessionCaptures,
@@ -43,7 +43,7 @@ import {
 import { useVideoAspect } from "@/hooks/useVideoAspect";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
-import type { ChecklistItem, Property, Reservation, UserRole } from "@/types";
+import type { Property, Reservation, UserRole } from "@/types";
 
 type SessionStatus =
   "connecting" | "waiting" | "connected" | "peer-left" | "room-full" | "error";
@@ -301,12 +301,15 @@ function ControlButton({
 // 세입자 전용 패널 — 데스크톱 사이드바와 모바일 하단 시트가 함께 쓴다.
 // 명세 "사용자 권한" — 체크리스트 확인·수정은 세입자만 가능하다
 interface ChecklistPanelProps {
-  checklist: ChecklistItem[];
-  onChecklistChange: (items: ChecklistItem[]) => void;
+  meetingId: number | undefined;
 }
 
-function ChecklistPanel({ checklist, onChecklistChange }: ChecklistPanelProps) {
-  const completedCount = checklist.filter((item) => item.completed).length;
+function ChecklistPanel({ meetingId }: ChecklistPanelProps) {
+  const { data: checklist } = useChecklist(meetingId);
+  const items = checklist?.items ?? [];
+  const completedCount = items.filter(
+    (item) => item.status === "COMPLETED",
+  ).length;
 
   return (
     <section className="flex h-full min-h-0 flex-col">
@@ -314,14 +317,10 @@ function ChecklistPanel({ checklist, onChecklistChange }: ChecklistPanelProps) {
         <ListChecks className="size-4" />
         체크리스트
         <span className="font-normal text-muted-foreground">
-          {completedCount}/{checklist.length}
+          {completedCount}/{items.length}
         </span>
       </h2>
-      <ReservationChecklist
-        items={checklist}
-        onChange={onChecklistChange}
-        variant="bare"
-      />
+      <ReservationChecklist meetingId={meetingId} variant="bare" />
     </section>
   );
 }
@@ -403,14 +402,14 @@ function ReservationLivePage({
 
   const reservation = reservations.find(({ id }) => id === slug);
   const property = properties.find(({ id }) => id === reservation?.propertyId);
-  const { items: checklist, setItems: setChecklist } = useReservationChecklist(
-    user?.id,
-    property?.id,
-  );
+  const { data: checklistData } = useChecklist(reservation?.meetingId);
+  const checklistItems = checklistData?.items ?? [];
 
   const myLabel = user ? `나 (${user.role})` : "나";
   const peerLabel = user ? PEER_ROLE[user.role] : "상대방";
-  const completedCount = checklist.filter((item) => item.completed).length;
+  const completedCount = checklistItems.filter(
+    (item) => item.status === "COMPLETED",
+  ).length;
 
   // 중개사는 현장에서 카메라를 겨누고, 세입자는 그 화면을 보고 판단한다.
   // 각자에게 중요한 영상이 반대라서 큰 타일에 올릴 스트림도 반대가 된다
@@ -785,7 +784,7 @@ function ReservationLivePage({
             >
               <span className="flex items-center gap-1.5">
                 <ListChecks className="size-4" /> {completedCount}/
-                {checklist.length}
+                {checklistItems.length}
               </span>
               <ChevronUp
                 className={cn(
@@ -800,10 +799,7 @@ function ReservationLivePage({
                 sheetOpen ? "block" : "hidden",
               )}
             >
-              <ChecklistPanel
-                checklist={checklist}
-                onChecklistChange={setChecklist}
-              />
+              <ChecklistPanel meetingId={reservation?.meetingId} />
             </CardContent>
           </Card>
         )}

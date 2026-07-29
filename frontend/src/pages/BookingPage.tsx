@@ -71,8 +71,11 @@ function BookingPage({ properties, onConfirm }: BookingPageProps) {
     const timeOptions = selectedHours.map(
       (hour) => `${String(hour).padStart(2, "0")}:00`,
     );
+    // 회의 API 연동 전이라 로컬 예약에도 회의 id가 필요하다 — 생성 시각으로 임시 발급
+    const mockMeetingId = Date.now();
     onConfirm({
-      id: `reservation-${Date.now()}`,
+      id: `reservation-${mockMeetingId}`,
+      meetingId: mockMeetingId,
       propertyId: property.id,
       date: selectedDate,
       time: timeOptions.join(", "),

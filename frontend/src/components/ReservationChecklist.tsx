@@ -1,74 +1,145 @@
-import { type FormEvent, useState } from "react";
-import { CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
+import { type ReactNode, useActionState, useState } from "react";
+import {
+  Check,
+  CheckCircle2,
+  Circle,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 
+import { isApiError } from "@/api/error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MAX_CHECKLIST_ITEMS } from "@/hooks/useReservationChecklist";
+import {
+  type ChecklistItemInput,
+  MAX_CHECKLIST_ITEMS,
+  useChecklist,
+  useCreateChecklistItem,
+  useDeleteChecklistItem,
+  useUpdateChecklistItem,
+  useUpdateChecklistItemStatus,
+} from "@/hooks/queries/checklistQueries";
 import { cn } from "@/lib/utils";
-import type { ChecklistItem } from "@/types";
+import type { ChecklistItem, ChecklistItemStatus } from "@/types";
 
 interface ReservationChecklistProps {
-  items: ChecklistItem[];
-  onChange: (items: ChecklistItem[]) => void;
+  meetingId: number | undefined;
   // bare — 이미 제목이 있는 탭·패널 안에 들어갈 때 카드 껍데기와 제목을 뺀다
   variant?: "card" | "bare";
 }
 
+// 확인 완료 ↔ 확인 전 토글, 문제 발견(ISSUE_FOUND) 항목은 눌러서 확인 완료로 되돌린다
+const NEXT_STATUS: Record<ChecklistItemStatus, ChecklistItemStatus> = {
+  PENDING: "COMPLETED",
+  COMPLETED: "PENDING",
+  ISSUE_FOUND: "COMPLETED",
+};
+
+const STATUS_LABEL: Record<ChecklistItemStatus, string> = {
+  PENDING: "확인 전",
+  COMPLETED: "확인 완료",
+  ISSUE_FOUND: "문제 발견",
+};
+
 function ReservationChecklist({
-  items,
-  onChange,
+  meetingId,
   variant = "card",
 }: ReservationChecklistProps) {
   const isBare = variant === "bare";
+
+  if (meetingId === undefined) {
+    return (
+      <ChecklistFrame isBare={isBare}>
+        <ChecklistNotice isBare={isBare}>
+          예약을 선택하면 체크리스트가 표시됩니다.
+        </ChecklistNotice>
+      </ChecklistFrame>
+    );
+  }
+  return <ChecklistContent meetingId={meetingId} isBare={isBare} />;
+}
+
+function ChecklistContent({
+  meetingId,
+  isBare,
+}: {
+  meetingId: number;
+  isBare: boolean;
+}) {
+  const {
+    data: checklist,
+    isPending,
+    isError,
+    refetch,
+  } = useChecklist(meetingId);
+  const createItem = useCreateChecklistItem(meetingId);
+  const updateItem = useUpdateChecklistItem(meetingId);
+  const updateStatus = useUpdateChecklistItemStatus(meetingId);
+  const deleteItem = useDeleteChecklistItem(meetingId);
+
   const [draft, setDraft] = useState("");
-  const completedCount = items.filter((item) => item.completed).length;
+  const items = checklist?.items ?? [];
+  const completedCount = items.filter(
+    (item) => item.status === "COMPLETED",
+  ).length;
   const isFull = items.length >= MAX_CHECKLIST_ITEMS;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const text = draft.trim();
-    if (!text || isFull) {
-      return;
-    }
-    onChange([...items, { id: crypto.randomUUID(), text, completed: false }]);
-    setDraft("");
-  };
+  const [addError, addAction, isAdding] = useActionState(
+    async (): Promise<string | null> => {
+      const content = draft.trim();
+      if (!content || isFull) {
+        return null;
+      }
+      try {
+        await createItem.mutateAsync({ content });
+        setDraft("");
+        return null;
+      } catch (error) {
+        return isApiError(error)
+          ? error.message
+          : "항목 추가에 실패했습니다. 다시 시도해 주세요.";
+      }
+    },
+    null,
+  );
 
-  const toggleItem = (itemId: string) => {
-    onChange(
-      items.map((item) =>
-        item.id === itemId ? { ...item, completed: !item.completed } : item,
-      ),
+  if (isPending) {
+    return (
+      <ChecklistFrame isBare={isBare}>
+        <ChecklistNotice isBare={isBare}>
+          체크리스트를 불러오는 중입니다…
+        </ChecklistNotice>
+      </ChecklistFrame>
     );
-  };
+  }
 
-  const removeItem = (itemId: string) => {
-    onChange(items.filter((item) => item.id !== itemId));
-  };
+  if (isError) {
+    return (
+      <ChecklistFrame isBare={isBare}>
+        <ChecklistNotice isBare={isBare}>
+          체크리스트를 불러오지 못했습니다.
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw /> 다시 시도
+          </Button>
+        </ChecklistNotice>
+      </ChecklistFrame>
+    );
+  }
 
   return (
-    // 항목이 늘어나도 페이지가 아니라 목록만 스크롤되도록 높이를 여기서 가둔다
-    <div
-      className={cn(
-        "flex min-h-0 flex-col",
-        isBare ? "flex-1" : "rounded-xl border bg-slate-50/70 p-4",
-      )}
+    <ChecklistFrame
+      isBare={isBare}
+      badge={
+        <Badge variant="secondary">
+          {completedCount}/{items.length} · 최대 {MAX_CHECKLIST_ITEMS}개
+        </Badge>
+      }
     >
-      {!isBare && (
-        <div className="flex shrink-0 items-start justify-between gap-3">
-          <div>
-            <strong className="text-sm text-slate-900">예약 체크리스트</strong>
-            <p className="mt-1 text-xs text-muted-foreground">
-              통화 중 확인할 내용을 적고, 확인한 항목을 체크하세요.
-            </p>
-          </div>
-          <Badge variant="secondary">
-            {completedCount}/{items.length} · 최대 {MAX_CHECKLIST_ITEMS}개
-          </Badge>
-        </div>
-      )}
-
       {items.length === 0 ? (
         <p
           className={cn(
@@ -87,44 +158,25 @@ function ReservationChecklist({
           )}
         >
           {items.map((item) => (
-            <li
-              key={item.id}
-              className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2.5"
-            >
-              <button
-                type="button"
-                className="shrink-0 text-primary"
-                aria-label={`${item.text} ${item.completed ? "미완료로 변경" : "완료로 변경"}`}
-                onClick={() => toggleItem(item.id)}
-              >
-                {item.completed ? (
-                  <CheckCircle2 className="size-5" />
-                ) : (
-                  <Circle className="size-5" />
-                )}
-              </button>
-              <span
-                className={cn(
-                  "min-w-0 flex-1 text-sm break-words",
-                  item.completed && "text-muted-foreground line-through",
-                )}
-              >
-                {item.text}
-              </span>
-              <button
-                type="button"
-                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
-                aria-label={`${item.text} 삭제`}
-                onClick={() => removeItem(item.id)}
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </li>
+            <ChecklistRow
+              key={item.itemId}
+              item={item}
+              onToggle={() =>
+                updateStatus.mutate({
+                  itemId: item.itemId,
+                  status: NEXT_STATUS[item.status],
+                })
+              }
+              onRemove={() => deleteItem.mutate(item.itemId)}
+              onSave={(input) =>
+                updateItem.mutateAsync({ itemId: item.itemId, input })
+              }
+            />
           ))}
         </ul>
       )}
 
-      <form className="mt-3 flex shrink-0 gap-2" onSubmit={handleSubmit}>
+      <form className="mt-3 flex shrink-0 gap-2" action={addAction}>
         <Input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -142,11 +194,17 @@ function ReservationChecklist({
           type="submit"
           size="sm"
           className="h-10 shrink-0"
-          disabled={isFull}
+          disabled={isFull || isAdding}
         >
           <Plus /> 추가
         </Button>
       </form>
+
+      {addError && (
+        <p role="alert" className="mt-2 shrink-0 text-xs text-red-600">
+          {addError}
+        </p>
+      )}
 
       {isFull && (
         <p
@@ -156,6 +214,202 @@ function ReservationChecklist({
           체크리스트는 최대 {MAX_CHECKLIST_ITEMS}개까지 등록할 수 있어요.
         </p>
       )}
+    </ChecklistFrame>
+  );
+}
+
+function ChecklistRow({
+  item,
+  onToggle,
+  onRemove,
+  onSave,
+}: {
+  item: ChecklistItem;
+  onToggle: () => void;
+  onRemove: () => void;
+  onSave: (input: ChecklistItemInput) => Promise<unknown>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const isCompleted = item.status === "COMPLETED";
+
+  if (isEditing) {
+    return (
+      <ChecklistRowEditor
+        item={item}
+        onSave={onSave}
+        onClose={() => setIsEditing(false)}
+      />
+    );
+  }
+
+  return (
+    <li className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2.5">
+      <button
+        type="button"
+        className={cn(
+          "shrink-0",
+          item.status === "ISSUE_FOUND" ? "text-red-500" : "text-primary",
+        )}
+        aria-label={`${item.content} (${STATUS_LABEL[item.status]}) ${STATUS_LABEL[NEXT_STATUS[item.status]]}로 변경`}
+        onClick={onToggle}
+      >
+        {isCompleted ? (
+          <CheckCircle2 className="size-5" />
+        ) : item.status === "ISSUE_FOUND" ? (
+          <TriangleAlert className="size-5" />
+        ) : (
+          <Circle className="size-5" />
+        )}
+      </button>
+      <span
+        className={cn(
+          "min-w-0 flex-1 text-sm break-words",
+          isCompleted && "text-muted-foreground line-through",
+        )}
+      >
+        {item.content}
+      </span>
+      <button
+        type="button"
+        className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-900"
+        aria-label={`${item.content} 내용 수정`}
+        onClick={() => setIsEditing(true)}
+      >
+        <Pencil className="size-4" />
+      </button>
+      <button
+        type="button"
+        className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+        aria-label={`${item.content} 삭제`}
+        onClick={onRemove}
+      >
+        <Trash2 className="size-4" />
+      </button>
+    </li>
+  );
+}
+
+function ChecklistRowEditor({
+  item,
+  onSave,
+  onClose,
+}: {
+  item: ChecklistItem;
+  onSave: (input: ChecklistItemInput) => Promise<unknown>;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(item.content);
+
+  const [saveError, saveAction, isSaving] = useActionState(
+    async (): Promise<string | null> => {
+      const content = draft.trim();
+      if (!content) {
+        return "내용을 입력해 주세요.";
+      }
+      if (content === item.content) {
+        onClose();
+        return null;
+      }
+      try {
+        // 화면에는 memo 편집이 없지만 PUT이 memo까지 교체하므로 기존 값을 함께 보낸다
+        await onSave({ content, memo: item.memo ?? undefined });
+        onClose();
+        return null;
+      } catch (error) {
+        return isApiError(error)
+          ? error.message
+          : "항목 수정에 실패했습니다. 다시 시도해 주세요.";
+      }
+    },
+    null,
+  );
+
+  return (
+    <li className="rounded-lg border border-primary/40 bg-white px-3 py-2.5">
+      <form className="flex items-center gap-2" action={saveAction}>
+        <Input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => event.key === "Escape" && onClose()}
+          aria-label={`${item.content} 내용 수정`}
+          autoFocus
+          maxLength={60}
+          className="h-9 min-w-0 flex-1 bg-white text-sm"
+        />
+        <Button
+          type="submit"
+          size="sm"
+          className="h-9 shrink-0"
+          disabled={isSaving}
+        >
+          <Check /> 저장
+        </Button>
+        <button
+          type="button"
+          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-900"
+          aria-label="수정 취소"
+          onClick={onClose}
+        >
+          <X className="size-4" />
+        </button>
+      </form>
+      {saveError && (
+        <p role="alert" className="mt-1.5 text-xs text-red-600">
+          {saveError}
+        </p>
+      )}
+    </li>
+  );
+}
+
+function ChecklistFrame({
+  isBare,
+  badge,
+  children,
+}: {
+  isBare: boolean;
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    // 항목이 늘어나도 페이지가 아니라 목록만 스크롤되도록 높이를 여기서 가둔다
+    <div
+      className={cn(
+        "flex min-h-0 flex-col",
+        isBare ? "flex-1" : "rounded-xl border bg-slate-50/70 p-4",
+      )}
+    >
+      {!isBare && (
+        <div className="flex shrink-0 items-start justify-between gap-3">
+          <div>
+            <strong className="text-sm text-slate-900">예약 체크리스트</strong>
+            <p className="mt-1 text-xs text-muted-foreground">
+              통화 중 확인할 내용을 적고, 확인한 항목을 체크하세요.
+            </p>
+          </div>
+          {badge}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function ChecklistNotice({
+  isBare,
+  children,
+}: {
+  isBare: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-white px-3 py-8 text-center text-xs text-muted-foreground",
+        !isBare && "mt-4",
+      )}
+    >
+      {children}
     </div>
   );
 }
