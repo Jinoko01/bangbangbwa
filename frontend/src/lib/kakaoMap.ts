@@ -197,18 +197,10 @@ const SUBWAY_CATEGORY_CODE = "SW8";
 // 카카오 장소 카테고리 코드로 집계하는 항목
 const FACILITY_CATEGORY_CODES = {
   convenienceStoreCount: "CS2",
-  martCount: "MT1",
-  hospitalCount: "HP8",
-  pharmacyCount: "PM9",
-  cafeCount: "CE7",
-  bankCount: "BK9",
-  schoolCount: "SC4",
 } as const;
 
 // 대응하는 카테고리 코드가 없어 키워드로 집계하는 항목
 const FACILITY_KEYWORDS = {
-  policeCount: "경찰서",
-  parkCount: "공원",
   laundryCount: "셀프빨래방",
 } as const;
 

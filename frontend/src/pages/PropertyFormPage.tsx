@@ -215,15 +215,7 @@ function AddressField({
 // property_environment의 개수 항목 — 표시 순서와 라벨
 const FACILITY_COUNT_LABELS: Array<[keyof PropertyEnvironment, string]> = [
   ["convenienceStoreCount", "편의점"],
-  ["martCount", "마트"],
-  ["hospitalCount", "병원"],
-  ["pharmacyCount", "약국"],
-  ["cafeCount", "카페"],
-  ["policeCount", "경찰서"],
-  ["parkCount", "공원"],
-  ["bankCount", "은행"],
   ["laundryCount", "빨래방"],
-  ["schoolCount", "학교"],
 ];
 
 // 주변 편의시설 — 주소 검색으로 좌표가 잡히면 카카오 장소 검색으로 자동 집계된다
@@ -293,7 +285,7 @@ function EnvironmentSection({
           </span>
         )}
       </p>
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <dl className="grid grid-cols-2 gap-2">
         {FACILITY_COUNT_LABELS.map(([field, label]) => (
           <div
             key={field}
