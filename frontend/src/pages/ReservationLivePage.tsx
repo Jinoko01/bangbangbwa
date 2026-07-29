@@ -403,8 +403,10 @@ function ReservationLivePage({
 
   const reservation = reservations.find(({ id }) => id === slug);
   const property = properties.find(({ id }) => id === reservation?.propertyId);
-  const { items: checklist, setItems: setChecklist } =
-    useReservationChecklist(slug);
+  const { items: checklist, setItems: setChecklist } = useReservationChecklist(
+    user?.id,
+    property?.id,
+  );
 
   const myLabel = user ? `나 (${user.role})` : "나";
   const peerLabel = user ? PEER_ROLE[user.role] : "상대방";
