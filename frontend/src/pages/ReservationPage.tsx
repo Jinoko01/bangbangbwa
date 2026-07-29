@@ -129,7 +129,8 @@ function ReservationPage({
 }: ReservationPageProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const isBroker = useAuthStore((state) => state.user?.role === "중개사");
+  const user = useAuthStore((state) => state.user);
+  const isBroker = user?.role === "중개사";
   const [activeTab, setActiveTab] = useState<"sent" | "received" | "all">(
     "all",
   );
@@ -173,7 +174,7 @@ function ReservationPage({
     (property) => property.id === selectedReservation?.propertyId,
   );
   const { items: selectedChecklist, setItems: setSelectedChecklist } =
-    useReservationChecklist(selectedReservation?.id);
+    useReservationChecklist(user?.id, selectedProperty?.id);
 
   return (
     <main className="min-h-[calc(100svh-3.5rem)] bg-white">
