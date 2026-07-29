@@ -8,12 +8,7 @@ import {
   getAccessToken,
   setAccessToken,
 } from "@/lib/authToken";
-import type {
-  AuthProvider,
-  BrokerVerificationRequest,
-  User,
-  UserProfileChanges,
-} from "@/types";
+import type { AuthProvider, BrokerVerificationRequest, User } from "@/types";
 
 interface AuthStore {
   user: User | null;
@@ -29,7 +24,8 @@ interface AuthStore {
   loginAsMockTenant: () => Promise<User>;
   loginAsMockAdmin: () => Promise<User>;
   logout: () => Promise<void>;
-  updateProfile: (changes: UserProfileChanges) => Promise<User>;
+  // 서버에서 갱신된 내 정보를 세션에 반영한다 (USER-02 수정 뮤테이션이 호출)
+  setUser: (user: User) => void;
   applyBrokerVerification: (
     request: BrokerVerificationRequest,
   ) => Promise<User>;
@@ -112,17 +108,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({ user: null });
     }
   },
-  updateProfile: async (changes) => {
-    const currentUser = get().user;
-
-    if (!currentUser) {
-      throw new Error("로그인 상태에서만 정보를 수정할 수 있습니다");
-    }
-
-    const user = await authApi.updateProfile(currentUser, changes);
-    set({ user });
-    return user;
-  },
+  setUser: (user) => set({ user }),
   applyBrokerVerification: async (request) => {
     const currentUser = get().user;
 

@@ -10,6 +10,7 @@ import { ImageIcon, LogOut } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import ProfileAvatar from "@/components/ProfileAvatar";
 import {
   Dialog,
   DialogContent,
@@ -20,10 +21,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isApiError } from "@/api/error";
 import { useMyPropertyList } from "@/hooks/queries/propertyQueries";
+import { useUpdateProfile } from "@/hooks/queries/userQueries";
 import { useAuthStore } from "@/stores/authStore";
 import { isApprovedBroker } from "@/lib/auth";
-import { readFileAsDataUrl } from "@/lib/file";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AuthProvider, BrokerVerificationStatus, User } from "@/types";
@@ -33,36 +35,8 @@ const PROVIDER_LABEL: Record<AuthProvider, string> = {
   google: "Google",
 };
 
-function ProfileAvatar({
-  user,
-  imageUrl = user.profileImageUrl,
-  className,
-}: {
-  user: User;
-  imageUrl?: string;
-  className?: string;
-}) {
-  if (imageUrl) {
-    return (
-      <img
-        src={imageUrl}
-        alt="프로필 이미지"
-        className={cn("size-20 shrink-0 rounded-full object-cover", className)}
-      />
-    );
-  }
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "grid size-20 shrink-0 place-items-center rounded-full bg-accent text-2xl font-semibold text-accent-foreground",
-        className,
-      )}
-    >
-      {user.nickname.charAt(0) || user.name.charAt(0) || "?"}
-    </span>
-  );
-}
+// 백엔드 UserUpdateRequest가 요구하는 형식 — 400을 받기 전에 폼에서 먼저 걸러낸다
+const PHONE_PATTERN = /^010-\d{4}-\d{4}$/;
 
 // 신원 레일 — 프로필·역할·로그인 계정·중개사 인증까지 "나"에 대한 정보를 한 곳에 (USER-01)
 function IdentityRail({ user }: { user: User }) {
@@ -181,7 +155,7 @@ function ProfileEditField({
 
 // 내 정보 수정 폼 — 이름과 이메일은 조회만 가능
 function ProfileEditForm({ user, onDone }: { user: User; onDone: () => void }) {
-  const updateProfile = useAuthStore((state) => state.updateProfile);
+  const { mutateAsync: updateProfile } = useUpdateProfile();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -208,21 +182,26 @@ function ProfileEditForm({ user, onDone }: { user: User; onDone: () => void }) {
       if (!phone) {
         return "전화번호를 입력해주세요";
       }
+      if (!PHONE_PATTERN.test(phone)) {
+        return "전화번호는 010-0000-0000 형식으로 입력해주세요";
+      }
       if (!nickname) {
         return "닉네임을 입력해주세요";
       }
 
-      const imageFile = formData.get("profileImage");
-      const hasNewImage = imageFile instanceof File && imageFile.size > 0;
+      const selectedImage = formData.get("profileImage");
+      const imageFile =
+        selectedImage instanceof File && selectedImage.size > 0
+          ? selectedImage
+          : undefined;
       try {
-        const profileImageUrl = hasNewImage
-          ? await readFileAsDataUrl(imageFile)
-          : user.profileImageUrl;
-        await updateProfile({ birth, nickname, phone, profileImageUrl });
+        await updateProfile({ changes: { birth, nickname, phone }, imageFile });
         onDone();
         return null;
-      } catch {
-        return "정보 수정에 실패했습니다. 잠시 후 다시 시도해주세요";
+      } catch (submitError) {
+        return isApiError(submitError)
+          ? submitError.message
+          : "정보 수정에 실패했습니다. 잠시 후 다시 시도해주세요";
       }
     },
     null,
@@ -249,7 +228,7 @@ function ProfileEditForm({ user, onDone }: { user: User; onDone: () => void }) {
             <ProfileAvatar
               user={user}
               imageUrl={previewUrl ?? user.profileImageUrl}
-              className="size-16 text-xl"
+              className="size-16"
             />
             <Button
               asChild

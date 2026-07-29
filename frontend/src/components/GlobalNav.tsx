@@ -4,6 +4,7 @@ import { LogOut, Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import ProfileAvatar from "@/components/ProfileAvatar";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -95,12 +96,7 @@ function AuthArea({
         className="flex items-center gap-2 rounded-md p-1 pr-2 transition-colors hover:bg-muted"
         aria-label="마이페이지"
       >
-        <span
-          aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
-        >
-          {user.name.charAt(0) || user.nickname.charAt(0) || "?"}
-        </span>
+        <ProfileAvatar user={user} className="size-8" />
         <span className="text-sm font-medium">
           {user.name || user.nickname || "내 계정"}
         </span>
