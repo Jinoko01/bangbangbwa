@@ -106,6 +106,7 @@ function App() {
   const [reservations, setReservations] = useState<Reservation[]>([
     {
       id: "reservation-demo-0918",
+      meetingId: 918,
       propertyId: 2,
       date: "2026-07-24",
       time: "10:00, 13:00, 16:00",
@@ -115,6 +116,7 @@ function App() {
     },
     {
       id: "reservation-demo-0742",
+      meetingId: 742,
       propertyId: 6,
       date: "2026-07-26",
       time: "19:00",
@@ -124,6 +126,7 @@ function App() {
     },
     {
       id: "reservation-demo-1024",
+      meetingId: 1024,
       propertyId: 1,
       date: "2026-07-24",
       time: "11:00, 14:00, 17:00",
@@ -133,6 +136,7 @@ function App() {
     },
     {
       id: "reservation-demo-1131",
+      meetingId: 1131,
       propertyId: 3,
       date: "2026-07-25",
       time: "09:00, 12:00, 15:00",
@@ -142,6 +146,7 @@ function App() {
     },
     {
       id: "reservation-demo-1247",
+      meetingId: 1247,
       propertyId: 5,
       date: "2026-07-26",
       time: "18:00, 20:00, 21:00",
@@ -151,6 +156,7 @@ function App() {
     },
     {
       id: "reservation-demo-1359",
+      meetingId: 1359,
       propertyId: 7,
       date: "2026-07-23",
       time: "16:00",

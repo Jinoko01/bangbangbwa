@@ -17,7 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { useReservationChecklist } from "@/hooks/useReservationChecklist";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import type { Property, Reservation } from "@/types";
@@ -172,8 +171,6 @@ function ReservationPage({
   const selectedProperty = properties.find(
     (property) => property.id === selectedReservation?.propertyId,
   );
-  const { items: selectedChecklist, setItems: setSelectedChecklist } =
-    useReservationChecklist(selectedReservation?.id);
 
   return (
     <main className="min-h-[calc(100svh-3.5rem)] bg-white">
@@ -462,8 +459,7 @@ function ReservationPage({
           <Card className="gap-3 py-4">
             <CardContent className="px-4">
               <ReservationChecklist
-                items={selectedChecklist}
-                onChange={setSelectedChecklist}
+                meetingId={selectedReservation?.meetingId}
               />
             </CardContent>
           </Card>

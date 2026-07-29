@@ -163,6 +163,8 @@ export interface PropertyCreateInput {
 
 export interface Reservation {
   id: string;
+  // 백엔드 회의(Meeting) id — 체크리스트 등 회의 단위 API의 조회 키
+  meetingId: number;
   propertyId: number;
   date: string;
   time: string;
@@ -183,10 +185,21 @@ export interface Memo {
   text: string;
   createdAt: string;
 }
+export type ChecklistItemStatus = "PENDING" | "COMPLETED" | "ISSUE_FOUND";
+
 export interface ChecklistItem {
-  id: string;
-  text: string;
-  completed: boolean;
+  itemId: number;
+  content: string;
+  status: ChecklistItemStatus;
+  memo: string | null;
+}
+
+export interface Checklist {
+  checklistId: number;
+  meetingId: number;
+  title: string;
+  createdAt: string;
+  items: ChecklistItem[];
 }
 
 export interface Filters {
