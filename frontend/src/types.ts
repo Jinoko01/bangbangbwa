@@ -1,8 +1,7 @@
 export type DealType = "전세" | "월세" | "매매";
 export type BuildingType = "아파트" | "오피스텔" | "빌라" | "원룸";
 
-export type FacilityCategory =
-  "지하철" | "편의점" | "카페" | "빨래방" | "마트" | "약국";
+export type FacilityCategory = "지하철" | "편의점" | "빨래방";
 
 export interface NearbyFacility {
   id: string;
@@ -124,15 +123,7 @@ export interface PropertyEnvironment {
   stationDistanceMeter?: number;
   stationWalkingMinutes?: number;
   convenienceStoreCount: number;
-  martCount: number;
-  hospitalCount: number;
-  pharmacyCount: number;
-  cafeCount: number;
-  policeCount: number;
-  parkCount: number;
-  bankCount: number;
   laundryCount: number;
-  schoolCount: number;
 }
 
 // latitude·longitude는 주소 입력 시 카카오 좌표 변환으로 채운다 (src/lib/kakaoLocal.ts)

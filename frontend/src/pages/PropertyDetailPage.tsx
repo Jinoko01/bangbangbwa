@@ -8,14 +8,11 @@ import {
 } from "react";
 import {
   CalendarPlus,
-  Coffee,
   ChevronLeft,
   ChevronRight,
   Heart,
   ImageIcon,
-  Pill,
   Pencil,
-  ShoppingBasket,
   Store,
   TrainFront,
   Trash2,
@@ -49,6 +46,11 @@ import {
   formatPriceLabel,
   toPyeong,
 } from "@/lib/format";
+import {
+  FACILITY_CATEGORIES,
+  getNearestFacilities,
+  NEAREST_FACILITY_LIMIT,
+} from "@/lib/nearbyFacilities";
 import { cn } from "@/lib/utils";
 import type { FacilityCategory, Memo, NearbyFacility } from "@/types";
 
@@ -92,29 +94,11 @@ const FACILITY_META: Record<
     markerColor: "#059669",
     markerGlyph: "🏪",
   },
-  카페: {
-    icon: Coffee,
-    color: "bg-amber-50 text-amber-700",
-    markerColor: "#d97706",
-    markerGlyph: "☕",
-  },
   빨래방: {
     icon: WashingMachine,
     color: "bg-violet-50 text-violet-700",
     markerColor: "#7c3aed",
     markerGlyph: "🧺",
-  },
-  마트: {
-    icon: ShoppingBasket,
-    color: "bg-orange-50 text-orange-700",
-    markerColor: "#ea580c",
-    markerGlyph: "🛒",
-  },
-  약국: {
-    icon: Pill,
-    color: "bg-rose-50 text-rose-700",
-    markerColor: "#e11d48",
-    markerGlyph: "✚",
   },
 };
 
@@ -512,9 +496,6 @@ function KakaoNearbyMap({
 const KAKAO_CATEGORY_CODES: Partial<Record<FacilityCategory, string>> = {
   지하철: "SW8",
   편의점: "CS2",
-  카페: "CE7",
-  마트: "MT1",
-  약국: "PM9",
 };
 
 function useNearbyFacilities(address: string, category: FacilityCategory) {
@@ -606,7 +587,7 @@ function useNearbyFacilities(address: string, category: FacilityCategory) {
                 })
                 .filter((facility) => facility.distanceM <= 5_000)
                 .sort((a, b) => a.distanceM - b.distanceM)
-                .slice(0, 3),
+                .slice(0, NEAREST_FACILITY_LIMIT),
             });
             setSearchError(null);
           };
@@ -656,38 +637,34 @@ function NearbyFacilitiesSection({
   propertyTitle: string;
   propertyAddress: string;
 }) {
-  const [category, setCategory] = useState<FacilityCategory>("편의점");
+  const [category, setCategory] = useState<FacilityCategory>("지하철");
   const [selectedId, setSelectedId] = useState("property");
   const { facilities: searchedFacilities, error: facilitySearchError } =
     useNearbyFacilities(propertyAddress, category);
   const filtered = useMemo(
-    () => searchedFacilities ?? [],
-    [searchedFacilities],
+    () => getNearestFacilities(searchedFacilities ?? facilities, category),
+    [category, facilities, searchedFacilities],
   );
-  const categories = [
-    ...new Set(facilities.map((facility) => facility.category)),
-  ];
 
   return (
     <Card className="gap-3 overflow-hidden py-4">
       <CardHeader className="gap-0 px-4">
         <div className="flex items-baseline justify-between gap-3">
           <CardTitle className="text-base">주변 편의시설</CardTitle>
-          <p className="text-xs text-muted-foreground">5km 이내 가까운 3곳</p>
+          <p className="text-xs text-muted-foreground">
+            카테고리별 가까운 {NEAREST_FACILITY_LIMIT}곳
+          </p>
         </div>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3 px-4">
-        <div
-          className="flex gap-1.5 overflow-x-auto pb-1"
-          aria-label="시설 종류"
-        >
-          {categories.map((item) => (
+        <div className="flex flex-wrap gap-1.5" aria-label="시설 종류">
+          {FACILITY_CATEGORIES.map((item) => (
             <Button
               key={item}
               type="button"
               variant={category === item ? "default" : "outline"}
               size="sm"
-              className="h-7 shrink-0 rounded-full px-2.5 text-xs"
+              className="h-7 rounded-full px-2.5 text-xs"
               aria-pressed={category === item}
               onClick={() => {
                 setCategory(item);
@@ -718,17 +695,22 @@ function NearbyFacilitiesSection({
           </p>
         )}
 
-        <ul className="grid min-h-0 flex-1 grid-cols-2 gap-x-3 overflow-y-auto">
-          {filtered.map((facility) => {
+        {filtered.length === 0 && searchedFacilities !== null && (
+          <p className="rounded-lg border border-dashed px-3 py-5 text-center text-xs text-muted-foreground">
+            반경 5km 내 {category} 정보를 찾지 못했습니다.
+          </p>
+        )}
+
+        <ol className="grid min-h-0 flex-1 gap-2 sm:grid-cols-3">
+          {filtered.map((facility, index) => {
             const meta = FACILITY_META[facility.category];
-            const Icon = meta.icon;
             return (
-              <li key={facility.id} className="border-b">
+              <li key={facility.id}>
                 <button
                   type="button"
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-1 py-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    selectedId === facility.id && "bg-muted",
+                    "flex h-full w-full items-center gap-2 rounded-xl border bg-card px-3 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selectedId === facility.id && "border-primary bg-primary/5",
                   )}
                   onClick={() => setSelectedId(facility.id)}
                 >
@@ -738,7 +720,7 @@ function NearbyFacilitiesSection({
                       meta.color,
                     )}
                   >
-                    <Icon className="size-4" />
+                    <span className="text-xs font-bold">{index + 1}</span>
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold">
@@ -752,7 +734,7 @@ function NearbyFacilitiesSection({
               </li>
             );
           })}
-        </ul>
+        </ol>
         <p className="text-[11px] text-muted-foreground">
           도보 시간은 실제 경로에 따라 달라질 수 있어요.
         </p>
@@ -1278,17 +1260,13 @@ function PropertyDetailPage({
               </Button>
             </div>
 
-            {property.nearbyFacilities &&
-              property.nearbyFacilities.length > 0 && (
-                <NearbyFacilitiesSection
-                  facilities={property.nearbyFacilities}
-                  propertyTitle={property.title}
-                  propertyAddress={
-                    property.roadAddress ??
-                    `${property.sigungu} ${property.dong}`
-                  }
-                />
-              )}
+            <NearbyFacilitiesSection
+              facilities={property.nearbyFacilities ?? []}
+              propertyTitle={property.title}
+              propertyAddress={
+                property.roadAddress ?? `${property.sigungu} ${property.dong}`
+              }
+            />
 
             <MemoSection
               memos={memos}
