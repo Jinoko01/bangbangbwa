@@ -36,14 +36,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useChecklist } from "@/hooks/queries/checklistQueries";
+import { useMeetingDetail } from "@/hooks/queries/meetingQueries";
+import { usePropertyDetail } from "@/hooks/queries/propertyQueries";
 import {
   type SessionCapture,
   useSessionCaptures,
 } from "@/hooks/useSessionCaptures";
 import { useVideoAspect } from "@/hooks/useVideoAspect";
+import { formatMeetingDateTime, getMeetingDateTime } from "@/lib/meeting";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
-import type { Property, Reservation, UserRole } from "@/types";
+import type { UserRole } from "@/types";
 
 type SessionStatus =
   "connecting" | "waiting" | "connected" | "peer-left" | "room-full" | "error";
@@ -358,16 +361,9 @@ function CaptureStrip({ captures, onSelect }: CaptureStripProps) {
   );
 }
 
-interface ReservationLivePageProps {
-  reservations: Reservation[];
-  properties: Property[];
-}
-
 // PAGE-12 RTC 회의 — RTC-02 입장, RTC-03 퇴장. 시그널링은 dev 서버의 /signal 릴레이 사용.
-function ReservationLivePage({
-  reservations,
-  properties,
-}: ReservationLivePageProps) {
+// slug는 회의 id — 시그널링 방 이름과 회의 상세 조회 키를 겸한다
+function ReservationLivePage() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -400,9 +396,16 @@ function ReservationLivePage({
     setAttempt((current) => current + 1);
   };
 
-  const reservation = reservations.find(({ id }) => id === slug);
-  const property = properties.find(({ id }) => id === reservation?.propertyId);
-  const { data: checklistData } = useChecklist(reservation?.meetingId);
+  const meetingId = Number(slug);
+  const { data: meeting } = useMeetingDetail(
+    Number.isInteger(meetingId) ? meetingId : undefined,
+  );
+  const { data: property } = usePropertyDetail(
+    meeting?.propertyId ?? -1,
+    meeting !== undefined,
+  );
+  const meetingAt = meeting && getMeetingDateTime(meeting);
+  const { data: checklistData } = useChecklist(meeting?.meetingId);
   const checklistItems = checklistData?.items ?? [];
 
   const myLabel = user ? `나 (${user.role})` : "나";
@@ -642,9 +645,9 @@ function ReservationLivePage({
             </Badge>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {reservation && (
+            {meetingAt && (
               <span className="hidden text-xs text-muted-foreground lg:inline">
-                {reservation.date} · {reservation.time}
+                {formatMeetingDateTime(meetingAt)}
               </span>
             )}
             {user && (
@@ -799,7 +802,7 @@ function ReservationLivePage({
                 sheetOpen ? "block" : "hidden",
               )}
             >
-              <ChecklistPanel meetingId={reservation?.meetingId} />
+              <ChecklistPanel meetingId={meeting?.meetingId} />
             </CardContent>
           </Card>
         )}

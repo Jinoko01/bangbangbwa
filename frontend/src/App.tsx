@@ -32,7 +32,7 @@ import {
 } from "@/hooks/queries/propertyQueries";
 import { isApprovedBroker } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
-import type { Memo, Property, Reservation } from "@/types";
+import type { Memo, Property } from "@/types";
 
 // API 연동 전 목데이터 로딩 시뮬레이션 시간(ms)
 const MOCK_LOADING_MS = 600;
@@ -103,68 +103,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [properties, setProperties] = useState<Property[]>([]);
   const [memos, setMemos] = useState<Record<number, Memo[]>>({});
-  const [reservations, setReservations] = useState<Reservation[]>([
-    {
-      id: "reservation-demo-0918",
-      meetingId: 918,
-      propertyId: 2,
-      date: "2026-07-24",
-      time: "10:00, 13:00, 16:00",
-      timeOptions: ["10:00", "13:00", "16:00"],
-      status: "예약 대기",
-      direction: "sent",
-    },
-    {
-      id: "reservation-demo-0742",
-      meetingId: 742,
-      propertyId: 6,
-      date: "2026-07-26",
-      time: "19:00",
-      timeOptions: ["13:00", "16:00", "19:00"],
-      status: "예약 확정",
-      direction: "sent",
-    },
-    {
-      id: "reservation-demo-1024",
-      meetingId: 1024,
-      propertyId: 1,
-      date: "2026-07-24",
-      time: "11:00, 14:00, 17:00",
-      timeOptions: ["11:00", "14:00", "17:00"],
-      status: "예약 대기",
-      direction: "received",
-    },
-    {
-      id: "reservation-demo-1131",
-      meetingId: 1131,
-      propertyId: 3,
-      date: "2026-07-25",
-      time: "09:00, 12:00, 15:00",
-      timeOptions: ["09:00", "12:00", "15:00"],
-      status: "예약 대기",
-      direction: "received",
-    },
-    {
-      id: "reservation-demo-1247",
-      meetingId: 1247,
-      propertyId: 5,
-      date: "2026-07-26",
-      time: "18:00, 20:00, 21:00",
-      timeOptions: ["18:00", "20:00", "21:00"],
-      status: "예약 대기",
-      direction: "received",
-    },
-    {
-      id: "reservation-demo-1359",
-      meetingId: 1359,
-      propertyId: 7,
-      date: "2026-07-23",
-      time: "16:00",
-      timeOptions: ["10:00", "13:00", "16:00"],
-      status: "예약 확정",
-      direction: "received",
-    },
-  ]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -205,10 +143,9 @@ function App() {
     queryClient.invalidateQueries({ queryKey: propertyKeys.all });
   };
 
-  // PROP-09 매물 삭제 — 연결된 예약·메모도 함께 정리
+  // PROP-09 매물 삭제 — 연결된 메모도 함께 정리 (회의는 서버가 소유한다)
   const deleteProperty = (id: number) => {
     setProperties((prev) => prev.filter((p) => p.id !== id));
-    setReservations((prev) => prev.filter((r) => r.propertyId !== id));
     setMemos((prev) => {
       const { [id]: _removed, ...rest } = prev;
       return rest;
@@ -260,42 +197,11 @@ function App() {
         />
         <Route
           path="/reservations"
-          element={
-            <RequireAuth>
-              {() => (
-                <ReservationPage
-                  reservations={reservations}
-                  properties={properties}
-                  onConfirmReservation={(reservationId, time) =>
-                    setReservations((previous) =>
-                      previous.map((reservation) =>
-                        reservation.id === reservationId &&
-                        reservation.direction === "received" &&
-                        reservation.status === "예약 대기"
-                          ? { ...reservation, time, status: "예약 확정" }
-                          : reservation,
-                      ),
-                    )
-                  }
-                />
-              )}
-            </RequireAuth>
-          }
+          element={<RequireAuth>{() => <ReservationPage />}</RequireAuth>}
         />
         <Route
           path="/booking/:id"
-          element={
-            <RequireAuth>
-              {() => (
-                <BookingPage
-                  properties={properties}
-                  onConfirm={(reservation) =>
-                    setReservations((previous) => [reservation, ...previous])
-                  }
-                />
-              )}
-            </RequireAuth>
-          }
+          element={<RequireAuth>{() => <BookingPage />}</RequireAuth>}
         />
         <Route
           path="/saved"
@@ -312,16 +218,7 @@ function App() {
         />
         <Route
           path="/reservation/:slug"
-          element={
-            <RequireAuth>
-              {() => (
-                <ReservationLivePage
-                  reservations={reservations}
-                  properties={properties}
-                />
-              )}
-            </RequireAuth>
-          }
+          element={<RequireAuth>{() => <ReservationLivePage />}</RequireAuth>}
         />
         <Route
           path="/properties"
