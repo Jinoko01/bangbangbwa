@@ -273,3 +273,12 @@ export const REGIONS: RegionTree = {
 
 // 도/광역시 목록 (Select 1단계)
 export const SIDO_LIST = Object.keys(REGIONS);
+
+// 서비스 지역을 서울로 한정 — 검색·필터의 구 목록은 이것만 쓴다.
+// (전국 REGIONS 트리는 서비스 지역 확장 대비로 남겨둔다)
+export const SEOUL_GUS: string[] = REGIONS["서울특별시"]["서울특별시"];
+
+// 화면 표시용 라벨 — API의 sigungu 값은 백엔드·카카오 지오코딩과 같은 "강남구" 형태를 유지한다
+export function toSeoulRegionLabel(gu: string): string {
+  return `서울시 ${gu}`;
+}

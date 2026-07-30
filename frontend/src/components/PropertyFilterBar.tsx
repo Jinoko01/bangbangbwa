@@ -24,6 +24,7 @@ import {
   REGIONS,
   ROOM_TYPES,
 } from "@/data/properties";
+import { toSeoulRegionLabel } from "@/data/regions";
 import { cn } from "@/lib/utils";
 import type { Filters } from "@/types";
 
@@ -47,9 +48,13 @@ interface FilterField {
   options: FilterOption[];
 }
 
+// value는 API sigungu 값("강남구") 그대로 두고, 라벨만 "서울시 강남구"로 표시한다 (서울 한정)
 const REGION_OPTIONS: FilterOption[] = [
   { value: "all", label: "지역 전체" },
-  ...REGIONS.map((region) => ({ value: region, label: region })),
+  ...REGIONS.map((region) => ({
+    value: region,
+    label: toSeoulRegionLabel(region),
+  })),
 ];
 
 // 유형 선택지는 백엔드 roomType enum이 받는 값만 노출한다
@@ -58,12 +63,23 @@ const ROOM_TYPE_OPTIONS: FilterOption[] = [
   ...ROOM_TYPES.map((type) => ({ value: type, label: type })),
 ];
 
+// 랜딩 검색에서 옵션 목록에 없는 지역이 넘어와도 선택 상태가 보이도록 옵션에 덧붙인다
+function getRegionOptions(region: string): FilterOption[] {
+  if (region === "all" || REGION_OPTIONS.some((o) => o.value === region)) {
+    return REGION_OPTIONS;
+  }
+  return [
+    ...REGION_OPTIONS,
+    { value: region, label: toSeoulRegionLabel(region) },
+  ];
+}
+
 // 월세 탭에서 가격 축은 매매가가 아니라 보증금 구간이 된다
-function getFilterFields(dealType: string): FilterField[] {
+function getFilterFields(dealType: string, region: string): FilterField[] {
   const isMonthlyRent = dealType === "월세";
 
   return [
-    { key: "region", title: "지역", options: REGION_OPTIONS },
+    { key: "region", title: "지역", options: getRegionOptions(region) },
     {
       key: "price",
       title: isMonthlyRent ? "보증금" : "가격",
@@ -160,7 +176,7 @@ interface PropertyFilterBarProps {
 function PropertyFilterBar({ filters, onChange }: PropertyFilterBarProps) {
   const set = (key: keyof Filters) => (value: string) =>
     onChange({ ...filters, [key]: value });
-  const fields = getFilterFields(filters.dealType);
+  const fields = getFilterFields(filters.dealType, filters.region);
   // dealType은 상단 세그먼트가 소유하므로 초기화 노출·대상에서 제외
   const isDefault =
     filters.query === "" &&

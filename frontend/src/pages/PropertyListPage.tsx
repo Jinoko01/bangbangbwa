@@ -26,6 +26,7 @@ import {
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { formatPrice } from "@/lib/format";
+import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
 import type { DealType, Filters, PropertyFilters, RoomType } from "@/types";
 
@@ -346,17 +347,20 @@ function PropertyMap({
 }
 
 // 화면 필터 → 매물 목록 API 쿼리 파라미터 (선택하지 않은 값은 보내지 않는다)
-// 월세 탭의 가격 축은 보증금 구간이라 밴드 목록이 갈린다
+// 월세 탭의 가격 축은 보증금 구간이라 밴드 목록이 갈린다.
+// "서울시 강남구 역삼동" 같은 검색어는 구 필터와 나머지 검색어로 분리하되,
+// 지역 셀렉트를 직접 골랐다면 그 선택이 우선한다
 function toQueryFilters(filters: Filters, query: string): PropertyFilters {
   const bands =
     filters.dealType === "월세" ? MONTHLY_DEPOSIT_BANDS : PRICE_BANDS;
   const band = bands.find((b) => b.value === filters.price);
+  const parsed = parseRegionQuery(query);
 
   return {
-    query: query || undefined,
+    query: parsed.query,
     transactionType:
       filters.dealType === "all" ? undefined : (filters.dealType as DealType),
-    sigungu: filters.region === "all" ? undefined : filters.region,
+    sigungu: filters.region === "all" ? parsed.sigungu : filters.region,
     roomType:
       filters.buildingType === "all"
         ? undefined
@@ -378,9 +382,14 @@ function PropertyListPage({
   onOpen,
   onCreate,
 }: PropertyListPageProps) {
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [page, setPage] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
+  // 랜딩 히어로 검색이 넘긴 초기 조건(?sigungu=&query=) — 이후 변경은 필터바 상태가 소유한다
+  const [filters, setFilters] = useState(() => ({
+    ...DEFAULT_FILTERS,
+    region: searchParams.get("sigungu") ?? DEFAULT_FILTERS.region,
+    query: searchParams.get("query") ?? DEFAULT_FILTERS.query,
+  }));
+  const [page, setPage] = useState(0);
   // 탭은 URL 쿼리(?view=map)로 관리 — 상세에서 뒤로 왔을 때 지도/리스트 선택이 유지된다
   const viewMode: ViewMode =
     searchParams.get("view") === "map" ? "map" : "list";
