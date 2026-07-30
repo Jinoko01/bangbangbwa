@@ -125,12 +125,6 @@ function App() {
     restoreSession();
   }, [restoreSession]);
 
-  // PROP-04·05 매물 저장·저장 취소
-  const toggleSave = (id: number) =>
-    setProperties((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)),
-    );
-
   // PROP-07·08 매물 등록·수정 — 같은 id가 있으면 교체, 없으면 맨 앞에 추가.
   // 목록·상세는 목데이터 사본을 따로 보므로 그쪽에도 같은 변경을 반영한다
   const saveProperty = (property: Property) => {
@@ -206,14 +200,7 @@ function App() {
         <Route
           path="/saved"
           element={
-            <RequireAuth>
-              {() => (
-                <SavedPropertiesPage
-                  properties={properties}
-                  onToggleSave={toggleSave}
-                />
-              )}
-            </RequireAuth>
+            <RequireAuth>{() => <SavedPropertiesPage />}</RequireAuth>
           }
         />
         <Route
