@@ -42,12 +42,14 @@ type KakaoMap = {
   panTo: (position: KakaoPoint) => void;
   relayout: () => void;
   setBounds: (bounds: { extend: (position: KakaoPoint) => void }) => void;
-  setDraggable: (draggable: boolean) => void;
-  setZoomable: (zoomable: boolean) => void;
 };
 type KakaoMarker = object;
 type KakaoCluster = {
   getMarkers: () => KakaoMarker[];
+};
+type KakaoClusterer = {
+  clear: () => void;
+  addMarkers: (markers: KakaoMarker[]) => void;
 };
 type KakaoClusterStyle = {
   width: string;
@@ -83,7 +85,7 @@ type KakaoSdk = {
     clickable: boolean;
     calculator: number[];
     styles: KakaoClusterStyle[];
-  }) => object;
+  }) => KakaoClusterer;
   event: {
     addListener: (
       target: object,
@@ -143,6 +145,60 @@ function getKakaoMaps() {
   return (window as Window & { kakao?: { maps: KakaoSdk } }).kakao?.maps;
 }
 
+// 지도 생성은 컨테이너가 실제 크기를 가진 뒤여야 한다 — 크기 확정 전에 만들면
+// 내부 뷰포트 계산이 어긋나 빈 지도가 나온다 (relayout 타이머로 때우지 않는다)
+function waitForContainerSize(el: HTMLElement) {
+  return new Promise<void>((resolve) => {
+    if (el.clientWidth > 0 && el.clientHeight > 0) {
+      resolve();
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth > 0 && el.clientHeight > 0) {
+        observer.disconnect();
+        resolve();
+      }
+    });
+    observer.observe(el);
+  });
+}
+
+// 주소 → 좌표 캐시 — 필터가 바뀌어도 같은 동은 다시 지오코딩하지 않는다 (카카오 쿼터 절약)
+const geocodeCache = new Map<
+  string,
+  Promise<{ latitude: number; longitude: number } | null>
+>();
+
+function geocodeAddress(maps: KakaoSdk, address: string) {
+  const cached = geocodeCache.get(address);
+  if (cached) {
+    return cached;
+  }
+
+  const lookup = new Promise<{ latitude: number; longitude: number } | null>(
+    (resolve) => {
+      new maps.services.Geocoder().addressSearch(address, (result, status) => {
+        if (status !== maps.services.Status.OK || !result[0]) {
+          resolve(null);
+          return;
+        }
+        resolve({
+          latitude: Number(result[0].y),
+          longitude: Number(result[0].x),
+        });
+      });
+    },
+  );
+  geocodeCache.set(address, lookup);
+  // 실패(쿼터·일시 오류)는 캐시에 남기지 않아 다음 갱신에서 재시도된다
+  void lookup.then((position) => {
+    if (position === null) {
+      geocodeCache.delete(address);
+    }
+  });
+  return lookup;
+}
+
 function PropertyCardSkeleton() {
   return (
     <Card className="gap-4 py-5">
@@ -180,6 +236,11 @@ function PropertyMap({
   );
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [map, setMap] = useState<KakaoMap | null>(null);
+  const clustererRef = useRef<KakaoClusterer | null>(null);
+  // clusterclick 리스너는 지도 생성 시 한 번만 달리므로,
+  // 마커 배치가 바뀔 때마다 ref로 최신 마커 → 매물 매핑을 넘겨준다
+  const propertyByMarkerRef = useRef(new Map<KakaoMarker, PropertyCardItem>());
   const appKey = import.meta.env.VITE_KAKAO_KEY;
   const selectedProperty = properties.find(
     (property) => property.id === selectedId,
@@ -192,6 +253,7 @@ function PropertyMap({
         )
       : properties;
 
+  // 지도 생성은 마운트에 1회 — SDK 로드 후 컨테이너 크기가 확정되면 만든다
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container || !appKey) {
@@ -199,27 +261,11 @@ function PropertyMap({
     }
 
     let cancelled = false;
-    let map: KakaoMap | null = null;
-    let resizeObserver: ResizeObserver | null = null;
     let relayoutFrame = 0;
-    const relayoutTimers: number[] = [];
-
-    const relayoutMap = () => {
-      cancelAnimationFrame(relayoutFrame);
-      relayoutFrame = requestAnimationFrame(() => {
-        map?.relayout();
-        map?.setDraggable(true);
-        map?.setZoomable(true);
-      });
-    };
+    let resizeObserver: ResizeObserver | null = null;
 
     loadKakaoMapSdk()
-      .then(
-        () =>
-          new Promise<void>((resolve) => {
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-          }),
-      )
+      .then(() => waitForContainerSize(container))
       .then(() => {
         const maps = getKakaoMaps();
         if (cancelled || !maps) {
@@ -231,108 +277,41 @@ function PropertyMap({
           level: 8,
           draggable: true,
         });
-        map = createdMap;
-        createdMap.setDraggable(true);
-        createdMap.setZoomable(true);
-        resizeObserver = new ResizeObserver(relayoutMap);
+
+        const clusterer = new maps.MarkerClusterer({
+          map: createdMap,
+          markers: [],
+          averageCenter: true,
+          minLevel: 6,
+          disableClickZoom: true,
+          clickable: true,
+          calculator: [10, 30, 50],
+          styles: [CLUSTER_STYLE, CLUSTER_STYLE, CLUSTER_STYLE, CLUSTER_STYLE],
+        });
+
+        maps.event.addListener(clusterer, "clusterclick", (cluster) => {
+          if (!cluster) {
+            return;
+          }
+          const ids = cluster
+            .getMarkers()
+            .map((marker) => propertyByMarkerRef.current.get(marker)?.id)
+            .filter((id): id is number => id !== undefined);
+
+          setSelectedId(null);
+          setClusterPropertyIds(ids);
+          setIsResultsOpen(true);
+        });
+
+        // 생성 이후의 창 크기 변경에는 relayout만 필요하다
+        resizeObserver = new ResizeObserver(() => {
+          cancelAnimationFrame(relayoutFrame);
+          relayoutFrame = requestAnimationFrame(() => createdMap.relayout());
+        });
         resizeObserver.observe(container);
-        relayoutMap();
-        relayoutTimers.push(
-          window.setTimeout(relayoutMap, 100),
-          window.setTimeout(relayoutMap, 300),
-        );
-        const geocoder = new maps.services.Geocoder();
-        const bounds = new maps.LatLngBounds();
-        const propertyByMarker = new Map<KakaoMarker, PropertyCardItem>();
-        const addressOccurrences = new Map<string, number>();
 
-        const markerPromises = properties.map((property) => {
-          const address = `${property.region} ${property.dong}`;
-          const overlapIndex = addressOccurrences.get(address) ?? 0;
-          addressOccurrences.set(address, overlapIndex + 1);
-
-          return new Promise<KakaoMarker | null>((resolve) => {
-            geocoder.addressSearch(address, (result, status) => {
-              if (
-                cancelled ||
-                status !== maps.services.Status.OK ||
-                !result[0]
-              ) {
-                resolve(null);
-                return;
-              }
-
-              const spreadPosition = spreadOverlappingPosition(
-                Number(result[0].y),
-                Number(result[0].x),
-                overlapIndex,
-              );
-              const position = new maps.LatLng(
-                spreadPosition.latitude,
-                spreadPosition.longitude,
-              );
-              const marker = new maps.Marker({
-                position,
-                title: property.title,
-              });
-
-              propertyByMarker.set(marker, property);
-              bounds.extend(position);
-              maps.event.addListener(marker, "click", () => {
-                setSelectedId(property.id);
-                setClusterPropertyIds(null);
-                setIsResultsOpen(true);
-                createdMap.panTo(position);
-              });
-              resolve(marker);
-            });
-          });
-        });
-
-        Promise.all(markerPromises).then((results) => {
-          if (cancelled) {
-            return;
-          }
-
-          const markers = results.filter(
-            (marker): marker is KakaoMarker => marker !== null,
-          );
-          if (markers.length === 0) {
-            return;
-          }
-
-          const clusterer = new maps.MarkerClusterer({
-            map: createdMap,
-            markers,
-            averageCenter: true,
-            minLevel: 6,
-            disableClickZoom: true,
-            clickable: true,
-            calculator: [10, 30, 50],
-            styles: [
-              CLUSTER_STYLE,
-              CLUSTER_STYLE,
-              CLUSTER_STYLE,
-              CLUSTER_STYLE,
-            ],
-          });
-
-          maps.event.addListener(clusterer, "clusterclick", (cluster) => {
-            if (!cluster) {
-              return;
-            }
-            const ids = cluster
-              .getMarkers()
-              .map((marker) => propertyByMarker.get(marker)?.id)
-              .filter((id): id is number => id !== undefined);
-
-            setSelectedId(null);
-            setClusterPropertyIds(ids);
-            setIsResultsOpen(true);
-          });
-          createdMap.setBounds(bounds);
-          relayoutMap();
-        });
+        clustererRef.current = clusterer;
+        setMap(createdMap);
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -347,15 +326,87 @@ function PropertyMap({
     return () => {
       cancelled = true;
       cancelAnimationFrame(relayoutFrame);
-      relayoutTimers.forEach(window.clearTimeout);
       resizeObserver?.disconnect();
+      clustererRef.current = null;
+      setMap(null);
       container.replaceChildren();
     };
-  }, [appKey, properties]);
+  }, [appKey]);
+
+  // 매물 목록이 바뀌면 지도는 그대로 두고 핀만 갈아끼운다
+  useEffect(() => {
+    const clusterer = clustererRef.current;
+    const maps = getKakaoMaps();
+    if (!map || !clusterer || !maps) {
+      return;
+    }
+
+    let cancelled = false;
+    const addressOccurrences = new Map<string, number>();
+
+    const markerPromises = properties.map(async (property) => {
+      const address = `${property.region} ${property.dong}`;
+      const overlapIndex = addressOccurrences.get(address) ?? 0;
+      addressOccurrences.set(address, overlapIndex + 1);
+
+      const geocoded = await geocodeAddress(maps, address);
+      if (cancelled || !geocoded) {
+        return null;
+      }
+
+      const spreadPosition = spreadOverlappingPosition(
+        geocoded.latitude,
+        geocoded.longitude,
+        overlapIndex,
+      );
+      const position = new maps.LatLng(
+        spreadPosition.latitude,
+        spreadPosition.longitude,
+      );
+      const marker = new maps.Marker({ position, title: property.title });
+
+      maps.event.addListener(marker, "click", () => {
+        setSelectedId(property.id);
+        setClusterPropertyIds(null);
+        setIsResultsOpen(true);
+        map.panTo(position);
+      });
+      return { marker, property, position };
+    });
+
+    void Promise.all(markerPromises).then((results) => {
+      if (cancelled) {
+        return;
+      }
+
+      const placed = results.filter(
+        (result): result is NonNullable<typeof result> => result !== null,
+      );
+      const propertyByMarker = new Map<KakaoMarker, PropertyCardItem>();
+      const bounds = new maps.LatLngBounds();
+      for (const { marker, property, position } of placed) {
+        propertyByMarker.set(marker, property);
+        bounds.extend(position);
+      }
+      propertyByMarkerRef.current = propertyByMarker;
+
+      clusterer.clear();
+      if (placed.length === 0) {
+        return;
+      }
+      clusterer.addMarkers(placed.map(({ marker }) => marker));
+      map.setBounds(bounds);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [map, properties]);
 
   return (
     <div className="relative h-[calc(100svh-12rem)] min-h-[32rem] overflow-hidden rounded-xl border bg-muted">
-      <div ref={mapContainerRef} className="absolute inset-0" />
+      {/* touch-none — 지도 제스처를 페이지 스크롤에 뺏기지 않는다 */}
+      <div ref={mapContainerRef} className="absolute inset-0 touch-none" />
 
       <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-lg bg-background/95 px-3 py-2 text-sm shadow-sm">
         지도에 표시된 매물 <strong>{properties.length}건</strong>
