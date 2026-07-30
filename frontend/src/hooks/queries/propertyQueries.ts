@@ -84,8 +84,9 @@ export function useMyPropertyList(paging: PagingParams = {}, enabled = true) {
   return useQuery({ ...myPropertyListOptions(paging), enabled });
 }
 
-export function usePropertyDetail(propertyId: number) {
-  return useQuery(propertyDetailOptions(propertyId));
+// enabled: 회의 목록처럼 매물 id가 정해지기 전에도 마운트되는 화면이 있다
+export function usePropertyDetail(propertyId: number, enabled = true) {
+  return useQuery({ ...propertyDetailOptions(propertyId), enabled });
 }
 
 export function usePropertiesInBounds(bounds: MapBounds) {
