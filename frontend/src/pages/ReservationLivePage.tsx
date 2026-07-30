@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { isApiError } from "@/api/error";
 import ReservationChecklist from "@/components/ReservationChecklist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import {
 import { useChecklist } from "@/hooks/queries/checklistQueries";
 import { useMeetingDetail } from "@/hooks/queries/meetingQueries";
 import { usePropertyDetail } from "@/hooks/queries/propertyQueries";
+import { useLiveSession } from "@/hooks/queries/sessionQueries";
 import {
   type SessionCapture,
   useSessionCaptures,
@@ -81,16 +83,24 @@ const PEER_ROLE: Record<UserRole, UserRole> = {
   관리자: "세입자",
 };
 
+// 백엔드 SignalHandler 프로토콜 — OFFER/ANSWER는 sdp 원문, ICE 후보는 평탄화된
+// 필드로 오간다. 정원 초과는 ERROR 후 서버가 1008(Policy Violation)로 소켓을 닫는다
 interface SignalMessage {
   type:
-    | "joined"
-    | "peer-joined"
-    | "peer-left"
-    | "room-full"
-    | "description"
-    | "candidate";
-  description?: RTCSessionDescriptionInit;
-  candidate?: RTCIceCandidateInit | null;
+    | "JOINED"
+    | "PEER_JOINED"
+    | "PEER_LEFT"
+    | "OFFER"
+    | "ANSWER"
+    | "ICE_CANDIDATE"
+    | "ERROR";
+  senderId?: number;
+  peerId?: number;
+  sdp?: string;
+  candidate?: string;
+  sdpMid?: string;
+  sdpMLineIndex?: number;
+  message?: string;
 }
 
 function formatCaptureTime(iso: string) {
@@ -245,9 +255,11 @@ function PeerPreparingNotice({
 // 나가기는 컨트롤 바에 항상 있으므로 여기서는 복구 하나만 제안한다
 function StageRecoveryOverlay({
   status,
+  detail,
   onRetry,
 }: {
   status: SessionStatus;
+  detail?: string;
   onRetry: () => void;
 }) {
   if (!RECOVERABLE_STATUS[status]) {
@@ -258,6 +270,7 @@ function StageRecoveryOverlay({
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/90 px-6 text-center">
       <VideoOff className="size-8 text-slate-500" />
       <p className="text-sm text-slate-300">{STATUS_LABEL[status]}</p>
+      {detail && <p className="text-xs text-slate-500">{detail}</p>}
       <Button size="sm" onClick={onRetry}>
         <RotateCcw /> {RETRY_LABEL[status]}
       </Button>
@@ -361,8 +374,8 @@ function CaptureStrip({ captures, onSelect }: CaptureStripProps) {
   );
 }
 
-// PAGE-12 RTC 회의 — RTC-02 입장, RTC-03 퇴장. 시그널링은 dev 서버의 /signal 릴레이 사용.
-// slug는 회의 id — 시그널링 방 이름과 회의 상세 조회 키를 겸한다
+// PAGE-12 RTC 회의 — RTC-01 세션 생성(멱등), RTC-02 입장. 세션 입장 API가 돌려준
+// signalingUrl(접속 토큰 포함)로 백엔드 시그널링 서버에 붙는다. slug는 회의 id
 function ReservationLivePage() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -376,8 +389,6 @@ function ReservationLivePage() {
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [mediaStatus, setMediaStatus] = useState<MediaStatus>("pending");
-  // 값이 바뀔 때마다 연결 effect를 처음부터 다시 실행한다
-  const [attempt, setAttempt] = useState(0);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [previewCapture, setPreviewCapture] = useState<SessionCapture | null>(
@@ -390,12 +401,6 @@ function ReservationLivePage() {
 
   const leaveSession = () => navigate("/reservations");
 
-  const retryConnection = () => {
-    setStatus("connecting");
-    setMediaStatus("pending");
-    setAttempt((current) => current + 1);
-  };
-
   const meetingId = Number(slug);
   const { data: meeting } = useMeetingDetail(
     Number.isInteger(meetingId) ? meetingId : undefined,
@@ -404,6 +409,27 @@ function ReservationLivePage() {
     meeting?.propertyId ?? -1,
     meeting !== undefined,
   );
+  // RTC-01·02 — 세션 생성(멱등) 후 입장해 시그널링 접속 정보를 받는다
+  const {
+    data: session,
+    isError: joinFailed,
+    error: joinError,
+    refetch: refetchSession,
+  } = useLiveSession(Number.isInteger(meetingId) ? meetingId : undefined);
+
+  // 재시도는 입장부터 다시 — 새 시그널링 토큰이 발급되며 연결 effect가 재실행된다
+  const retryConnection = () => {
+    setStatus("connecting");
+    setMediaStatus("pending");
+    void refetchSession();
+  };
+
+  // 입장 API 실패(만료·권한·미확정 회의)는 소켓을 열기 전에 나므로
+  // 백엔드가 준 사유를 복구 오버레이에 함께 보여준다
+  const displayStatus: SessionStatus = joinFailed ? "error" : status;
+  const statusDetail =
+    joinFailed && isApiError(joinError) ? joinError.message : undefined;
+
   const meetingAt = meeting && getMeetingDateTime(meeting);
   const { data: checklistData } = useChecklist(meeting?.meetingId);
   const checklistItems = checklistData?.items ?? [];
@@ -429,11 +455,14 @@ function ReservationLivePage() {
     label: peerLabel,
     muted: false,
     aspect: remoteAspect,
-    notice: <PeerPreparingNotice status={status} />,
+    notice: <PeerPreparingNotice status={displayStatus} />,
   };
   const primaryTile = isBroker ? localTile : peerTile;
   const secondaryTile = isBroker
-    ? { ...peerTile, notice: <PeerPreparingNotice status={status} compact /> }
+    ? {
+        ...peerTile,
+        notice: <PeerPreparingNotice status={displayStatus} compact />,
+      }
     : localTile;
 
   // 중개사에게는 체크리스트가 없어(명세상 불가) 패널 자체를 두지 않고
@@ -461,10 +490,14 @@ function ReservationLivePage() {
     }
   };
 
+  const signalingUrl = session?.signalingUrl;
+
   useEffect(() => {
-    if (!slug) {
+    if (!signalingUrl) {
       return;
     }
+    // 중첩 함수(start) 안에서도 string으로 좁혀진 값을 쓰기 위한 고정
+    const wsUrl = signalingUrl;
 
     let disposed = false;
     let pc: RTCPeerConnection | null = null;
@@ -525,10 +558,8 @@ function ReservationLivePage() {
         }
       };
 
-      const protocol = location.protocol === "https:" ? "wss" : "ws";
-      ws = new WebSocket(
-        `${protocol}://${location.host}/signal?room=${encodeURIComponent(slug!)}`,
-      );
+      // 접속 토큰(roomToken·accessToken)은 signalingUrl 쿼리에 이미 들어 있다
+      ws = new WebSocket(wsUrl);
 
       const send = (message: SignalMessage) => {
         if (ws?.readyState === WebSocket.OPEN) {
@@ -537,11 +568,24 @@ function ReservationLivePage() {
       };
 
       pc.onicecandidate = ({ candidate }) => {
-        send({ type: "candidate", candidate: candidate?.toJSON() ?? null });
+        // 릴레이는 후보를 평탄화된 필드로 받는다 — 종료 신호(null)는 보내지 않는다
+        if (candidate) {
+          send({
+            type: "ICE_CANDIDATE",
+            candidate: candidate.candidate,
+            sdpMid: candidate.sdpMid ?? undefined,
+            sdpMLineIndex: candidate.sdpMLineIndex ?? undefined,
+          });
+        }
       };
 
-      ws.onopen = () => setStatus("waiting");
       ws.onerror = () => setStatus("error");
+      // 정원 초과는 서버가 ERROR를 보낸 뒤 1008(Policy Violation)로 소켓을 닫는다
+      ws.onclose = (event) => {
+        if (!disposed && event.code === 1008) {
+          setStatus("room-full");
+        }
+      };
 
       ws.onmessage = async (event) => {
         if (!pc) {
@@ -550,47 +594,64 @@ function ReservationLivePage() {
         const message: SignalMessage = JSON.parse(event.data);
 
         switch (message.type) {
-          case "room-full":
-            setStatus("room-full");
+          case "JOINED":
+            // peerId가 없으면 내가 첫 입장. 상대가 이미 있으면 그쪽이
+            // PEER_JOINED를 받고 오퍼를 보내오므로 여기서는 기다린다
+            if (message.peerId == null) {
+              setStatus("waiting");
+            }
             break;
-          case "peer-joined":
+          case "PEER_JOINED":
             await pc.setLocalDescription();
-            send({
-              type: "description",
-              description: pc.localDescription ?? undefined,
-            });
+            send({ type: "OFFER", sdp: pc.localDescription?.sdp });
             break;
-          case "peer-left":
+          case "PEER_LEFT":
             setStatus("peer-left");
             if (remoteVideoRef.current) {
               remoteVideoRef.current.srcObject = null;
             }
             break;
-          case "description": {
-            if (!message.description) {
+          case "OFFER": {
+            if (!message.sdp) {
               break;
             }
-            await pc.setRemoteDescription(message.description);
-            if (message.description.type === "offer") {
-              await pc.setLocalDescription();
-              send({
-                type: "description",
-                description: pc.localDescription ?? undefined,
-              });
-            }
+            await pc.setRemoteDescription({ type: "offer", sdp: message.sdp });
+            await pc.setLocalDescription();
+            send({ type: "ANSWER", sdp: pc.localDescription?.sdp });
             for (const candidate of pendingCandidates.splice(0)) {
               await pc.addIceCandidate(candidate);
             }
             break;
           }
-          case "candidate":
-            if (message.candidate === null || message.candidate) {
-              if (pc.remoteDescription) {
-                await pc.addIceCandidate(message.candidate ?? undefined);
-              } else if (message.candidate) {
-                pendingCandidates.push(message.candidate);
-              }
+          case "ANSWER": {
+            if (!message.sdp) {
+              break;
             }
+            await pc.setRemoteDescription({ type: "answer", sdp: message.sdp });
+            for (const candidate of pendingCandidates.splice(0)) {
+              await pc.addIceCandidate(candidate);
+            }
+            break;
+          }
+          case "ICE_CANDIDATE": {
+            if (!message.candidate) {
+              break;
+            }
+            const candidate: RTCIceCandidateInit = {
+              candidate: message.candidate,
+              sdpMid: message.sdpMid,
+              sdpMLineIndex: message.sdpMLineIndex,
+            };
+            if (pc.remoteDescription) {
+              await pc.addIceCandidate(candidate);
+            } else {
+              pendingCandidates.push(candidate);
+            }
+            break;
+          }
+          case "ERROR":
+            // 정원 초과는 곧 이어지는 onclose(1008)가 처리하고,
+            // 릴레이 단계의 안내성 오류는 연결 상태를 바꾸지 않는다
             break;
         }
       };
@@ -605,7 +666,7 @@ function ReservationLivePage() {
       pc?.close();
       ws?.close();
     };
-  }, [slug, attempt]);
+  }, [signalingUrl]);
 
   const toggleTrack = (kind: "audio" | "video", next: boolean) => {
     const tracks =
@@ -639,9 +700,9 @@ function ReservationLivePage() {
             <Badge
               role="status"
               aria-live="polite"
-              variant={STATUS_BADGE_VARIANT[status]}
+              variant={STATUS_BADGE_VARIANT[displayStatus]}
             >
-              {STATUS_LABEL[status]}
+              {STATUS_LABEL[displayStatus]}
             </Badge>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -691,7 +752,11 @@ function ReservationLivePage() {
             </div>
           </div>
 
-          <StageRecoveryOverlay status={status} onRetry={retryConnection} />
+          <StageRecoveryOverlay
+            status={displayStatus}
+            detail={statusDetail}
+            onRetry={retryConnection}
+          />
 
           {mediaBlocked && (
             <p className="absolute inset-x-3 top-3 max-w-96 rounded-lg bg-slate-900/90 px-3 py-2 text-xs text-slate-300 lg:inset-x-6 lg:top-6">
