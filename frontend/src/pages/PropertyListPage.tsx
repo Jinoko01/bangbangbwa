@@ -30,6 +30,7 @@ import {
 } from "@/hooks/queries/propertyQueries";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { formatPrice } from "@/lib/format";
+import { loadKakaoMapSdk } from "@/lib/kakaoMap";
 import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
 import type { DealType, Filters, PropertyFilters, RoomType } from "@/types";
@@ -39,7 +40,7 @@ const MAP_RESULT_SIZE = 100;
 type KakaoPoint = object;
 type KakaoMap = {
   panTo: (position: KakaoPoint) => void;
-  panBy: (dx: number, dy: number) => void;
+  relayout: () => void;
   setBounds: (bounds: { extend: (position: KakaoPoint) => void }) => void;
   setDraggable: (draggable: boolean) => void;
   setZoomable: (zoomable: boolean) => void;
@@ -117,30 +118,29 @@ const CLUSTER_STYLE: KakaoClusterStyle = {
   boxShadow: "0 3px 12px rgba(22, 119, 255, 0.38)",
 };
 
-function getKakaoMaps() {
-  return (window as Window & { kakao?: { maps: KakaoSdk } }).kakao?.maps;
+// 목록 응답에는 개별 위경도가 없어 같은 동의 매물이 동일 좌표에 겹친다.
+// 같은 주소의 두 번째 매물부터 가까운 반경에 펼쳐, 확대 시 모든 핀이 보이게 한다.
+function spreadOverlappingPosition(
+  latitude: number,
+  longitude: number,
+  overlapIndex: number,
+) {
+  if (overlapIndex === 0) {
+    return { latitude, longitude };
+  }
+
+  const angle = overlapIndex * 2.399963;
+  const radius = 0.00045 * Math.sqrt(overlapIndex);
+  const longitudeScale = Math.max(Math.cos((latitude * Math.PI) / 180), 0.2);
+
+  return {
+    latitude: latitude + Math.sin(angle) * radius,
+    longitude: longitude + (Math.cos(angle) * radius) / longitudeScale,
+  };
 }
 
-let kakaoMapLoader: Promise<void> | null = null;
-
-function loadKakaoMap(appKey: string) {
-  if (getKakaoMaps()) {
-    return Promise.resolve();
-  }
-  if (kakaoMapLoader) {
-    return kakaoMapLoader;
-  }
-
-  kakaoMapLoader = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false&libraries=services,clusterer`;
-    script.async = true;
-    script.onload = () => getKakaoMaps()?.load(resolve);
-    script.onerror = () => reject(new Error("카카오맵을 불러오지 못했습니다."));
-    document.head.appendChild(script);
-  });
-
-  return kakaoMapLoader;
+function getKakaoMaps() {
+  return (window as Window & { kakao?: { maps: KakaoSdk } }).kakao?.maps;
 }
 
 function PropertyCardSkeleton() {
@@ -172,12 +172,6 @@ function PropertyMap({
   onToggleSave: (id: number) => void;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<KakaoMap | null>(null);
-  const mouseDragRef = useRef<{
-    x: number;
-    y: number;
-    dragging: boolean;
-  } | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const didDragResultsRef = useRef(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -205,63 +199,95 @@ function PropertyMap({
     }
 
     let cancelled = false;
+    let map: KakaoMap | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let relayoutFrame = 0;
+    const relayoutTimers: number[] = [];
 
-    loadKakaoMap(appKey)
+    const relayoutMap = () => {
+      cancelAnimationFrame(relayoutFrame);
+      relayoutFrame = requestAnimationFrame(() => {
+        map?.relayout();
+        map?.setDraggable(true);
+        map?.setZoomable(true);
+      });
+    };
+
+    loadKakaoMapSdk()
+      .then(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          }),
+      )
       .then(() => {
         const maps = getKakaoMaps();
         if (cancelled || !maps) {
           return;
         }
 
-        const map = new maps.Map(container, {
+        const createdMap = new maps.Map(container, {
           center: new maps.LatLng(37.5665, 126.978),
           level: 8,
           draggable: true,
         });
-        mapInstanceRef.current = map;
-        map.setDraggable(true);
-        map.setZoomable(true);
+        map = createdMap;
+        createdMap.setDraggable(true);
+        createdMap.setZoomable(true);
+        resizeObserver = new ResizeObserver(relayoutMap);
+        resizeObserver.observe(container);
+        relayoutMap();
+        relayoutTimers.push(
+          window.setTimeout(relayoutMap, 100),
+          window.setTimeout(relayoutMap, 300),
+        );
         const geocoder = new maps.services.Geocoder();
         const bounds = new maps.LatLngBounds();
         const propertyByMarker = new Map<KakaoMarker, PropertyCardItem>();
+        const addressOccurrences = new Map<string, number>();
 
-        const markerPromises = properties.map(
-          (property) =>
-            new Promise<KakaoMarker | null>((resolve) => {
-              geocoder.addressSearch(
-                `${property.region} ${property.dong}`,
-                (result, status) => {
-                  if (
-                    cancelled ||
-                    status !== maps.services.Status.OK ||
-                    !result[0]
-                  ) {
-                    resolve(null);
-                    return;
-                  }
+        const markerPromises = properties.map((property) => {
+          const address = `${property.region} ${property.dong}`;
+          const overlapIndex = addressOccurrences.get(address) ?? 0;
+          addressOccurrences.set(address, overlapIndex + 1);
 
-                  const position = new maps.LatLng(
-                    Number(result[0].y),
-                    Number(result[0].x),
-                  );
-                  const marker = new maps.Marker({
-                    position,
-                    title: property.title,
-                  });
+          return new Promise<KakaoMarker | null>((resolve) => {
+            geocoder.addressSearch(address, (result, status) => {
+              if (
+                cancelled ||
+                status !== maps.services.Status.OK ||
+                !result[0]
+              ) {
+                resolve(null);
+                return;
+              }
 
-                  propertyByMarker.set(marker, property);
-                  bounds.extend(position);
-                  maps.event.addListener(marker, "click", () => {
-                    setSelectedId(property.id);
-                    setClusterPropertyIds(null);
-                    setIsResultsOpen(true);
-                    map.panTo(position);
-                  });
-                  resolve(marker);
-                },
+              const spreadPosition = spreadOverlappingPosition(
+                Number(result[0].y),
+                Number(result[0].x),
+                overlapIndex,
               );
-            }),
-        );
+              const position = new maps.LatLng(
+                spreadPosition.latitude,
+                spreadPosition.longitude,
+              );
+              const marker = new maps.Marker({
+                position,
+                title: property.title,
+              });
+
+              propertyByMarker.set(marker, property);
+              bounds.extend(position);
+              maps.event.addListener(marker, "click", () => {
+                setSelectedId(property.id);
+                setClusterPropertyIds(null);
+                setIsResultsOpen(true);
+                createdMap.panTo(position);
+              });
+              resolve(marker);
+            });
+          });
+        });
 
         Promise.all(markerPromises).then((results) => {
           if (cancelled) {
@@ -276,7 +302,7 @@ function PropertyMap({
           }
 
           const clusterer = new maps.MarkerClusterer({
-            map,
+            map: createdMap,
             markers,
             averageCenter: true,
             minLevel: 6,
@@ -304,7 +330,8 @@ function PropertyMap({
             setClusterPropertyIds(ids);
             setIsResultsOpen(true);
           });
-          map.setBounds(bounds);
+          createdMap.setBounds(bounds);
+          relayoutMap();
         });
       })
       .catch((error: unknown) => {
@@ -319,80 +346,16 @@ function PropertyMap({
 
     return () => {
       cancelled = true;
-      mapInstanceRef.current = null;
+      cancelAnimationFrame(relayoutFrame);
+      relayoutTimers.forEach(window.clearTimeout);
+      resizeObserver?.disconnect();
       container.replaceChildren();
     };
   }, [appKey, properties]);
 
-  useEffect(() => {
-    const container = mapContainerRef.current;
-    if (!container) {
-      return;
-    }
-
-    const handleMouseDown = (event: MouseEvent) => {
-      if (event.button !== 0) {
-        return;
-      }
-      const map = mapInstanceRef.current;
-      if (!map) {
-        return;
-      }
-
-      // 카카오 내부 드래그 핸들러가 같은 mousedown을 처리하기 전에
-      // 데스크톱 지도 이동 상태를 반드시 다시 활성화한다.
-      map.setDraggable(true);
-      map.setZoomable(true);
-      mouseDragRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-        dragging: false,
-      };
-    };
-
-    const handleMouseMove = (event: MouseEvent) => {
-      const drag = mouseDragRef.current;
-      const map = mapInstanceRef.current;
-      if (!drag || !map) {
-        return;
-      }
-
-      const dx = event.clientX - drag.x;
-      const dy = event.clientY - drag.y;
-      if (!drag.dragging && Math.hypot(dx, dy) < 4) {
-        return;
-      }
-
-      drag.dragging = true;
-      event.preventDefault();
-      map.panBy(-dx, -dy);
-      drag.x = event.clientX;
-      drag.y = event.clientY;
-    };
-
-    const finishMouseDrag = () => {
-      mouseDragRef.current = null;
-    };
-
-    container.addEventListener("mousedown", handleMouseDown, true);
-    window.addEventListener("mousemove", handleMouseMove, true);
-    window.addEventListener("mouseup", finishMouseDrag, true);
-    window.addEventListener("blur", finishMouseDrag);
-
-    return () => {
-      container.removeEventListener("mousedown", handleMouseDown, true);
-      window.removeEventListener("mousemove", handleMouseMove, true);
-      window.removeEventListener("mouseup", finishMouseDrag, true);
-      window.removeEventListener("blur", finishMouseDrag);
-    };
-  }, []);
-
   return (
     <div className="relative h-[calc(100svh-12rem)] min-h-[32rem] overflow-hidden rounded-xl border bg-muted">
-      <div
-        ref={mapContainerRef}
-        className="absolute inset-0 cursor-grab active:cursor-grabbing"
-      />
+      <div ref={mapContainerRef} className="absolute inset-0" />
 
       <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-lg bg-background/95 px-3 py-2 text-sm shadow-sm">
         지도에 표시된 매물 <strong>{properties.length}건</strong>
