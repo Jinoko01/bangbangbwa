@@ -152,16 +152,46 @@ export interface PropertyCreateInput {
   environment?: PropertyEnvironment;
 }
 
-export interface Reservation {
-  id: string;
-  // 백엔드 회의(Meeting) id — 체크리스트 등 회의 단위 API의 조회 키
+// ── 회의 API 계약 (Swagger /api/meetings) ────────────────────────────────
+export type MeetingStatus =
+  "OPEN" | "REQUESTED" | "CONFIRMED" | "REJECTED" | "CANCELED";
+
+// 희망 시간 순위 — 중개사가 확정할 때 preferredRank로 지정한다
+export type PreferredRank = 1 | 2 | 3;
+
+export interface Meeting {
   meetingId: number;
   propertyId: number;
-  date: string;
-  time: string;
-  timeOptions: string[];
-  status: "예약 확정" | "예약 대기";
-  direction: "sent" | "received";
+  tenantId: number;
+  tenantNickname: string;
+  agentId: number;
+  agentNickname: string;
+  // 세입자가 등록한 희망 시간 1~3순위. 타임존 없는 LocalDateTime 표기("2026-08-01T14:00:00").
+  // 등록하지 않은 순위는 null로 온다
+  preferredAt1?: string | null;
+  preferredAt2?: string | null;
+  preferredAt3?: string | null;
+  // 중개사가 확정한 시간 — 확정 전에는 null
+  scheduledAt?: string | null;
+  status: MeetingStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 회의 목록 엔드포인트는 Spring의 sort 대신 정렬 방향 하나만 받는다
+export interface MeetingPaging {
+  page?: number;
+  size?: number;
+  direction?: "ASC" | "DESC";
+}
+
+// 로그인한 사용자 기준 — 세입자로 보낸 요청 / 중개사로 받은 요청
+export type MeetingDirection = "sent" | "received";
+
+// 회의 등록 불가능 시간 조회 구간 (yyyy-MM-dd)
+export interface MeetingDateRange {
+  from: string;
+  to: string;
 }
 
 export interface PriceBand {

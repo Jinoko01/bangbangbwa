@@ -18,34 +18,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { REGIONS, SIDO_LIST } from "@/data/regions";
+import { SEOUL_GUS, toSeoulRegionLabel } from "@/data/regions";
+import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
-
-// 특별시/광역시/특별자치시 여부 — 이 경우 "시/군" 단계 없이 바로 구를 고른다.
-const METRO_RE = /(특별시|광역시|특별자치시)$/;
-const isMetroCity = (name: string) => METRO_RE.test(name);
-
-// 조건부로 나타나는 Select를 감싸 등장 애니메이션을 준다.
-const revealClass = "animate-in fade-in-0 slide-in-from-top-1 duration-200";
 
 // 드롭다운(Viewport)을 약 5개 높이로 제한하고 초과분은 스크롤 (항목 1개 ≈ 32px).
 // popper 모드 기본 Viewport의 고정 높이(h-[trigger-height])는 h-auto로 무력화하고,
 // max-height는 important(!)로 radix 인라인 스타일보다 우선 적용.
 const dropdownViewportClass = "h-auto max-h-[168px]!";
 
-// 히어로 검색창 — 클릭 시 하얀 패널이 아래로 펼쳐지고,
-// 도/광역시 선택에 따라 하위 Select(시/군, 구)가 순차적으로 나타난다.
+// 히어로 검색창 — 클릭 시 하얀 패널이 아래로 펼쳐지고 구를 고른다 (서비스 지역 서울 한정).
+// 검색하면 선택 지역과 키워드를 /properties?sigungu=&query=로 넘긴다 (역 이름 검색은 백엔드 미지원).
 function HeroSearch() {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
 
   const [open, setOpen] = useState(false);
-  const [sido, setSido] = useState("");
-  const [sigungu, setSigungu] = useState("");
   const [gu, setGu] = useState("");
   const [keyword, setKeyword] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
-  const [alertMsg, setAlertMsg] = useState("");
 
   // 검색 영역 밖을 클릭하면 패널을 닫는다 (Select 드롭다운·모달 등 radix 포털은 예외).
   useEffect(() => {
@@ -74,44 +65,25 @@ function HeroSearch() {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [open]);
 
-  const isMetro = isMetroCity(sido);
-  const sigunguOptions = sido ? Object.keys(REGIONS[sido]) : [];
-  const guOptions = sido && sigungu ? (REGIONS[sido][sigungu] ?? []) : [];
-
-  // 도: 시/군 선택 후 구가 있을 때 노출 / 광역시: 선택 즉시 구 노출(sigungu 자동 설정)
-  const showSigungu = sido !== "" && !isMetro;
-  const showGu = sido !== "" && guOptions.length > 0;
-
-  const handleSido = (value: string) => {
-    setSido(value);
-    setGu("");
-    // 광역시는 시/군이 자기 자신 → 자동 설정하고 단계 스킵
-    setSigungu(isMetroCity(value) ? value : "");
-  };
-  const handleSigungu = (value: string) => {
-    setSigungu(value);
-    setGu("");
-  };
-
   const handleSearch = () => {
-    if (!sido) {
-      setAlertMsg("도/광역시를 선택해 주세요.");
+    // 지역·검색어 중 하나만 있어도 검색 — 둘 다 없을 때만 안내
+    if (!gu && !keyword.trim()) {
       setAlertOpen(true);
       return;
     }
-    // 특별시/광역시는 구가 필수 (세종처럼 하위 구가 없으면 제외)
-    if (isMetro && guOptions.length > 0 && !gu) {
-      setAlertMsg("구를 선택해 주세요.");
-      setAlertOpen(true);
-      return;
+
+    // "서울시 강남구 역삼동" 같은 입력은 구 필터와 나머지 검색어로 분리한다.
+    // sigungu 값은 목록 필터·백엔드와 같은 "강남구" 형태 — "서울시 강남구"는 표시 라벨뿐
+    const parsed = parseRegionQuery(keyword);
+    const params = new URLSearchParams();
+    const sigungu = gu || parsed.sigungu;
+    if (sigungu) {
+      params.set("sigungu", sigungu);
     }
-    // 도는 시/군까지 필수
-    if (!isMetro && !sigungu) {
-      setAlertMsg("시/군을 선택해 주세요.");
-      setAlertOpen(true);
-      return;
+    if (parsed.query) {
+      params.set("query", parsed.query);
     }
-    navigate("/properties");
+    navigate(`/properties?${params}`);
   };
 
   return (
@@ -125,7 +97,13 @@ function HeroSearch() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onFocus={() => setOpen(true)}
-              placeholder="원하는 지역이나 역 이름 검색"
+              onKeyDown={(e) => {
+                // 한글 조합 중 Enter는 무시 — 조합 확정용 keydown이 검색을 실행하지 않게
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  handleSearch();
+                }
+              }}
+              placeholder="지역·매물명 검색 (예: 서울시 강남구 역삼동)"
               className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-500"
             />
             <button
@@ -152,69 +130,21 @@ function HeroSearch() {
           >
             <div className="overflow-hidden">
               <div className="space-y-2 border-t border-slate-100 p-4">
-                {/* 1단계: 도 / 광역시 (항상 노출) */}
-                <Select value={sido || undefined} onValueChange={handleSido}>
+                <Select value={gu || undefined} onValueChange={setGu}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="도 / 광역시" />
+                    <SelectValue placeholder="지역 선택" />
                   </SelectTrigger>
                   <SelectContent
                     position="popper"
                     viewportClassName={dropdownViewportClass}
                   >
-                    {SIDO_LIST.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
+                    {SEOUL_GUS.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {toSeoulRegionLabel(g)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-
-                {/* 2단계: 시/군 — 도를 선택했을 때만 등장 (광역시는 스킵) */}
-                {showSigungu && (
-                  <div className={revealClass}>
-                    <Select
-                      value={sigungu || undefined}
-                      onValueChange={handleSigungu}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="시 / 군" />
-                      </SelectTrigger>
-                      <SelectContent
-                        position="popper"
-                        viewportClassName={dropdownViewportClass}
-                      >
-                        {sigunguOptions.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* 3단계: 구 — 광역시는 즉시(필수), 도는 시/군 선택 후(선택) 등장 */}
-                {showGu && (
-                  <div className={revealClass}>
-                    <Select value={gu || undefined} onValueChange={setGu}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue
-                          placeholder={isMetro ? "구 (필수)" : "구 (선택)"}
-                        />
-                      </SelectTrigger>
-                      <SelectContent
-                        position="popper"
-                        viewportClassName={dropdownViewportClass}
-                      >
-                        {guOptions.map((g) => (
-                          <SelectItem key={g} value={g}>
-                            {g}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
 
                 <Button className="w-full rounded-xl" onClick={handleSearch}>
                   <Search /> 검색
@@ -229,8 +159,10 @@ function HeroSearch() {
       <Dialog open={alertOpen} onOpenChange={setAlertOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>지역을 선택해 주세요</DialogTitle>
-            <DialogDescription>{alertMsg}</DialogDescription>
+            <DialogTitle>검색 조건이 필요해요</DialogTitle>
+            <DialogDescription>
+              지역을 선택하거나 검색어를 입력해 주세요.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setAlertOpen(false)}>확인</Button>
