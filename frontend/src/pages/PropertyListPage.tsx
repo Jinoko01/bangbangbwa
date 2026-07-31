@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Heart, ImageIcon, List, Map, Plus, SearchX } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Heart,
+  ImageIcon,
+  Plus,
+  SearchX,
+} from "lucide-react";
 
-import PropertyCard, {
+import {
   toPropertyCardItem,
   type PropertyCardItem,
 } from "@/components/PropertyCard";
 import PropertyFilterBar, {
   DEFAULT_FILTERS,
 } from "@/components/PropertyFilterBar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,31 +29,25 @@ import {
   useToggleSavedInCache,
 } from "@/hooks/queries/propertyQueries";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import { formatPrice } from "@/lib/format";
+import { loadKakaoMapSdk } from "@/lib/kakaoMap";
 import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
 import type { DealType, Filters, PropertyFilters, RoomType } from "@/types";
 
 const SKELETON_COUNT = 6;
-const PAGE_SIZE = 12;
-// 모바일 레일 한 페이지(2×2)에 담을 카드 수
-const RAIL_PAGE_SIZE = 4;
-type ViewMode = "list" | "map";
+const MAP_RESULT_SIZE = 100;
 type KakaoPoint = object;
 type KakaoMap = {
   panTo: (position: KakaoPoint) => void;
+  relayout: () => void;
   setBounds: (bounds: { extend: (position: KakaoPoint) => void }) => void;
-};
-type KakaoMarker = object;
-type KakaoCluster = {
-  getMarkers: () => KakaoMarker[];
 };
 type KakaoSdk = {
   load: (callback: () => void) => void;
   Map: new (
     container: HTMLElement,
-    options: { center: KakaoPoint; level: number },
+    options: { center: KakaoPoint; level: number; draggable?: boolean },
   ) => KakaoMap;
   LatLng: new (latitude: number, longitude: number) => KakaoPoint;
   LatLngBounds: new () => { extend: (position: KakaoPoint) => void };
@@ -56,15 +55,6 @@ type KakaoSdk = {
     map?: KakaoMap;
     position: KakaoPoint;
     title: string;
-  }) => KakaoMarker;
-  MarkerClusterer: new (options: {
-    map: KakaoMap;
-    markers: KakaoMarker[];
-    averageCenter: boolean;
-    minLevel: number;
-    disableClickZoom: boolean;
-    clickable: boolean;
-    styles: Array<Record<string, string>>;
   }) => object;
   event: {
     addListener: (
@@ -87,47 +77,21 @@ type KakaoSdk = {
   };
 };
 
-function getKakaoMaps() {
-  return (window as Window & { kakao?: { maps: KakaoSdk } }).kakao?.maps;
-}
+const CLUSTER_STYLE: KakaoClusterStyle = {
+  width: "48px",
+  height: "48px",
+  background: "#1677ff",
+  borderRadius: "50%",
+  color: "#ffffff",
+  fontSize: "15px",
+  fontWeight: "700",
+  lineHeight: "48px",
+  textAlign: "center",
+  boxShadow: "0 3px 12px rgba(22, 119, 255, 0.38)",
+};
 
-let kakaoMapLoader: Promise<void> | null = null;
-
-function loadKakaoMap(appKey: string) {
-  if (getKakaoMaps()) {
-    return Promise.resolve();
-  }
-  if (kakaoMapLoader) {
-    return kakaoMapLoader;
-  }
-
-  kakaoMapLoader = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false&libraries=services,clusterer`;
-    script.async = true;
-    script.onload = () => getKakaoMaps()?.load(resolve);
-    script.onerror = () => reject(new Error("카카오맵을 불러오지 못했습니다."));
-    document.head.appendChild(script);
-  });
-
-  return kakaoMapLoader;
-}
-
-const CLUSTER_STYLES = [
-  {
-    width: "48px",
-    height: "48px",
-    background: "#1677ff",
-    borderRadius: "50%",
-    color: "#fff",
-    fontSize: "15px",
-    fontWeight: "700",
-    lineHeight: "48px",
-    textAlign: "center",
-    boxShadow: "0 3px 12px rgba(22, 119, 255, 0.38)",
-  },
-];
-
+// 목록 응답에는 개별 위경도가 없어 같은 동의 매물이 동일 좌표에 겹친다.
+// 같은 주소의 두 번째 매물부터 가까운 반경에 펼쳐, 확대 시 모든 핀이 보이게 한다.
 function spreadOverlappingPosition(
   latitude: number,
   longitude: number,
@@ -145,6 +109,32 @@ function spreadOverlappingPosition(
     latitude: latitude + Math.sin(angle) * radius,
     longitude: longitude + (Math.cos(angle) * radius) / longitudeScale,
   };
+}
+
+function getKakaoMaps() {
+  return (window as Window & { kakao?: { maps: KakaoSdk } }).kakao?.maps;
+}
+
+let kakaoMapLoader: Promise<void> | null = null;
+
+function loadKakaoMap(appKey: string) {
+  if (getKakaoMaps()) {
+    return Promise.resolve();
+  }
+  if (kakaoMapLoader) {
+    return kakaoMapLoader;
+  }
+
+  kakaoMapLoader = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false&libraries=services`;
+    script.async = true;
+    script.onload = () => getKakaoMaps()?.load(resolve);
+    script.onerror = () => reject(new Error("카카오맵을 불러오지 못했습니다."));
+    document.head.appendChild(script);
+  });
+
+  return kakaoMapLoader;
 }
 
 // 모바일 레일을 페이지 단위 묶음으로 나눈다
@@ -173,108 +163,36 @@ function PropertyCardSkeleton() {
   );
 }
 
-function PropertyCardCompactSkeleton() {
-  return (
-    <div>
-      <Skeleton className="aspect-square w-full rounded-xl" />
-      <Skeleton className="mt-2 h-4 w-full" />
-      <Skeleton className="mt-1.5 h-4 w-2/3" />
-      <Skeleton className="mt-2 h-5 w-24" />
-    </div>
-  );
-}
-
-interface PropertyCardCompactProps {
-  property: PropertyCardItem;
-  onToggleSave: (id: number) => void;
-  onOpen: (id: number) => void;
-}
-
-// 모바일 목록 전용 컴팩트 카드 — 이미지 위 거래유형 뱃지·저장 버튼, 아래로 제목·가격 순
-function PropertyCardCompact({
-  property,
-  onToggleSave,
-  onOpen,
-}: PropertyCardCompactProps) {
-  const { title, dealType, roomType, region, dong, imageUrl, saved } = property;
-
-  return (
-    <div
-      className="group cursor-pointer"
-      role="link"
-      tabIndex={0}
-      aria-label={`${title} 상세 보기`}
-      onClick={() => onOpen(property.id)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          onOpen(property.id);
-        }
-      }}
-    >
-      <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={`${title} 매물 사진`}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <span aria-hidden className="grid h-full w-full place-items-center">
-            <ImageIcon className="size-6 text-muted-foreground" />
-          </span>
-        )}
-        <Badge
-          variant="secondary"
-          className="absolute bottom-2 left-2 bg-background/95 font-semibold text-primary shadow-sm"
-        >
-          {dealType}
-        </Badge>
-        <button
-          type="button"
-          className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-background/95 shadow-sm"
-          aria-label={saved ? "매물 저장 취소" : "매물 저장"}
-          aria-pressed={saved}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSave(property.id);
-          }}
-        >
-          <Heart
-            className={cn(
-              "size-4",
-              saved ? "fill-primary text-primary" : "text-muted-foreground",
-            )}
-          />
-        </button>
-      </div>
-      <p className="mt-2 line-clamp-2 text-sm leading-snug break-keep">
-        {title}
-      </p>
-      <p className="mt-1 font-bold text-primary">{formatPrice(property)}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">
-        {region} {dong} · {roomType}
-      </p>
-    </div>
-  );
-}
-
 function PropertyMap({
   properties,
   onOpen,
+  onToggleSave,
 }: {
   properties: PropertyCardItem[];
   onOpen: (id: number) => void;
+  onToggleSave: (id: number) => void;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [selectedId, setSelectedId] = useState<number | undefined>(
-    properties[0]?.id,
-  );
-  const [clusterResults, setClusterResults] = useState<PropertyCardItem[]>([]);
+  const [selectedId, setSelectedId] = useState(properties[0]?.id);
   const [mapError, setMapError] = useState<string | null>(null);
-  const selected =
-    properties.find((property) => property.id === selectedId) ?? properties[0];
+  const [map, setMap] = useState<KakaoMap | null>(null);
+  const clustererRef = useRef<KakaoClusterer | null>(null);
+  // clusterclick 리스너는 지도 생성 시 한 번만 달리므로,
+  // 마커 배치가 바뀔 때마다 ref로 최신 마커 → 매물 매핑을 넘겨준다
+  const propertyByMarkerRef = useRef(new Map<KakaoMarker, PropertyCardItem>());
   const appKey = import.meta.env.VITE_KAKAO_KEY;
+  const selectedProperty = properties.find(
+    (property) => property.id === selectedId,
+  );
+  const visibleProperties = selectedProperty
+    ? [selectedProperty]
+    : clusterPropertyIds
+      ? properties.filter((property) =>
+          clusterPropertyIds.includes(property.id),
+        )
+      : properties;
 
+  // 지도 생성은 마운트에 1회 — SDK 로드 후 컨테이너 크기가 확정되면 만든다
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container || !appKey) {
@@ -282,108 +200,56 @@ function PropertyMap({
     }
 
     let cancelled = false;
+    let relayoutFrame = 0;
+    let resizeObserver: ResizeObserver | null = null;
 
-    loadKakaoMap(appKey)
+    loadKakaoMapSdk()
+      .then(() => waitForContainerSize(container))
       .then(() => {
         const maps = getKakaoMaps();
         if (cancelled || !maps) {
           return;
         }
 
-        const map = new maps.Map(container, {
+        const createdMap = new maps.Map(container, {
           center: new maps.LatLng(37.5665, 126.978),
           level: 8,
+          draggable: true,
         });
         const geocoder = new maps.services.Geocoder();
         const bounds = new maps.LatLngBounds();
-        const propertyByMarker = new globalThis.Map<
-          KakaoMarker,
-          PropertyCardItem
-        >();
-        const addressOccurrences = new globalThis.Map<string, number>();
-        setClusterResults([]);
 
-        const markerPromises = properties.map((property) => {
-          const address = `${property.region} ${property.dong}`;
-          const overlapIndex = addressOccurrences.get(address) ?? 0;
-          addressOccurrences.set(address, overlapIndex + 1);
-
-          return new Promise<KakaoMarker | null>((resolve) => {
-            geocoder.addressSearch(address, (result, status) => {
+        properties.forEach((property) => {
+          geocoder.addressSearch(
+            `${property.region} ${property.dong}`,
+            (result, status) => {
               if (
                 cancelled ||
                 status !== maps.services.Status.OK ||
                 !result[0]
               ) {
-                resolve(null);
                 return;
               }
 
-              const spreadPosition = spreadOverlappingPosition(
+              const position = new maps.LatLng(
                 Number(result[0].y),
                 Number(result[0].x),
-                overlapIndex,
-              );
-              const position = new maps.LatLng(
-                spreadPosition.latitude,
-                spreadPosition.longitude,
               );
               const marker = new maps.Marker({
+                map,
                 position,
                 title: property.title,
               });
 
-              propertyByMarker.set(marker, property);
               bounds.extend(position);
+              map.setBounds(bounds);
+
               maps.event.addListener(marker, "click", () => {
-                setClusterResults([]);
                 setSelectedId(property.id);
                 map.panTo(position);
               });
-              resolve(marker);
-            });
-          });
-        });
-
-        Promise.all(markerPromises).then((results) => {
-          if (cancelled) {
-            return;
-          }
-
-          const markers = results.filter(
-            (marker): marker is KakaoMarker => marker !== null,
+            },
           );
-          if (markers.length === 0) {
-            return;
-          }
-
-          const clusterer = new maps.MarkerClusterer({
-            map,
-            markers,
-            averageCenter: true,
-            minLevel: 6,
-            disableClickZoom: true,
-            clickable: true,
-            styles: CLUSTER_STYLES,
-          });
-
-          maps.event.addListener(clusterer, "clusterclick", (cluster) => {
-            if (!cluster) {
-              return;
-            }
-
-            const clusterItems = cluster
-              .getMarkers()
-              .map((marker) => propertyByMarker.get(marker))
-              .filter(
-                (property): property is PropertyCardItem =>
-                  property !== undefined,
-              );
-
-            setSelectedId(undefined);
-            setClusterResults(clusterItems);
-          });
-          map.setBounds(bounds);
         });
       })
       .catch((error: unknown) => {
@@ -398,16 +264,91 @@ function PropertyMap({
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(relayoutFrame);
+      resizeObserver?.disconnect();
+      clustererRef.current = null;
+      setMap(null);
       container.replaceChildren();
     };
-  }, [appKey, properties]);
+  }, [appKey]);
+
+  // 매물 목록이 바뀌면 지도는 그대로 두고 핀만 갈아끼운다
+  useEffect(() => {
+    const clusterer = clustererRef.current;
+    const maps = getKakaoMaps();
+    if (!map || !clusterer || !maps) {
+      return;
+    }
+
+    let cancelled = false;
+    const addressOccurrences = new Map<string, number>();
+
+    const markerPromises = properties.map(async (property) => {
+      const address = `${property.region} ${property.dong}`;
+      const overlapIndex = addressOccurrences.get(address) ?? 0;
+      addressOccurrences.set(address, overlapIndex + 1);
+
+      const geocoded = await geocodeAddress(maps, address);
+      if (cancelled || !geocoded) {
+        return null;
+      }
+
+      const spreadPosition = spreadOverlappingPosition(
+        geocoded.latitude,
+        geocoded.longitude,
+        overlapIndex,
+      );
+      const position = new maps.LatLng(
+        spreadPosition.latitude,
+        spreadPosition.longitude,
+      );
+      const marker = new maps.Marker({ position, title: property.title });
+
+      maps.event.addListener(marker, "click", () => {
+        setSelectedId(property.id);
+        setClusterPropertyIds(null);
+        setIsResultsOpen(true);
+        map.panTo(position);
+      });
+      return { marker, property, position };
+    });
+
+    void Promise.all(markerPromises).then((results) => {
+      if (cancelled) {
+        return;
+      }
+
+      const placed = results.filter(
+        (result): result is NonNullable<typeof result> => result !== null,
+      );
+      const propertyByMarker = new Map<KakaoMarker, PropertyCardItem>();
+      const bounds = new maps.LatLngBounds();
+      for (const { marker, property, position } of placed) {
+        propertyByMarker.set(marker, property);
+        bounds.extend(position);
+      }
+      propertyByMarkerRef.current = propertyByMarker;
+
+      clusterer.clear();
+      if (placed.length === 0) {
+        return;
+      }
+      clusterer.addMarkers(placed.map(({ marker }) => marker));
+      map.setBounds(bounds);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [map, properties]);
 
   return (
-    <div className="relative mt-4 h-[34rem] overflow-hidden rounded-xl border bg-muted">
-      <div ref={mapContainerRef} className="absolute inset-0" />
+    <div className="relative h-[calc(100svh-12rem)] min-h-[32rem] overflow-hidden rounded-xl border bg-muted">
+      {/* touch-none — 지도 제스처를 페이지 스크롤에 뺏기지 않는다 */}
+      <div ref={mapContainerRef} className="absolute inset-0 touch-none" />
 
-      <div className="absolute left-4 top-4 z-10 rounded-lg bg-background/95 px-3 py-2 text-sm shadow-sm">
-        지도에서 매물 {properties.length}건을 확인해 보세요
+      <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-lg bg-background/95 px-3 py-2 text-sm shadow-sm">
+        지도에 표시된 매물 <strong>{properties.length}건</strong>
       </div>
 
       {(!appKey || mapError) && (
@@ -422,48 +363,7 @@ function PropertyMap({
         </div>
       )}
 
-      {clusterResults.length > 0 ? (
-        <section className="absolute inset-x-4 bottom-4 z-20 max-h-[60%] overflow-hidden rounded-xl border bg-background shadow-md sm:right-auto sm:w-96">
-          <div className="border-b px-4 py-3">
-            <p className="font-semibold">
-              이 지역 매물 {clusterResults.length}건
-            </p>
-          </div>
-          <div className="max-h-[22rem] overflow-y-auto p-2">
-            {clusterResults.map((property) => (
-              <button
-                key={property.id}
-                type="button"
-                className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-muted"
-                onClick={() => onOpen(property.id)}
-              >
-                {property.imageUrl ? (
-                  <img
-                    src={property.imageUrl}
-                    alt=""
-                    className="size-16 shrink-0 rounded-lg object-cover"
-                  />
-                ) : (
-                  <span className="grid size-16 shrink-0 place-items-center rounded-lg bg-muted">
-                    <ImageIcon className="size-5 text-muted-foreground" />
-                  </span>
-                )}
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold">
-                    {property.title}
-                  </span>
-                  <span className="mt-1 block font-semibold text-primary">
-                    {formatPrice(property)}
-                  </span>
-                  <span className="mt-1 block truncate text-xs text-muted-foreground">
-                    {property.region} {property.dong} · {property.roomType}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : selected ? (
+      {selected && (
         <button
           type="button"
           className="absolute bottom-4 left-4 right-4 z-20 flex max-w-md items-center gap-3 rounded-xl border bg-background p-3 text-left shadow-md transition-shadow hover:shadow-lg sm:right-auto"
@@ -492,7 +392,7 @@ function PropertyMap({
             </span>
           </span>
         </button>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -527,24 +427,13 @@ interface PropertyListPageProps {
   onCreate: () => void;
 }
 
-// PAGE-04 매물 목록 — 목록 조회(PROP-02) 및 필터. 검색·필터·페이지는 서버(GET /api/properties)가 처리한다.
+// PAGE-03·04 통합 매물 탐색 — 지도와 목록은 같은 검색 결과를 함께 보여준다.
 function PropertyListPage({
   canCreate,
   onOpen,
   onCreate,
 }: PropertyListPageProps) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  // 랜딩 히어로 검색이 넘긴 초기 조건(?sigungu=&query=) — 이후 변경은 필터바 상태가 소유한다
-  const [filters, setFilters] = useState(() => ({
-    ...DEFAULT_FILTERS,
-    region: searchParams.get("sigungu") ?? DEFAULT_FILTERS.region,
-    query: searchParams.get("query") ?? DEFAULT_FILTERS.query,
-  }));
-  const [page, setPage] = useState(0);
-  // 탭은 URL 쿼리(?view=map)로 관리 — 상세에서 뒤로 왔을 때 지도/리스트 선택이 유지된다
-  const viewMode: ViewMode =
-    searchParams.get("view") === "map" ? "map" : "list";
-  const isMobile = useIsMobile();
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const debouncedQuery = useDebouncedValue(filters.query.trim());
   const toggleSaved = useToggleSavedInCache();
 
@@ -553,8 +442,8 @@ function PropertyListPage({
     [filters, debouncedQuery],
   );
   const { data, isPending, isError, refetch } = usePropertyList(queryFilters, {
-    page,
-    size: PAGE_SIZE,
+    page: 0,
+    size: MAP_RESULT_SIZE,
   });
   const items = useMemo(
     () => data?.content.map(toPropertyCardItem) ?? [],
@@ -563,69 +452,24 @@ function PropertyListPage({
 
   const changeFilters = (next: Filters) => {
     setFilters(next);
-    setPage(0);
   };
 
   // 거래유형이 바뀌면 가격 축 의미가 달라지므로 가격 구간을 초기화
   const handleDealTypeChange = (dealType: string) =>
     changeFilters({ ...filters, dealType, price: "all", rent: "all" });
 
-  // 탭 전환은 히스토리를 쌓지 않는다(replace) — 뒤로가기는 항상 페이지 이탈
-  const changeViewMode = (next: ViewMode) => {
-    setSearchParams(
-      (prev) => {
-        const params = new URLSearchParams(prev);
-        if (next === "map") {
-          params.set("view", "map");
-        } else {
-          params.delete("view");
-        }
-        return params;
-      },
-      { replace: true },
-    );
-  };
-
   return (
     <div className="min-h-svh bg-background">
       <header>
         <div className="mx-auto flex max-w-6xl flex-col items-start gap-4 px-4 py-6">
           <div className="flex w-full items-center justify-between">
-            <h1 className="text-lg font-semibold">매물 목록</h1>
+            <h1 className="text-lg font-semibold">매물 찾기</h1>
             {canCreate && (
               <Button size="sm" onClick={onCreate}>
                 <Plus />
                 매물 등록
               </Button>
             )}
-          </div>
-          <div
-            className="inline-flex rounded-xl border bg-muted p-1.5 shadow-sm"
-            role="tablist"
-            aria-label="매물 보기 방식"
-          >
-            <Button
-              type="button"
-              role="tab"
-              size="default"
-              variant={viewMode === "list" ? "default" : "ghost"}
-              className="min-w-28 rounded-lg font-semibold"
-              aria-selected={viewMode === "list"}
-              onClick={() => changeViewMode("list")}
-            >
-              <List /> 리스트형식
-            </Button>
-            <Button
-              type="button"
-              role="tab"
-              size="default"
-              variant={viewMode === "map" ? "default" : "ghost"}
-              className="min-w-28 rounded-lg font-semibold"
-              aria-selected={viewMode === "map"}
-              onClick={() => changeViewMode("map")}
-            >
-              <Map /> 지도형식
-            </Button>
           </div>
         </div>
       </header>
@@ -686,30 +530,13 @@ function PropertyListPage({
       <main className="mx-auto max-w-6xl px-4 py-6">
         {isPending ? (
           <>
-            <Skeleton className="h-5 w-20" />
-            {isMobile ? (
-              <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2">
-                {chunkIntoPages(
-                  Array.from({ length: SKELETON_COUNT }, (_, i) => i),
-                  RAIL_PAGE_SIZE,
-                ).map((pageIndexes) => (
-                  <div
-                    key={pageIndexes[0]}
-                    className="grid w-[92%] shrink-0 grid-cols-2 gap-3"
-                  >
-                    {pageIndexes.map((i) => (
-                      <PropertyCardCompactSkeleton key={i} />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-                  <PropertyCardSkeleton key={i} />
-                ))}
-              </div>
-            )}
+            <Skeleton className="h-[26rem] w-full rounded-xl sm:h-[34rem]" />
+            <Skeleton className="mt-8 h-5 w-24" />
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+                <PropertyCardSkeleton key={i} />
+              ))}
+            </div>
           </>
         ) : isError ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
@@ -745,76 +572,13 @@ function PropertyListPage({
               </span>
               건
             </p>
-            {viewMode === "list" ? (
-              isMobile ? (
-                // 2×2 카드 페이지를 가로로 스와이프하는 레일 — 카드가 왼쪽 위부터 가로 순서로 채워진다.
-                // 조회 조건이 바뀌면 key로 리마운트해 첫 매물부터 다시 보여준다
-                <div
-                  key={`${JSON.stringify(queryFilters)}-${page}`}
-                  className="-mx-4 mt-4 flex snap-x scroll-pl-4 gap-3 overflow-x-auto px-4 pb-2"
-                  role="tabpanel"
-                >
-                  {chunkIntoPages(items, RAIL_PAGE_SIZE).map(
-                    (pageProperties) => (
-                      <div
-                        key={pageProperties[0].id}
-                        className="grid w-[92%] shrink-0 snap-start grid-cols-2 gap-3"
-                      >
-                        {pageProperties.map((property) => (
-                          <PropertyCardCompact
-                            key={property.id}
-                            property={property}
-                            onToggleSave={toggleSaved}
-                            onOpen={onOpen}
-                          />
-                        ))}
-                      </div>
-                    ),
-                  )}
-                </div>
-              ) : (
-                <div
-                  className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-                  role="tabpanel"
-                >
-                  {items.map((property) => (
-                    <PropertyCard
-                      key={property.id}
-                      property={property}
-                      onToggleSave={toggleSaved}
-                      onOpen={onOpen}
-                    />
-                  ))}
-                </div>
-              )
-            ) : (
-              <div role="tabpanel">
-                <PropertyMap properties={items} onOpen={onOpen} />
-              </div>
-            )}
-            {data.totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={data.first}
-                  onClick={() => setPage((current) => current - 1)}
-                >
-                  이전
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  {data.number + 1} / {data.totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={data.last}
-                  onClick={() => setPage((current) => current + 1)}
-                >
-                  다음
-                </Button>
-              </div>
-            )}
+            <div className="mt-4">
+              <PropertyMap
+                properties={items}
+                onOpen={onOpen}
+                onToggleSave={toggleSaved}
+              />
+            </div>
           </>
         )}
       </main>
