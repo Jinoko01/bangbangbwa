@@ -124,3 +124,9 @@
     text-rendering: optimizeLegibility;
   }
 }
+
+@media (max-width: 639px) {
+  body:has([data-mobile-tabbar]) {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
