@@ -107,7 +107,7 @@ export function loadKakaoMapSdk(): Promise<void> {
 
   sdkLoader = new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = `${SDK_URL}?appkey=${appKey}&autoload=false&libraries=services`;
+    script.src = `${SDK_URL}?appkey=${appKey}&autoload=false&libraries=services,clusterer`;
     script.async = true;
     script.onload = () => getKakaoMaps()?.load(resolve);
     script.onerror = () => {
