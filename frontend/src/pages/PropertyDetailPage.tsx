@@ -210,7 +210,7 @@ function loadKakaoMap(appKey: string) {
 
   kakaoDetailMapLoader = new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false&libraries=services`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false&libraries=services,clusterer`;
     script.async = true;
     script.onload = () => getKakaoMaps()?.load(resolve);
     script.onerror = () => reject(new Error("카카오맵을 불러오지 못했습니다."));

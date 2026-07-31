@@ -40,6 +40,10 @@ type KakaoMap = {
   panTo: (position: KakaoPoint) => void;
   setBounds: (bounds: { extend: (position: KakaoPoint) => void }) => void;
 };
+type KakaoMarker = object;
+type KakaoCluster = {
+  getMarkers: () => KakaoMarker[];
+};
 type KakaoSdk = {
   load: (callback: () => void) => void;
   Map: new (
@@ -49,12 +53,25 @@ type KakaoSdk = {
   LatLng: new (latitude: number, longitude: number) => KakaoPoint;
   LatLngBounds: new () => { extend: (position: KakaoPoint) => void };
   Marker: new (options: {
-    map: KakaoMap;
+    map?: KakaoMap;
     position: KakaoPoint;
     title: string;
+  }) => KakaoMarker;
+  MarkerClusterer: new (options: {
+    map: KakaoMap;
+    markers: KakaoMarker[];
+    averageCenter: boolean;
+    minLevel: number;
+    disableClickZoom: boolean;
+    clickable: boolean;
+    styles: Array<Record<string, string>>;
   }) => object;
   event: {
-    addListener: (marker: object, type: "click", handler: () => void) => void;
+    addListener: (
+      target: object,
+      type: "click" | "clusterclick",
+      handler: (cluster?: KakaoCluster) => void,
+    ) => void;
   };
   services: {
     Status: { OK: string };
@@ -86,7 +103,7 @@ function loadKakaoMap(appKey: string) {
 
   kakaoMapLoader = new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false&libraries=services`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false&libraries=services,clusterer`;
     script.async = true;
     script.onload = () => getKakaoMaps()?.load(resolve);
     script.onerror = () => reject(new Error("카카오맵을 불러오지 못했습니다."));
@@ -94,6 +111,40 @@ function loadKakaoMap(appKey: string) {
   });
 
   return kakaoMapLoader;
+}
+
+const CLUSTER_STYLES = [
+  {
+    width: "48px",
+    height: "48px",
+    background: "#1677ff",
+    borderRadius: "50%",
+    color: "#fff",
+    fontSize: "15px",
+    fontWeight: "700",
+    lineHeight: "48px",
+    textAlign: "center",
+    boxShadow: "0 3px 12px rgba(22, 119, 255, 0.38)",
+  },
+];
+
+function spreadOverlappingPosition(
+  latitude: number,
+  longitude: number,
+  overlapIndex: number,
+) {
+  if (overlapIndex === 0) {
+    return { latitude, longitude };
+  }
+
+  const angle = overlapIndex * 2.399963;
+  const radius = 0.00045 * Math.sqrt(overlapIndex);
+  const longitudeScale = Math.max(Math.cos((latitude * Math.PI) / 180), 0.2);
+
+  return {
+    latitude: latitude + Math.sin(angle) * radius,
+    longitude: longitude + (Math.cos(angle) * radius) / longitudeScale,
+  };
 }
 
 // 모바일 레일을 페이지 단위 묶음으로 나눈다
@@ -215,7 +266,10 @@ function PropertyMap({
   onOpen: (id: number) => void;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [selectedId, setSelectedId] = useState(properties[0]?.id);
+  const [selectedId, setSelectedId] = useState<number | undefined>(
+    properties[0]?.id,
+  );
+  const [clusterResults, setClusterResults] = useState<PropertyCardItem[]>([]);
   const [mapError, setMapError] = useState<string | null>(null);
   const selected =
     properties.find((property) => property.id === selectedId) ?? properties[0];
@@ -242,38 +296,94 @@ function PropertyMap({
         });
         const geocoder = new maps.services.Geocoder();
         const bounds = new maps.LatLngBounds();
+        const propertyByMarker = new globalThis.Map<
+          KakaoMarker,
+          PropertyCardItem
+        >();
+        const addressOccurrences = new globalThis.Map<string, number>();
+        setClusterResults([]);
 
-        properties.forEach((property) => {
-          geocoder.addressSearch(
-            `${property.region} ${property.dong}`,
-            (result, status) => {
+        const markerPromises = properties.map((property) => {
+          const address = `${property.region} ${property.dong}`;
+          const overlapIndex = addressOccurrences.get(address) ?? 0;
+          addressOccurrences.set(address, overlapIndex + 1);
+
+          return new Promise<KakaoMarker | null>((resolve) => {
+            geocoder.addressSearch(address, (result, status) => {
               if (
                 cancelled ||
                 status !== maps.services.Status.OK ||
                 !result[0]
               ) {
+                resolve(null);
                 return;
               }
 
-              const position = new maps.LatLng(
+              const spreadPosition = spreadOverlappingPosition(
                 Number(result[0].y),
                 Number(result[0].x),
+                overlapIndex,
+              );
+              const position = new maps.LatLng(
+                spreadPosition.latitude,
+                spreadPosition.longitude,
               );
               const marker = new maps.Marker({
-                map,
                 position,
                 title: property.title,
               });
 
+              propertyByMarker.set(marker, property);
               bounds.extend(position);
-              map.setBounds(bounds);
-
               maps.event.addListener(marker, "click", () => {
+                setClusterResults([]);
                 setSelectedId(property.id);
                 map.panTo(position);
               });
-            },
+              resolve(marker);
+            });
+          });
+        });
+
+        Promise.all(markerPromises).then((results) => {
+          if (cancelled) {
+            return;
+          }
+
+          const markers = results.filter(
+            (marker): marker is KakaoMarker => marker !== null,
           );
+          if (markers.length === 0) {
+            return;
+          }
+
+          const clusterer = new maps.MarkerClusterer({
+            map,
+            markers,
+            averageCenter: true,
+            minLevel: 6,
+            disableClickZoom: true,
+            clickable: true,
+            styles: CLUSTER_STYLES,
+          });
+
+          maps.event.addListener(clusterer, "clusterclick", (cluster) => {
+            if (!cluster) {
+              return;
+            }
+
+            const clusterItems = cluster
+              .getMarkers()
+              .map((marker) => propertyByMarker.get(marker))
+              .filter(
+                (property): property is PropertyCardItem =>
+                  property !== undefined,
+              );
+
+            setSelectedId(undefined);
+            setClusterResults(clusterItems);
+          });
+          map.setBounds(bounds);
         });
       })
       .catch((error: unknown) => {
@@ -312,7 +422,48 @@ function PropertyMap({
         </div>
       )}
 
-      {selected && (
+      {clusterResults.length > 0 ? (
+        <section className="absolute inset-x-4 bottom-4 z-20 max-h-[60%] overflow-hidden rounded-xl border bg-background shadow-md sm:right-auto sm:w-96">
+          <div className="border-b px-4 py-3">
+            <p className="font-semibold">
+              이 지역 매물 {clusterResults.length}건
+            </p>
+          </div>
+          <div className="max-h-[22rem] overflow-y-auto p-2">
+            {clusterResults.map((property) => (
+              <button
+                key={property.id}
+                type="button"
+                className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-muted"
+                onClick={() => onOpen(property.id)}
+              >
+                {property.imageUrl ? (
+                  <img
+                    src={property.imageUrl}
+                    alt=""
+                    className="size-16 shrink-0 rounded-lg object-cover"
+                  />
+                ) : (
+                  <span className="grid size-16 shrink-0 place-items-center rounded-lg bg-muted">
+                    <ImageIcon className="size-5 text-muted-foreground" />
+                  </span>
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold">
+                    {property.title}
+                  </span>
+                  <span className="mt-1 block font-semibold text-primary">
+                    {formatPrice(property)}
+                  </span>
+                  <span className="mt-1 block truncate text-xs text-muted-foreground">
+                    {property.region} {property.dong} · {property.roomType}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : selected ? (
         <button
           type="button"
           className="absolute bottom-4 left-4 right-4 z-20 flex max-w-md items-center gap-3 rounded-xl border bg-background p-3 text-left shadow-md transition-shadow hover:shadow-lg sm:right-auto"
@@ -341,7 +492,7 @@ function PropertyMap({
             </span>
           </span>
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
