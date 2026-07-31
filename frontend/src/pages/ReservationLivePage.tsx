@@ -16,6 +16,7 @@ import {
   MicOff,
   PhoneOff,
   RotateCcw,
+  ScanSearch,
   Trash2,
   Users,
   Video,
@@ -44,6 +45,7 @@ import {
   type SessionCapture,
   useSessionCaptures,
 } from "@/hooks/useSessionCaptures";
+import { useInspectionStream } from "@/hooks/useInspectionStream";
 import { useVideoAspect } from "@/hooks/useVideoAspect";
 import { formatMeetingDateTime, getMeetingDateTime } from "@/lib/meeting";
 import { cn } from "@/lib/utils";
@@ -473,6 +475,12 @@ function ReservationLivePage() {
     primaryTile.videoRef,
   );
 
+  // RTC-06 AI 하자 검수 — 원본 화질(송출 전) 스트림을 가진 중개사 쪽에서만 돌린다
+  const { candidateCount } = useInspectionStream(
+    localVideoRef,
+    isBroker && status === "connected",
+  );
+
   // RTC-05 — 캡처는 영상 프레임이 있어야 가능하므로 실패를 사용자에게 알린다
   const [captureError, captureAction, capturing] = useActionState<
     string | null
@@ -508,8 +516,10 @@ function ReservationLivePage() {
 
     async function start() {
       try {
+        // AI 하자 검수 입력(긴 변 960px)을 보장하려고 1080p를 요청한다.
+        // ideal이라 미지원 카메라는 가능한 최대 해상도로 열린다
         localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: true,
         });
       } catch {
@@ -763,6 +773,16 @@ function ReservationLivePage() {
               카메라·마이크를 사용할 수 없어 수신 전용으로 입장했어요. 브라우저
               주소창의 권한 아이콘에서 카메라와 마이크를 허용한 뒤 다시 연결해
               주세요.
+            </p>
+          )}
+
+          {/* 하자 후보가 잡히기 시작하면 건수로 바뀌어 검수가 돌고 있음을 알린다 */}
+          {isBroker && !mediaBlocked && status === "connected" && (
+            <p className="absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-lg bg-slate-950/70 px-2.5 py-1.5 text-xs text-slate-200 lg:top-6 lg:left-6">
+              <ScanSearch className="size-3.5" />
+              {candidateCount > 0
+                ? `곰팡이 의심 ${candidateCount}건 감지`
+                : "AI 하자 검수 중"}
             </p>
           )}
 
