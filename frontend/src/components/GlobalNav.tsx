@@ -1,6 +1,13 @@
-import { useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, Menu, X } from "lucide-react";
+import {
+  Building2,
+  CalendarDays,
+  Heart,
+  House,
+  LogOut,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -118,64 +125,98 @@ function AuthArea({
 
 // 공통 GNB — App 레이아웃 레벨에서 모든 페이지 상단에 표시 (h-14 고정)
 function GlobalNav() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const closeMenu = () => setMenuOpen(false);
   const user = useAuthStore((state) => state.user);
+  const isSessionRestored = useAuthStore((state) => state.isSessionRestored);
   // ADMIN-01 인증 심사 메뉴는 관리자 계정에만 노출
   const navItems = NAV_ITEMS.filter((item) => user || !item.authRequired);
   if (user?.role === "관리자") {
     navItems.push({ label: "인증 심사", to: "/admin" });
   }
+  const mobileTabs = [
+    { label: "홈", to: "/", icon: House },
+    ...navItems.map((item) => ({
+      label: item.label.replace(" 목록", "").replace(" 매물", ""),
+      to: item.to ?? "#",
+      icon:
+        item.to === "/properties"
+          ? Building2
+          : item.to === "/saved"
+            ? Heart
+            : item.to === "/reservations"
+              ? CalendarDays
+              : ShieldCheck,
+    })),
+    ...(user ? [{ label: "마이", to: "/mypage", icon: UserRound }] : []),
+  ];
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <nav className="relative mx-auto flex h-14 max-w-6xl items-center gap-8 px-4">
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-lg font-bold text-primary"
-          onClick={closeMenu}
-        >
-          <img
-            src="/logo-symbol.png"
-            alt=""
-            className="h-7 w-auto rounded-md bg-white"
-          />
-          방방봐
-        </Link>
+    <>
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <nav className="mx-auto flex h-14 max-w-6xl items-center gap-8 px-4">
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-lg font-bold text-primary"
+          >
+            <img
+              src="/logo-symbol.png"
+              alt=""
+              className="h-7 w-auto rounded-md bg-white"
+            />
+            방방봐
+          </Link>
 
-        <div className="hidden items-center gap-6 sm:flex">
-          {navItems.map((item) => (
-            <NavItem key={item.label} item={item} />
-          ))}
-        </div>
-
-        <div className="absolute right-0 hidden items-center gap-1 sm:flex xl:-right-8">
-          <AuthArea />
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="ml-auto sm:hidden"
-          aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          {menuOpen ? <X /> : <Menu />}
-        </Button>
-
-        {menuOpen && (
-          <div className="absolute inset-x-0 top-full flex flex-col gap-4 border-b bg-background px-4 py-4 shadow-md sm:hidden">
+          <div className="hidden items-center gap-6 sm:flex">
             {navItems.map((item) => (
-              <NavItem key={item.label} item={item} onNavigate={closeMenu} />
+              <NavItem key={item.label} item={item} />
             ))}
-            <div className="border-t pt-4">
-              <AuthArea compact onNavigate={closeMenu} />
-            </div>
           </div>
-        )}
+
+          <div className="ml-auto hidden items-center gap-1 sm:flex">
+            <AuthArea />
+          </div>
+
+          <div className="ml-auto sm:hidden">
+            {!isSessionRestored ? (
+              <Skeleton className="size-8 rounded-full" />
+            ) : user ? (
+              <Link to="/mypage" aria-label="마이페이지">
+                <ProfileAvatar user={user} className="size-8" />
+              </Link>
+            ) : (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/login">로그인</Link>
+              </Button>
+            )}
+          </div>
+        </nav>
+      </header>
+
+      <nav
+        data-mobile-tabbar
+        className="scrollbar-hidden fixed inset-x-0 bottom-0 z-50 flex h-16 overflow-x-auto border-t bg-background/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_10px_rgba(15,23,42,0.08)] backdrop-blur sm:hidden"
+        aria-label="모바일 주요 메뉴"
+      >
+        {mobileTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <NavLink
+              key={`${tab.to}-${tab.label}`}
+              to={tab.to}
+              end={tab.to === "/"}
+              className={({ isActive }) =>
+                cn(
+                  "flex min-w-16 flex-1 flex-col items-center justify-center gap-1 px-2 text-xs font-medium",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                )
+              }
+            >
+              <Icon className="size-5" />
+              <span>{tab.label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
-    </header>
+    </>
   );
 }
 
