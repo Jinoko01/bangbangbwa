@@ -194,6 +194,17 @@ export interface MeetingDateRange {
   to: string;
 }
 
+export interface Reservation {
+  id: string;
+  meetingId: number;
+  propertyId: number;
+  date: string;
+  time: string;
+  timeOptions: string[];
+  status: "예약 확정" | "예약 대기";
+  direction: "sent" | "received";
+}
+
 export interface PriceBand {
   value: string;
   label: string;

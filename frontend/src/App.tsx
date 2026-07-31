@@ -32,7 +32,7 @@ import {
 } from "@/hooks/queries/propertyQueries";
 import { isApprovedBroker } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
-import type { Memo, Property } from "@/types";
+import type { Memo, Property, Reservation } from "@/types";
 
 // API 연동 전 목데이터 로딩 시뮬레이션 시간(ms)
 const MOCK_LOADING_MS = 600;
@@ -103,6 +103,38 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [properties, setProperties] = useState<Property[]>([]);
   const [memos, setMemos] = useState<Record<number, Memo[]>>({});
+  const [reservations, setReservations] = useState<Reservation[]>([
+    {
+      id: "reservation-demo-0918",
+      meetingId: 918,
+      propertyId: 2,
+      date: "2026-07-24",
+      time: "10:00, 13:00, 16:00",
+      timeOptions: ["10:00", "13:00", "16:00"],
+      status: "예약 대기",
+      direction: "sent",
+    },
+    {
+      id: "reservation-demo-0742",
+      meetingId: 742,
+      propertyId: 6,
+      date: "2026-07-26",
+      time: "19:00",
+      timeOptions: ["13:00", "16:00", "19:00"],
+      status: "예약 확정",
+      direction: "sent",
+    },
+    {
+      id: "reservation-demo-1024",
+      meetingId: 1024,
+      propertyId: 1,
+      date: "2026-07-24",
+      time: "11:00, 14:00, 17:00",
+      timeOptions: ["11:00", "14:00", "17:00"],
+      status: "예약 대기",
+      direction: "received",
+    },
+  ]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -125,6 +157,13 @@ function App() {
     restoreSession();
   }, [restoreSession]);
 
+  const toggleSave = (id: number) =>
+    setProperties((previous) =>
+      previous.map((property) =>
+        property.id === id ? { ...property, saved: !property.saved } : property,
+      ),
+    );
+
   // PROP-07·08 매물 등록·수정 — 같은 id가 있으면 교체, 없으면 맨 앞에 추가.
   // 목록·상세는 목데이터 사본을 따로 보므로 그쪽에도 같은 변경을 반영한다
   const saveProperty = (property: Property) => {
@@ -140,6 +179,7 @@ function App() {
   // PROP-09 매물 삭제 — 연결된 메모도 함께 정리 (회의는 서버가 소유한다)
   const deleteProperty = (id: number) => {
     setProperties((prev) => prev.filter((p) => p.id !== id));
+    setReservations((prev) => prev.filter((r) => r.propertyId !== id));
     setMemos((prev) => {
       const { [id]: _removed, ...rest } = prev;
       return rest;
@@ -191,7 +231,27 @@ function App() {
         />
         <Route
           path="/reservations"
-          element={<RequireAuth>{() => <ReservationPage />}</RequireAuth>}
+          element={
+            <RequireAuth>
+              {() => (
+                <ReservationPage
+                  reservations={reservations}
+                  properties={properties}
+                  onConfirmReservation={(reservationId, time) =>
+                    setReservations((previous) =>
+                      previous.map((reservation) =>
+                        reservation.id === reservationId &&
+                        reservation.direction === "received" &&
+                        reservation.status === "예약 대기"
+                          ? { ...reservation, time, status: "예약 확정" }
+                          : reservation,
+                      ),
+                    )
+                  }
+                />
+              )}
+            </RequireAuth>
+          }
         />
         <Route
           path="/booking/:id"
@@ -200,7 +260,14 @@ function App() {
         <Route
           path="/saved"
           element={
-            <RequireAuth>{() => <SavedPropertiesPage />}</RequireAuth>
+            <RequireAuth>
+              {() => (
+                <SavedPropertiesPage
+                  properties={properties}
+                  onToggleSave={toggleSave}
+                />
+              )}
+            </RequireAuth>
           }
         />
         <Route

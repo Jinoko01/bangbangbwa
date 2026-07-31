@@ -43,6 +43,26 @@ type KakaoMap = {
   relayout: () => void;
   setBounds: (bounds: { extend: (position: KakaoPoint) => void }) => void;
 };
+type KakaoMarker = object;
+type KakaoCluster = {
+  getMarkers: () => KakaoMarker[];
+};
+type KakaoClusterer = {
+  clear: () => void;
+  addMarkers: (markers: KakaoMarker[]) => void;
+};
+type KakaoClusterStyle = {
+  width: string;
+  height: string;
+  background: string;
+  borderRadius: string;
+  color: string;
+  fontSize: string;
+  fontWeight: string;
+  lineHeight: string;
+  textAlign: string;
+  boxShadow: string;
+};
 type KakaoSdk = {
   load: (callback: () => void) => void;
   Map: new (
@@ -55,7 +75,17 @@ type KakaoSdk = {
     map?: KakaoMap;
     position: KakaoPoint;
     title: string;
-  }) => object;
+  }) => KakaoMarker;
+  MarkerClusterer: new (options: {
+    map: KakaoMap;
+    markers: KakaoMarker[];
+    averageCenter: boolean;
+    minLevel: number;
+    disableClickZoom: boolean;
+    clickable: boolean;
+    calculator: number[];
+    styles: KakaoClusterStyle[];
+  }) => KakaoClusterer;
   event: {
     addListener: (
       target: object,
@@ -115,33 +145,58 @@ function getKakaoMaps() {
   return (window as Window & { kakao?: { maps: KakaoSdk } }).kakao?.maps;
 }
 
-let kakaoMapLoader: Promise<void> | null = null;
-
-function loadKakaoMap(appKey: string) {
-  if (getKakaoMaps()) {
-    return Promise.resolve();
-  }
-  if (kakaoMapLoader) {
-    return kakaoMapLoader;
-  }
-
-  kakaoMapLoader = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false&libraries=services`;
-    script.async = true;
-    script.onload = () => getKakaoMaps()?.load(resolve);
-    script.onerror = () => reject(new Error("카카오맵을 불러오지 못했습니다."));
-    document.head.appendChild(script);
+// 지도 생성은 컨테이너가 실제 크기를 가진 뒤여야 한다 — 크기 확정 전에 만들면
+// 내부 뷰포트 계산이 어긋나 빈 지도가 나온다 (relayout 타이머로 때우지 않는다)
+function waitForContainerSize(el: HTMLElement) {
+  return new Promise<void>((resolve) => {
+    if (el.clientWidth > 0 && el.clientHeight > 0) {
+      resolve();
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth > 0 && el.clientHeight > 0) {
+        observer.disconnect();
+        resolve();
+      }
+    });
+    observer.observe(el);
   });
-
-  return kakaoMapLoader;
 }
 
-// 모바일 레일을 페이지 단위 묶음으로 나눈다
-function chunkIntoPages<T>(items: T[], size: number) {
-  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
-    items.slice(index * size, index * size + size),
+// 주소 → 좌표 캐시 — 필터가 바뀌어도 같은 동은 다시 지오코딩하지 않는다 (카카오 쿼터 절약)
+const geocodeCache = new Map<
+  string,
+  Promise<{ latitude: number; longitude: number } | null>
+>();
+
+function geocodeAddress(maps: KakaoSdk, address: string) {
+  const cached = geocodeCache.get(address);
+  if (cached) {
+    return cached;
+  }
+
+  const lookup = new Promise<{ latitude: number; longitude: number } | null>(
+    (resolve) => {
+      new maps.services.Geocoder().addressSearch(address, (result, status) => {
+        if (status !== maps.services.Status.OK || !result[0]) {
+          resolve(null);
+          return;
+        }
+        resolve({
+          latitude: Number(result[0].y),
+          longitude: Number(result[0].x),
+        });
+      });
+    },
   );
+  geocodeCache.set(address, lookup);
+  // 실패(쿼터·일시 오류)는 캐시에 남기지 않아 다음 갱신에서 재시도된다
+  void lookup.then((position) => {
+    if (position === null) {
+      geocodeCache.delete(address);
+    }
+  });
+  return lookup;
 }
 
 function PropertyCardSkeleton() {
@@ -173,7 +228,13 @@ function PropertyMap({
   onToggleSave: (id: number) => void;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [selectedId, setSelectedId] = useState(properties[0]?.id);
+  const dragStartYRef = useRef<number | null>(null);
+  const didDragResultsRef = useRef(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [clusterPropertyIds, setClusterPropertyIds] = useState<number[] | null>(
+    null,
+  );
+  const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [map, setMap] = useState<KakaoMap | null>(null);
   const clustererRef = useRef<KakaoClusterer | null>(null);
@@ -216,41 +277,41 @@ function PropertyMap({
           level: 8,
           draggable: true,
         });
-        const geocoder = new maps.services.Geocoder();
-        const bounds = new maps.LatLngBounds();
 
-        properties.forEach((property) => {
-          geocoder.addressSearch(
-            `${property.region} ${property.dong}`,
-            (result, status) => {
-              if (
-                cancelled ||
-                status !== maps.services.Status.OK ||
-                !result[0]
-              ) {
-                return;
-              }
-
-              const position = new maps.LatLng(
-                Number(result[0].y),
-                Number(result[0].x),
-              );
-              const marker = new maps.Marker({
-                map,
-                position,
-                title: property.title,
-              });
-
-              bounds.extend(position);
-              map.setBounds(bounds);
-
-              maps.event.addListener(marker, "click", () => {
-                setSelectedId(property.id);
-                map.panTo(position);
-              });
-            },
-          );
+        const clusterer = new maps.MarkerClusterer({
+          map: createdMap,
+          markers: [],
+          averageCenter: true,
+          minLevel: 6,
+          disableClickZoom: true,
+          clickable: true,
+          calculator: [10, 30, 50],
+          styles: [CLUSTER_STYLE, CLUSTER_STYLE, CLUSTER_STYLE, CLUSTER_STYLE],
         });
+
+        maps.event.addListener(clusterer, "clusterclick", (cluster) => {
+          if (!cluster) {
+            return;
+          }
+          const ids = cluster
+            .getMarkers()
+            .map((marker) => propertyByMarkerRef.current.get(marker)?.id)
+            .filter((id): id is number => id !== undefined);
+
+          setSelectedId(null);
+          setClusterPropertyIds(ids);
+          setIsResultsOpen(true);
+        });
+
+        // 생성 이후의 창 크기 변경에는 relayout만 필요하다
+        resizeObserver = new ResizeObserver(() => {
+          cancelAnimationFrame(relayoutFrame);
+          relayoutFrame = requestAnimationFrame(() => createdMap.relayout());
+        });
+        resizeObserver.observe(container);
+
+        clustererRef.current = clusterer;
+        setMap(createdMap);
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -363,36 +424,133 @@ function PropertyMap({
         </div>
       )}
 
-      {selected && (
+      <section
+        className={cn(
+          "absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-2xl border-t bg-background shadow-[0_-4px_16px_rgba(15,23,42,0.12)] transition-[height] duration-300",
+          isResultsOpen ? "h-[72%]" : "h-16",
+        )}
+        aria-label="지도 검색 결과"
+      >
         <button
           type="button"
-          className="absolute bottom-4 left-4 right-4 z-20 flex max-w-md items-center gap-3 rounded-xl border bg-background p-3 text-left shadow-md transition-shadow hover:shadow-lg sm:right-auto"
-          onClick={() => onOpen(selected.id)}
+          className="relative flex h-16 shrink-0 touch-none items-center justify-between px-5 pt-2 text-left"
+          aria-expanded={isResultsOpen}
+          onClick={() => {
+            if (didDragResultsRef.current) {
+              didDragResultsRef.current = false;
+              return;
+            }
+            setIsResultsOpen((current) => !current);
+          }}
+          onPointerDown={(event) => {
+            didDragResultsRef.current = false;
+            dragStartYRef.current = event.clientY;
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerUp={(event) => {
+            const startY = dragStartYRef.current;
+            dragStartYRef.current = null;
+            if (startY === null) {
+              return;
+            }
+
+            const distance = event.clientY - startY;
+            if (distance < -30) {
+              didDragResultsRef.current = true;
+              setIsResultsOpen(true);
+            }
+            if (distance > 30) {
+              didDragResultsRef.current = true;
+              setIsResultsOpen(false);
+            }
+          }}
         >
-          {selected.imageUrl ? (
-            <img
-              src={selected.imageUrl}
-              alt=""
-              className="size-16 shrink-0 rounded-lg object-cover"
-            />
-          ) : (
-            <span
-              aria-hidden
-              className="grid size-16 shrink-0 place-items-center rounded-lg bg-muted"
-            >
-              <ImageIcon className="size-5 text-muted-foreground" />
+          <span
+            aria-hidden
+            className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-border"
+          />
+          <span>
+            <span className="block font-semibold">
+              {selectedProperty
+                ? "매물 상세"
+                : `매물 ${visibleProperties.length}건`}
             </span>
-          )}
-          <span className="min-w-0">
-            <span className="block truncate font-semibold">
-              {selected.title}
-            </span>
-            <span className="mt-1 block text-sm text-muted-foreground">
-              {selected.region} {selected.dong} · {selected.roomType}
-            </span>
+            {!isResultsOpen && (
+              <span className="text-xs text-muted-foreground">
+                위로 올려 목록 보기
+              </span>
+            )}
           </span>
+          {isResultsOpen ? (
+            <ChevronDown className="size-5 text-muted-foreground" />
+          ) : (
+            <ChevronUp className="size-5 text-muted-foreground" />
+          )}
         </button>
-      )}
+
+        <div className="min-h-0 flex-1 overflow-y-auto border-t px-4 py-2">
+          {visibleProperties.map((property) => {
+            const isSelected = property.id === selectedId;
+
+            return (
+              <div
+                key={property.id}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl p-2 transition-colors",
+                  isSelected
+                    ? "bg-primary/5 ring-1 ring-primary/20"
+                    : "hover:bg-muted",
+                )}
+              >
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  onClick={() => onOpen(property.id)}
+                >
+                  {property.imageUrl ? (
+                    <img
+                      src={property.imageUrl}
+                      alt=""
+                      className="size-20 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <span className="grid size-20 shrink-0 place-items-center rounded-lg bg-muted">
+                      <ImageIcon className="size-5 text-muted-foreground" />
+                    </span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">
+                      {property.title}
+                    </span>
+                    <span className="mt-1 block font-semibold text-primary">
+                      {formatPrice(property)}
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-muted-foreground">
+                      {property.region} {property.dong} · {property.roomType}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-background"
+                  aria-label={property.saved ? "매물 저장 취소" : "매물 저장"}
+                  aria-pressed={property.saved}
+                  onClick={() => onToggleSave(property.id)}
+                >
+                  <Heart
+                    className={cn(
+                      "size-5",
+                      property.saved
+                        ? "fill-primary text-primary"
+                        : "text-muted-foreground",
+                    )}
+                  />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }
