@@ -6,25 +6,24 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-// 매물 API를 잠시 끄고 목데이터를 보여주는 중이다.
-// 서버에 다시 붙일 때는 아래 import를 "@/api/property"로 되돌리고,
-// useToggleSavedInCache의 toggleMockSaved 호출만 지우면 된다.
 import {
   createProperty,
+  deleteProperty,
   getMyProperties,
   getProperties,
   getPropertiesInBounds,
   getProperty,
-  toggleMockSaved,
+  getPropertyFilterOptions,
+  updateProperty,
   uploadPropertyImages,
-} from "@/data/mockPropertyApi";
+} from "@/api/property";
+import { isApprovedBroker } from "@/lib/auth";
+import { useAuthStore } from "@/stores/authStore";
 import type {
   MapBounds,
-  Page,
   PagingParams,
-  PropertyDetail,
   PropertyFilters,
-  PropertySummary,
+  PropertyUpdateInput,
 } from "@/types";
 
 export const propertyKeys = {
@@ -35,6 +34,7 @@ export const propertyKeys = {
   myLists: () => [...propertyKeys.all, "my-list"] as const,
   myList: (paging: PagingParams) =>
     [...propertyKeys.myLists(), paging] as const,
+  filterOptions: () => [...propertyKeys.all, "filter-options"] as const,
   maps: () => [...propertyKeys.all, "map"] as const,
   map: (bounds: MapBounds) => [...propertyKeys.maps(), bounds] as const,
   details: () => [...propertyKeys.all, "detail"] as const,
@@ -66,6 +66,14 @@ export const propertyDetailOptions = (propertyId: number) =>
     queryFn: ({ signal }) => getProperty(propertyId, signal),
   });
 
+// 매물이 등록될 때만 바뀌는 목록이라 오래 캐시한다 (랜딩·목록 두 화면이 같이 쓴다)
+export const propertyFilterOptionsOptions = () =>
+  queryOptions({
+    queryKey: propertyKeys.filterOptions(),
+    queryFn: ({ signal }) => getPropertyFilterOptions(signal),
+    staleTime: 10 * 60_000,
+  });
+
 export const propertyMapOptions = (bounds: MapBounds) =>
   queryOptions({
     queryKey: propertyKeys.map(bounds),
@@ -93,29 +101,23 @@ export function usePropertiesInBounds(bounds: MapBounds) {
   return useQuery(propertyMapOptions(bounds));
 }
 
-// PROP-04·05 저장 토글 — 찜 API가 아직 없어 목데이터와 캐시의 표시 상태만 뒤집는다.
-// (엔드포인트가 생기면 useMutation으로 교체할 것)
-export function useToggleSavedInCache() {
-  const queryClient = useQueryClient();
+export function usePropertyFilterOptions() {
+  return useQuery(propertyFilterOptionsOptions());
+}
 
-  return (propertyId: number) => {
-    toggleMockSaved(propertyId);
-    queryClient.setQueriesData<Page<PropertySummary>>(
-      { queryKey: propertyKeys.lists() },
-      (page) =>
-        page && {
-          ...page,
-          content: page.content.map((property) =>
-            property.propertyId === propertyId
-              ? { ...property, saved: !property.saved }
-              : property,
-          ),
-        },
-    );
-    queryClient.setQueryData<PropertyDetail>(
-      propertyKeys.detail(propertyId),
-      (property) => property && { ...property, saved: !property.saved },
-    );
+// PROP-08·09 수정·삭제 권한 — 상세 응답에 등록 중개사가 없어 내 매물 목록에 있는지로 판단한다
+export function useIsMyProperty(propertyId: number) {
+  const user = useAuthStore((state) => state.user);
+  const canManage = isApprovedBroker(user);
+  const { data, isPending } = useMyPropertyList({}, canManage);
+
+  return {
+    isMyProperty:
+      canManage &&
+      Boolean(
+        data?.content.some((property) => property.propertyId === propertyId),
+      ),
+    isPending: canManage && isPending,
   };
 }
 
@@ -129,6 +131,45 @@ export function useCreateProperty() {
         propertyKeys.detail(property.propertyId),
         property,
       );
+      queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.myLists() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.maps() });
+    },
+  });
+}
+
+// PROP-08 매물 수정 — 등록 중개사 본인만 호출할 수 있다 (권한은 useIsMyProperty로 판단)
+export function useUpdateProperty() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      propertyId,
+      input,
+    }: {
+      propertyId: number;
+      input: PropertyUpdateInput;
+    }) => updateProperty(propertyId, input),
+    onSuccess: (property) => {
+      queryClient.setQueryData(
+        propertyKeys.detail(property.propertyId),
+        property,
+      );
+      queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.myLists() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.maps() });
+    },
+  });
+}
+
+// PROP-09 매물 삭제 — 상세 캐시까지 지워 뒤로가기로 지워진 매물이 다시 보이지 않게 한다
+export function useDeleteProperty() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteProperty,
+    onSuccess: (_result, propertyId) => {
+      queryClient.removeQueries({ queryKey: propertyKeys.detail(propertyId) });
       queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
       queryClient.invalidateQueries({ queryKey: propertyKeys.myLists() });
       queryClient.invalidateQueries({ queryKey: propertyKeys.maps() });

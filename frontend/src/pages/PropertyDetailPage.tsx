@@ -3,9 +3,11 @@ import {
   useMemo,
   useRef,
   useState,
+  useTransition,
   type ComponentProps,
   type ReactNode,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   CalendarPlus,
   ChevronLeft,
@@ -36,10 +38,8 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isApiError } from "@/api/error";
-import {
-  usePropertyDetail,
-  useToggleSavedInCache,
-} from "@/hooks/queries/propertyQueries";
+import { useToggleFavorite } from "@/hooks/queries/favoriteQueries";
+import { usePropertyDetail } from "@/hooks/queries/propertyQueries";
 import {
   formatManwonLabel,
   formatPrice,
@@ -52,6 +52,7 @@ import {
   NEAREST_FACILITY_LIMIT,
 } from "@/lib/nearbyFacilities";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 import type { FacilityCategory, Memo, NearbyFacility } from "@/types";
 
 // shadcn Textarea 미설치 → Input과 동일 토큰으로 스타일링한 로컬 textarea
@@ -895,9 +896,26 @@ function BrokerActions({
   onDelete,
 }: {
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, startDelete] = useTransition();
+
+  // 삭제에 실패하면 다이얼로그를 닫지 않고 이유를 보여준다 (성공하면 상위가 목록으로 이동)
+  const requestDelete = () =>
+    startDelete(async () => {
+      try {
+        setDeleteError(null);
+        await onDelete();
+      } catch (failure) {
+        setDeleteError(
+          isApiError(failure)
+            ? failure.message
+            : "매물을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+      }
+    });
 
   return (
     <div className="ml-auto flex items-center gap-1">
@@ -923,12 +941,25 @@ function BrokerActions({
               사라지며 되돌릴 수 없습니다.
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <p role="alert" className="text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+            <Button
+              variant="outline"
+              disabled={isDeleting}
+              onClick={() => setDeleteOpen(false)}
+            >
               취소
             </Button>
-            <Button variant="destructive" onClick={onDelete}>
-              삭제하기
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={requestDelete}
+            >
+              {isDeleting ? "삭제 중..." : "삭제하기"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1070,7 +1101,8 @@ interface PropertyDetailPageProps {
   onBack: () => void;
   onReserve: (id: number) => void;
   onEdit: () => void;
-  onDelete: () => void;
+  // 삭제 실패를 다이얼로그에서 알려야 하므로 완료를 기다릴 수 있게 Promise를 받는다
+  onDelete: () => Promise<void>;
   memos: Memo[];
   onAddMemo: (text: string) => void;
   onUpdateMemo: (memoId: number, text: string) => void;
@@ -1098,7 +1130,18 @@ function PropertyDetailPage({
     error,
     refetch,
   } = usePropertyDetail(propertyId);
-  const toggleSaved = useToggleSavedInCache();
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const { mutate: toggleFavorite, isError: isSaveError } = useToggleFavorite();
+
+  // 저장은 로그인 사용자만 가능 — 비로그인 상태에서는 401 대신 로그인 화면으로 보낸다
+  const handleToggleSave = (propertyId: number, saved: boolean) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    toggleFavorite({ propertyId, saved });
+  };
 
   const priceLabel = property
     ? { 매매: "매매가", 전세: "전세 보증금", 월세: "보증금 / 월세" }[
@@ -1235,12 +1278,20 @@ function PropertyDetailPage({
               </CardContent>
             </Card>
 
+            {isSaveError && (
+              <p role="alert" className="text-sm text-destructive">
+                저장 상태를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.
+              </p>
+            )}
+
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 className="h-11 flex-1"
                 aria-pressed={property.saved}
-                onClick={() => toggleSaved(property.propertyId)}
+                onClick={() =>
+                  handleToggleSave(property.propertyId, !property.saved)
+                }
               >
                 <Heart
                   className={
