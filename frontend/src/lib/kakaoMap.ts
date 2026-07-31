@@ -28,7 +28,41 @@ interface KakaoAddressDocument {
   road_address?: KakaoRoadAddress;
 }
 
-type KakaoLatLng = object;
+export type KakaoLatLng = object;
+
+export interface KakaoLatLngBounds {
+  extend: (position: KakaoLatLng) => void;
+}
+
+export interface KakaoMap {
+  panTo: (position: KakaoLatLng) => void;
+  relayout: () => void;
+  setBounds: (bounds: KakaoLatLngBounds) => void;
+}
+
+export type KakaoMarker = object;
+
+export interface KakaoCluster {
+  getMarkers: () => KakaoMarker[];
+}
+
+export interface KakaoClusterer {
+  clear: () => void;
+  addMarkers: (markers: KakaoMarker[]) => void;
+}
+
+export interface KakaoClusterStyle {
+  width: string;
+  height: string;
+  background: string;
+  borderRadius: string;
+  color: string;
+  fontSize: string;
+  fontWeight: string;
+  lineHeight: string;
+  textAlign: string;
+  boxShadow: string;
+}
 
 interface KakaoPlace {
   id: string;
@@ -69,9 +103,35 @@ interface KakaoPlaces {
   ) => void;
 }
 
-type KakaoMapsSdk = {
+export type KakaoMapsSdk = {
   load: (callback: () => void) => void;
   LatLng: new (latitude: number, longitude: number) => KakaoLatLng;
+  LatLngBounds: new () => KakaoLatLngBounds;
+  Map: new (
+    container: HTMLElement,
+    options: { center: KakaoLatLng; level: number; draggable?: boolean },
+  ) => KakaoMap;
+  Marker: new (options: {
+    position: KakaoLatLng;
+    title: string;
+  }) => KakaoMarker;
+  MarkerClusterer: new (options: {
+    map: KakaoMap;
+    markers: KakaoMarker[];
+    averageCenter: boolean;
+    minLevel: number;
+    disableClickZoom: boolean;
+    clickable: boolean;
+    calculator: number[];
+    styles: KakaoClusterStyle[];
+  }) => KakaoClusterer;
+  event: {
+    addListener: (
+      target: object,
+      type: "click" | "clusterclick",
+      handler: (cluster?: KakaoCluster) => void,
+    ) => void;
+  };
   services: {
     Status: { OK: string; ZERO_RESULT: string };
     SortBy: { DISTANCE: string };
@@ -85,7 +145,7 @@ type KakaoMapsSdk = {
   };
 };
 
-function getKakaoMaps() {
+export function getKakaoMaps() {
   return (window as Window & { kakao?: { maps: KakaoMapsSdk } }).kakao?.maps;
 }
 
@@ -182,6 +242,78 @@ export async function searchAddress(query: string): Promise<GeocodedAddress> {
       }
       resolve(toGeocodedAddress(result[0]));
     });
+  });
+}
+
+// 주소 → 좌표 캐시 — 필터가 바뀌어도 같은 동은 다시 지오코딩하지 않는다 (카카오 쿼터 절약)
+const addressLookupCache = new Map<string, Promise<GeocodedAddress | null>>();
+
+/**
+ * 캐시된 주소 조회. {@link searchAddress}와 달리 실패를 예외로 올리지 않고 `null`을 돌려준다 —
+ * 지도 핀은 일부 주소를 찾지 못해도 나머지를 그려야 하기 때문이다.
+ */
+export function lookupAddress(query: string): Promise<GeocodedAddress | null> {
+  const cached = addressLookupCache.get(query);
+  if (cached) {
+    return cached;
+  }
+
+  const lookup = searchAddress(query).catch(() => null);
+  addressLookupCache.set(query, lookup);
+  // 실패(쿼터·일시 오류)는 캐시에 남기지 않아 다음 갱신에서 재시도된다
+  void lookup.then((address) => {
+    if (address === null) {
+      addressLookupCache.delete(query);
+    }
+  });
+  return lookup;
+}
+
+// 황금각(2.399963rad) 나선 — 같은 좌표에 겹친 핀을 균등하게 흩는다
+const SPREAD_ANGLE_RADIAN = 2.399963;
+const SPREAD_RADIUS_DEGREE = 0.00045;
+
+/**
+ * 매물 목록 응답에는 개별 위경도가 없어 같은 동의 매물이 동일 좌표에 겹친다.
+ * 같은 주소의 두 번째 매물부터 가까운 반경에 펼쳐, 확대 시 모든 핀이 보이게 한다.
+ */
+export function spreadOverlappingPosition(
+  latitude: number,
+  longitude: number,
+  overlapIndex: number,
+) {
+  if (overlapIndex === 0) {
+    return { latitude, longitude };
+  }
+
+  const angle = overlapIndex * SPREAD_ANGLE_RADIAN;
+  const radius = SPREAD_RADIUS_DEGREE * Math.sqrt(overlapIndex);
+  // 경도 1도의 실제 거리는 고위도로 갈수록 짧아진다 — 위도별로 보정해 원형을 유지한다
+  const longitudeScale = Math.max(Math.cos((latitude * Math.PI) / 180), 0.2);
+
+  return {
+    latitude: latitude + Math.sin(angle) * radius,
+    longitude: longitude + (Math.cos(angle) * radius) / longitudeScale,
+  };
+}
+
+/**
+ * 지도 생성은 컨테이너가 실제 크기를 가진 뒤여야 한다 — 크기 확정 전에 만들면
+ * 내부 뷰포트 계산이 어긋나 빈 지도가 나온다 (relayout 타이머로 때우지 않는다).
+ */
+export function waitForContainerSize(element: HTMLElement) {
+  return new Promise<void>((resolve) => {
+    if (element.clientWidth > 0 && element.clientHeight > 0) {
+      resolve();
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      if (element.clientWidth > 0 && element.clientHeight > 0) {
+        observer.disconnect();
+        resolve();
+      }
+    });
+    observer.observe(element);
   });
 }
 

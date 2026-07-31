@@ -76,18 +76,7 @@ function PropertyCard({ property, onToggleSave, onOpen }: PropertyCardProps) {
     .join(" · ");
 
   return (
-    <Card
-      className="group cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
-      role="link"
-      tabIndex={0}
-      aria-label={`${title} 상세 보기`}
-      onClick={() => onOpen(property.id)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          onOpen(property.id);
-        }
-      }}
-    >
+    <Card className="group relative gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50">
       <div className="relative h-44 overflow-hidden bg-muted">
         {imageUrl ? (
           <img
@@ -100,23 +89,6 @@ function PropertyCard({ property, onToggleSave, onOpen }: PropertyCardProps) {
             <ImageIcon className="size-8 text-muted-foreground" />
           </span>
         )}
-        <Button
-          variant="secondary"
-          size="icon"
-          className="absolute right-3 top-3 bg-white/95 shadow-sm"
-          aria-label={saved ? "매물 저장 취소" : "매물 저장"}
-          aria-pressed={saved}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSave(property.id);
-          }}
-        >
-          <Heart
-            className={
-              saved ? "fill-primary text-primary" : "text-muted-foreground"
-            }
-          />
-        </Button>
       </div>
       <CardHeader className="px-5 pt-5">
         <div className="flex items-center gap-1.5">
@@ -134,6 +106,28 @@ function PropertyCard({ property, onToggleSave, onOpen }: PropertyCardProps) {
         </p>
         {specs && <p className="mt-1 text-sm text-muted-foreground">{specs}</p>}
       </CardContent>
+
+      {/* 카드 전체를 덮는 상세 이동 버튼 — 저장 버튼만 그 위로 올려 따로 누를 수 있게 한다 */}
+      <button
+        type="button"
+        className="absolute inset-0 outline-none"
+        aria-label={`${title} 상세 보기`}
+        onClick={() => onOpen(property.id)}
+      />
+      <Button
+        variant="secondary"
+        size="icon"
+        className="absolute top-3 right-3 z-10 bg-white/95 shadow-sm"
+        aria-label={saved ? "매물 저장 취소" : "매물 저장"}
+        aria-pressed={saved}
+        onClick={() => onToggleSave(property.id)}
+      >
+        <Heart
+          className={
+            saved ? "fill-primary text-primary" : "text-muted-foreground"
+          }
+        />
+      </Button>
     </Card>
   );
 }
