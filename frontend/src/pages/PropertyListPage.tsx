@@ -19,7 +19,6 @@ import PropertyFilterBar, {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DEAL_TYPES,
   MONTHLY_DEPOSIT_BANDS,
@@ -657,9 +656,9 @@ function PropertyListPage({
 
       {/* top-14: 공통 GNB(h-14) 아래에 고정 */}
       <div className="sticky top-14 z-10 border-y bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-col px-4">
           <div
-            className="scrollbar-hidden -mx-4 flex items-center gap-1 overflow-x-auto px-4 sm:hidden"
+            className="scrollbar-hidden flex items-center gap-7 overflow-x-auto border-b"
             role="tablist"
             aria-label="거래유형 필터"
           >
@@ -672,10 +671,10 @@ function PropertyListPage({
                   role="tab"
                   aria-selected={isActive}
                   className={cn(
-                    "shrink-0 rounded-full px-4 py-1.5 text-sm whitespace-nowrap transition-colors",
+                    "-mb-px shrink-0 border-b-2 px-0 py-3 text-sm whitespace-nowrap transition-colors",
                     isActive
-                      ? "bg-foreground font-semibold text-background"
-                      : "font-medium text-muted-foreground",
+                      ? "border-foreground font-semibold text-foreground"
+                      : "border-transparent font-medium text-muted-foreground hover:text-foreground",
                   )}
                   onClick={() => handleDealTypeChange(dealType)}
                 >
@@ -684,27 +683,9 @@ function PropertyListPage({
               );
             })}
           </div>
-          <Tabs
-            value={filters.dealType}
-            onValueChange={handleDealTypeChange}
-            className="hidden sm:block"
-          >
-            <TabsList className="w-fit" aria-label="거래유형 필터">
-              <TabsTrigger value="all" className="sm:min-w-20">
-                전체
-              </TabsTrigger>
-              {DEAL_TYPES.map((dealType) => (
-                <TabsTrigger
-                  key={dealType}
-                  value={dealType}
-                  className="sm:min-w-20"
-                >
-                  {dealType}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          <PropertyFilterBar filters={filters} onChange={changeFilters} />
+          <div className="py-3">
+            <PropertyFilterBar filters={filters} onChange={changeFilters} />
+          </div>
         </div>
       </div>
 

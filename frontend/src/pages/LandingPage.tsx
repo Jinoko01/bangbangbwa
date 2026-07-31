@@ -12,14 +12,13 @@ import {
   CalendarCheck,
   Check,
   CheckCircle2,
-  Circle,
   ClipboardCheck,
   Eye,
   FileText,
   Image as ImageIcon,
   MapPin,
   Play,
-  ShieldCheck,
+  ScanSearch,
   Video,
   type LucideIcon,
 } from "lucide-react";
@@ -210,11 +209,11 @@ function FlowSection() {
     <section
       id="how"
       ref={runwayRef}
-      className="border-y bg-muted/40 lg:h-[400vh]"
+      className="border-y bg-muted/40 lg:h-[280vh]"
     >
       <div className="lg:sticky lg:top-14 lg:flex lg:h-[calc(100svh-3.5rem)] lg:items-center">
-        <div className="mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-0">
-          <div className="mb-14">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-0">
+          <div className="mb-10">
             <p className="text-sm font-bold tracking-wider text-primary">
               이용 흐름
             </p>
@@ -393,11 +392,11 @@ const FEATURES = [
       "중개사가 현장에서 직접 비추는 실시간 영상. 보고 싶은 곳을 바로 요청하세요",
   },
   {
-    icon: ClipboardCheck,
-    label: "체크리스트",
-    title: "스마트 체크리스트",
+    icon: ScanSearch,
+    label: "AI 하자 탐지",
+    title: "영상 속 하자를 AI로 탐지",
     description:
-      "곰팡이·누수·수압까지, 점검 항목을 하나씩 확인하며 놓치지 않고 기록해요",
+      "라이브 투어 영상을 분석해 곰팡이·벽지 손상 의심 지점을 놓치지 않고 표시해요",
   },
   {
     icon: FileText,
@@ -405,12 +404,6 @@ const FEATURES = [
     title: "AI 검수 리포트",
     description: "통화가 끝나면 캡처와 요약, 하자 기록이 자동으로 정리돼요",
   },
-] as const;
-
-const FEATURE_CHECKLIST = [
-  { label: "곰팡이·누수 흔적 확인", done: true },
-  { label: "수압 확인", done: true },
-  { label: "채광 확인", done: false },
 ] as const;
 
 const FEATURE_TINTED_SHADOW = "shadow-[0_16px_40px_-8px_rgba(22,93,252,0.15)]";
@@ -456,41 +449,37 @@ function FeatureVisual({ index }: { index: number }) {
       <>
         <img
           src="/hero-poster.webp"
-          alt="점검 중인 매물 내부 화면"
+          alt="AI가 하자 의심 지점을 탐지하는 매물 내부 화면"
           loading="lazy"
-          className="absolute inset-0 h-full w-full scale-125 object-cover object-[70%_60%]"
+          className="absolute inset-0 h-full w-full scale-110 object-cover object-[70%_60%]"
         />
-        <div className="absolute inset-0 bg-slate-950/55" />
-        <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-lg border border-white/15 bg-slate-950/60 p-4 backdrop-blur-md sm:inset-x-6">
-          <div className="flex items-center gap-2 text-white">
-            <ClipboardCheck className="size-4 text-blue-400" />
-            <strong className="text-sm font-semibold">투어 중 점검 항목</strong>
-          </div>
-          <ul className="mt-3 space-y-2 text-sm">
-            {FEATURE_CHECKLIST.map(({ label, done }, itemIndex) => (
-              <motion.li
-                key={label}
-                className={cn(
-                  "flex items-center gap-2",
-                  done ? "text-white/90" : "text-white/55",
-                )}
-                initial={reducedMotion ? false : { opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  delay: 0.2 + itemIndex * 0.15,
-                  duration: 0.25,
-                  ease: "easeOut",
-                }}
-              >
-                {done ? (
-                  <CheckCircle2 className="size-3.5 shrink-0 text-blue-400" />
-                ) : (
-                  <Circle className="size-3.5 shrink-0 text-white/40" />
-                )}
-                {label}
-              </motion.li>
-            ))}
-          </ul>
+        <div className="absolute inset-0 bg-slate-950/20" />
+        <motion.div
+          className="absolute top-[22%] left-[15%] h-[28%] w-[30%] rounded border-2 border-amber-300 shadow-[0_0_0_1px_rgba(15,23,42,.35)]"
+          initial={reducedMotion ? false : { opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        >
+          <span className="absolute -top-7 left-0 rounded bg-amber-300 px-2 py-1 text-[11px] font-bold text-slate-950">
+            곰팡이 의심 92%
+          </span>
+        </motion.div>
+        <motion.div
+          className="absolute right-[13%] bottom-[18%] h-[22%] w-[25%] rounded border-2 border-blue-300 shadow-[0_0_0_1px_rgba(15,23,42,.35)]"
+          initial={reducedMotion ? false : { opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.45 }}
+        >
+          <span className="absolute -top-7 right-0 rounded bg-blue-300 px-2 py-1 text-[11px] font-bold text-slate-950">
+            벽지 손상 86%
+          </span>
+        </motion.div>
+        <div className="absolute inset-x-3 bottom-3 flex items-center justify-between rounded-lg bg-slate-950/65 px-3 py-2 text-white backdrop-blur">
+          <span className="flex items-center gap-2 text-xs font-semibold">
+            <ScanSearch className="size-4 text-blue-300" />
+            AI 실시간 분석 중
+          </span>
+          <span className="text-[11px] text-white/70">의심 지점 2개</span>
         </div>
       </>
     );
@@ -498,35 +487,30 @@ function FeatureVisual({ index }: { index: number }) {
 
   return (
     <>
-      <img
-        src="/hero-poster.webp"
-        alt="투어를 마친 매물 내부 화면"
-        loading="lazy"
-        className="absolute inset-0 h-full w-full scale-110 object-cover blur-sm"
+      <video
+        src="/hero-tour.mp4"
+        poster="/hero-poster.webp"
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-label="라이브 투어 촬영 영상"
+        className="absolute inset-0 h-full w-full object-cover"
       />
-      <div className="absolute inset-0 bg-slate-950/60" />
-      <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-lg border border-white/15 bg-slate-950/60 p-4 backdrop-blur-md sm:inset-x-6">
-        <div className="flex items-center justify-between gap-2 text-white">
-          <span className="flex items-center gap-2">
-            <FileText className="size-4 text-blue-400" />
-            <strong className="text-sm font-semibold">AI 검수 리포트</strong>
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/10" />
+      <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-3 text-white">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/90 px-2.5 py-1 text-[11px] font-semibold">
+            <FileText className="size-3.5" />
+            AI 리포트 생성 완료
           </span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
-            자동 생성
-          </span>
+          <p className="mt-2 text-xs font-medium text-white/90">
+            투어 영상과 주요 장면이 리포트에 저장됐어요
+          </p>
         </div>
-        <div className="mt-3 flex gap-1.5">
-          <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
-            캡처 12장
-          </span>
-          <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
-            하자 2건
-          </span>
-        </div>
-        <div className="mt-3 space-y-1.5">
-          <div className="h-2 rounded-full bg-white/15" />
-          <div className="h-2 w-3/5 rounded-full bg-white/15" />
-        </div>
+        <span className="shrink-0 rounded-full bg-black/35 px-2.5 py-1 text-[11px] backdrop-blur">
+          캡처 12장
+        </span>
       </div>
     </>
   );
@@ -536,7 +520,7 @@ function FeatureVisual({ index }: { index: number }) {
 // (lg 이상은 커서 hover/focus, 미만은 카드 클릭으로 전환)
 function FeaturesSection() {
   const reducedMotion = useReducedMotion();
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(1);
   const active = selected;
   const { icon: ActiveIcon, title, description } = FEATURES[active];
 
@@ -547,7 +531,7 @@ function FeaturesSection() {
   return (
     <section>
       <div>
-        <div className="mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold tracking-wider text-primary">
               핵심 기능
@@ -557,7 +541,7 @@ function FeaturesSection() {
             </h2>
           </div>
 
-          <div className="mt-10 grid gap-4 lg:grid-cols-[1fr_368px]">
+          <div className="mt-8 grid gap-4 lg:grid-cols-[1fr_368px]">
             <div className="grid grid-cols-3 gap-2 lg:hidden">
               {FEATURES.map(({ icon: Icon, label }, index) => (
                 <button
@@ -726,13 +710,14 @@ function FeaturesSection() {
 }
 
 function LandingPage() {
+  const reducedMotion = useReducedMotion();
   // 총 건수만 쓰므로 첫 페이지 1건만 받아온다 (실패해도 문구만 건수 없이 나간다)
   const { data: properties } = usePropertyList({}, { page: 0, size: 1 });
 
   return (
     <main className="overflow-x-clip bg-background">
-      <section className="lg:px-8 lg:py-10">
-        <div className="relative mx-auto max-w-[1400px] overflow-hidden bg-slate-950 lg:min-h-[720px] lg:rounded-[2rem] lg:shadow-2xl lg:shadow-[#165dfc]/15">
+      <section className="px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
+        <div className="relative isolate mx-auto max-w-[1180px] overflow-hidden rounded-2xl bg-slate-900 shadow-xl shadow-[#165dfc]/10 lg:min-h-[440px] lg:rounded-[1.75rem]">
           <video
             src="/hero-tour.mp4"
             poster="/hero-poster.webp"
@@ -741,29 +726,25 @@ function LandingPage() {
             loop
             playsInline
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover opacity-90"
+            className="absolute inset-0 h-full w-full object-cover opacity-95"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.95)_0%,rgba(2,6,23,.8)_40%,rgba(2,6,23,.45)_80%,rgba(2,6,23,.3)_100%)] lg:bg-[linear-gradient(90deg,rgba(2,6,23,.98)_0%,rgba(2,6,23,.86)_45%,rgba(2,6,23,.25)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,.78)_0%,rgba(30,64,175,.48)_48%,rgba(56,189,248,.12)_100%)] lg:bg-[linear-gradient(90deg,rgba(15,23,42,.82)_0%,rgba(30,64,175,.58)_42%,rgba(125,211,252,.08)_100%)]" />
 
-          <div className="relative z-10 grid items-center gap-8 px-6 py-10 sm:p-12 lg:min-h-[720px] lg:grid-cols-[1.15fr_.85fr] lg:gap-12 lg:p-20">
+          <div className="relative z-10 grid items-center gap-6 px-6 py-8 sm:p-9 lg:min-h-[440px] lg:grid-cols-[1.15fr_.85fr] lg:gap-7 lg:p-10">
             <div className="max-w-2xl text-white">
-              <p className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-blue-300 backdrop-blur">
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-70" />
-                  <span className="relative inline-flex size-2 rounded-full bg-blue-400" />
-                </span>
+              <p className="mb-4 text-sm font-medium text-blue-200">
                 세입자와 중개사를 잇는 1:1 라이브 투어
               </p>
-              <h1 className="text-4xl leading-[1.12] font-bold tracking-[-0.04em] sm:text-5xl lg:text-7xl">
+              <h1 className="text-4xl leading-[1.12] font-bold tracking-[-0.04em] sm:text-5xl">
                 방송으로 방을 봐
                 <br />
                 <span className="text-blue-400">방방봐</span>
               </h1>
-              <p className="mt-7 max-w-xl text-base leading-relaxed text-slate-300 sm:text-xl">
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg">
                 중개사가 현장에서 비춰주는 화면을 보며 체크리스트로 꼼꼼하게
                 비교하고 결정하세요.
               </p>
-              <div className="mt-9 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-wrap gap-3">
                 <Button
                   size="lg"
                   className="h-13 rounded-full px-7 text-base"
@@ -786,18 +767,6 @@ function LandingPage() {
 
             <div className="mx-auto w-full max-w-md space-y-4">
               <HeroSearch />
-              <div className="hidden flex-wrap justify-end gap-2 text-xs text-slate-300 lg:flex">
-                {["#역세권투룸", "#신축오피스텔", "#전세자금대출"].map(
-                  (tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full border border-white/10 bg-slate-900/60 px-3 py-1.5"
-                    >
-                      {tag}
-                    </span>
-                  ),
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -807,27 +776,91 @@ function LandingPage() {
 
       <FlowSection />
 
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-16 text-center text-primary-foreground sm:px-12">
-          <ShieldCheck className="mx-auto size-10" />
-          <h2 className="mt-5 text-3xl font-bold tracking-tight">
-            지금 올라온 매물
-            {properties ? ` ${properties.totalElements}건` : ""},
-            <br className="sm:hidden" /> 방송으로 확인하세요
-          </h2>
-          <p className="mt-4 text-primary-foreground/75">
-            시간과 거리에 상관없이, 더 확실하게 보고 결정하세요.
-          </p>
-          <Button
-            size="lg"
-            variant="secondary"
-            className="mt-8 rounded-full px-7"
-            asChild
-          >
-            <Link to="/properties">
-              매물 둘러보기 <ArrowRight />
-            </Link>
-          </Button>
+      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="overflow-hidden rounded-3xl bg-[#eef5ff]">
+          <div className="grid lg:grid-cols-[.8fr_1.2fr] lg:items-stretch">
+            <div className="flex flex-col justify-center px-6 py-10 sm:px-10 lg:px-12">
+              <p className="text-sm font-semibold text-primary">
+                말하는 순간, 카메라가 움직여요
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+                보고 싶은 곳을
+                <br /> 현장에 바로 요청하세요
+              </h2>
+              <p className="mt-4 max-w-md leading-relaxed text-slate-600">
+                정해진 영상만 보는 투어가 아닙니다. 창밖 전망부터 수납장
+                안쪽까지, 궁금한 공간을 중개사에게 실시간으로 요청하세요.
+              </p>
+              <div className="mt-6 space-y-2 text-sm text-slate-700">
+                {[
+                  "창밖 전망을 천천히 보여주세요",
+                  "싱크대 아래쪽도 확인할게요",
+                  "붙박이장 깊이를 보여주세요",
+                ].map((request, index) => (
+                  <motion.p
+                    key={request}
+                    initial={reducedMotion ? false : { opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, amount: 0.6 }}
+                    transition={{ delay: index * 0.12, duration: 0.3 }}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-bold text-white">
+                      {index + 1}
+                    </span>
+                    {request}
+                  </motion.p>
+                ))}
+              </div>
+              <div className="mt-7">
+                <Button className="rounded-full px-6" asChild>
+                  <Link to="/properties">
+                    라이브 투어 시작하기 <ArrowRight />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative min-h-[340px] overflow-hidden lg:min-h-[430px]">
+            <img
+              src="/hero-poster.webp"
+              alt="라이브 투어 중 보고 싶은 공간을 요청하는 매물 내부"
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#eef5ff] via-transparent to-transparent" />
+
+              <motion.span
+                className="absolute top-[24%] left-[34%] grid size-9 place-items-center rounded-full border-4 border-white bg-primary text-sm font-bold text-white shadow-lg"
+                animate={
+                  reducedMotion
+                    ? undefined
+                    : { scale: [1, 1.12, 1], boxShadow: ["0 4px 12px rgba(22,93,252,.25)", "0 4px 24px rgba(22,93,252,.55)", "0 4px 12px rgba(22,93,252,.25)"] }
+                }
+                transition={{ duration: 1.8, repeat: Infinity }}
+              >
+                1
+              </motion.span>
+              <motion.span
+                className="absolute right-[18%] bottom-[27%] grid size-9 place-items-center rounded-full border-4 border-white bg-primary text-sm font-bold text-white shadow-lg"
+                animate={
+                  reducedMotion
+                    ? undefined
+                    : { scale: [1, 1.12, 1], boxShadow: ["0 4px 12px rgba(22,93,252,.25)", "0 4px 24px rgba(22,93,252,.55)", "0 4px 12px rgba(22,93,252,.25)"] }
+                }
+                transition={{ duration: 1.8, delay: 0.5, repeat: Infinity }}
+              >
+                2
+              </motion.span>
+
+              <div className="absolute right-5 bottom-5 max-w-[240px] rounded-2xl bg-white/90 px-4 py-3 shadow-lg backdrop-blur">
+                <p className="text-xs text-slate-500">세입자의 요청</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  “창틀 모서리를 가까이 보여주세요”
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
