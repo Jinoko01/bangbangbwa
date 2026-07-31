@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice, toPyeong } from "@/lib/format";
-import type { DealType, PropertySummary } from "@/types";
+import type { DealType, PropertySummary, RoomType } from "@/types";
 
 // 목록 카드가 그리는 필드만 추린 뷰모델 — 매물 API 응답과 목데이터 어느 쪽에서든 만든다.
 // 면적·층은 API에서 선택 값이라 없으면 해당 줄을 생략한다
@@ -12,7 +12,7 @@ export interface PropertyCardItem {
   id: number;
   title: string;
   dealType: DealType;
-  roomType: string;
+  roomType: RoomType;
   region: string;
   dong: string;
   deposit: number;

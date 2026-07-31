@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Heart,
   ImageIcon,
+  MapPin,
   Plus,
   Search,
   SearchX,
@@ -41,12 +42,15 @@ import {
   getKakaoMaps,
   loadKakaoMapSdk,
   lookupAddress,
+  panToAboveCenter,
   spreadOverlappingPosition,
   waitForContainerSize,
   type KakaoClusterStyle,
   type KakaoClusterer,
   type KakaoMap,
   type KakaoMarker,
+  type KakaoMarkerImage,
+  type KakaoMapsSdk,
 } from "@/lib/kakaoMap";
 import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
@@ -62,6 +66,49 @@ const SEOUL_CITY_HALL = { latitude: 37.5665, longitude: 126.978 };
 const INITIAL_MAP_LEVEL = 8;
 // 이 거리 이상 끌어올리면(내리면) 탭이 아니라 시트 여닫기로 해석한다
 const SHEET_DRAG_THRESHOLD_PX = 30;
+const MARKER_WIDTH_PX = 42;
+const MARKER_HEIGHT_PX = 48;
+// 하단 시트가 지도를 덮는 화면에서 고른 핀이 놓일 자리 — 지도 높이 기준 위에서부터의 비율
+const MARKER_FOCUS_TOP_RATIO = 0.32;
+
+const DEAL_TYPE_MARKER = {
+  전세: { slug: "jeonse", label: "전세", color: "var(--marker-jeonse)" },
+  월세: { slug: "monthly", label: "월세", color: "var(--marker-monthly)" },
+  매매: { slug: "sale", label: "매매", color: "var(--marker-sale)" },
+} as const satisfies Record<
+  DealType,
+  { slug: string; label: string; color: string }
+>;
+
+const ROOM_TYPE_MARKER_SLUG = {
+  오피스텔: "officetel",
+  빌라: "villa",
+  원룸: "one-room",
+} as const satisfies Record<RoomType, string>;
+
+const markerImageCache = new Map<string, KakaoMarkerImage>();
+
+function getPropertyMarkerImage(
+  maps: KakaoMapsSdk,
+  dealType: DealType,
+  roomType: RoomType,
+) {
+  const imageUrl = `${import.meta.env.BASE_URL}map-markers/${DEAL_TYPE_MARKER[dealType].slug}-${ROOM_TYPE_MARKER_SLUG[roomType]}.svg`;
+  const cached = markerImageCache.get(imageUrl);
+  if (cached) {
+    return cached;
+  }
+
+  const markerImage = new maps.MarkerImage(
+    imageUrl,
+    new maps.Size(MARKER_WIDTH_PX, MARKER_HEIGHT_PX),
+    {
+      offset: new maps.Point(MARKER_WIDTH_PX / 2, MARKER_HEIGHT_PX),
+    },
+  );
+  markerImageCache.set(imageUrl, markerImage);
+  return markerImage;
+}
 
 const CLUSTER_STYLE: KakaoClusterStyle = {
   width: "48px",
@@ -92,11 +139,13 @@ interface SelectHandlers {
 
 interface PropertyMapProps extends SelectHandlers {
   properties: PropertyCardItem[];
+  hasBottomSheet: boolean;
 }
 
 // 지도와 핀만 담당한다. 무엇이 선택됐는지는 페이지가 소유하고, 목록 패널이 같은 값을 함께 본다
 function PropertyMap({
   properties,
+  hasBottomSheet,
   onSelectMarker,
   onSelectCluster,
 }: PropertyMapProps) {
@@ -111,8 +160,11 @@ function PropertyMap({
     onSelectMarker,
     onSelectCluster,
   });
+  // 시트 유무는 창 크기에 따라 바뀌지만 마커를 다시 그릴 이유는 아니다 — 최신 값만 참조한다
+  const hasBottomSheetRef = useRef(hasBottomSheet);
   useEffect(() => {
     selectHandlersRef.current = { onSelectMarker, onSelectCluster };
+    hasBottomSheetRef.current = hasBottomSheet;
   });
 
   // clusterclick 리스너도 생성 시 한 번만 달리므로, 최신 마커 → 매물 매핑을 ref로 넘겨준다
@@ -210,6 +262,15 @@ function PropertyMap({
     let cancelled = false;
     const addressOccurrences = new Map<string, number>();
 
+    // 하단 시트가 지도 아래를 덮는 화면에서는 고른 핀을 시트 위쪽으로 끌어올려 보여준다
+    const focusOffsetPixel = () => {
+      const container = mapContainerRef.current;
+      if (!hasBottomSheetRef.current || !container) {
+        return 0;
+      }
+      return container.clientHeight * (0.5 - MARKER_FOCUS_TOP_RATIO);
+    };
+
     const markerPromises = properties.map(async (property) => {
       const address = `${property.region} ${property.dong}`;
       const overlapIndex = addressOccurrences.get(address) ?? 0;
@@ -226,11 +287,19 @@ function PropertyMap({
         overlapIndex,
       );
       const position = new maps.LatLng(spread.latitude, spread.longitude);
-      const marker = new maps.Marker({ position, title: property.title });
+      const marker = new maps.Marker({
+        position,
+        title: property.title,
+        image: getPropertyMarkerImage(
+          maps,
+          property.dealType,
+          property.roomType,
+        ),
+      });
 
       maps.event.addListener(marker, "click", () => {
         selectHandlersRef.current.onSelectMarker(property.id);
-        map.panTo(position);
+        panToAboveCenter(maps, map, position, focusOffsetPixel());
       });
       return { marker, property, position };
     });
@@ -491,6 +560,31 @@ function ResultHeader({
   );
 }
 
+function PropertyMarkerLegend() {
+  return (
+    <div
+      className={cn(
+        "pointer-events-auto flex items-center gap-3 px-3 py-2 text-xs font-medium",
+        FLOATING_SURFACE,
+      )}
+      aria-label="매물 마커 색상 범례"
+    >
+      {Object.values(DEAL_TYPE_MARKER).map(({ label, color }) => (
+        <span key={label} className="flex items-center gap-1.5">
+          <MapPin
+            aria-hidden
+            className="size-3.5 shrink-0"
+            fill="currentColor"
+            strokeWidth={2.5}
+            style={{ color }}
+          />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // 화면 필터 → 매물 목록 API 쿼리 파라미터 (선택하지 않은 값은 보내지 않는다)
 // 월세 탭의 가격 축은 보증금 구간이라 밴드 목록이 갈린다.
 // "서울시 강남구 역삼동" 같은 검색어는 시군구 필터와 나머지 검색어로 분리하되,
@@ -682,35 +776,26 @@ function PropertyListPage({
       <main className="relative min-w-0 flex-1">
         <PropertyMap
           properties={items}
+          hasBottomSheet={!isDesktop}
           onSelectMarker={selectMarker}
           onSelectCluster={selectCluster}
         />
 
-        {/* 접힌 사이드바는 손잡이가 유일한 단서다 — 몇 건이 숨어 있는지 손잡이에 적어 둔다 */}
+        {/* 목록 손잡이도 검색·필터·범례와 같은 왼쪽 여백(left-3)에 같은 재질로 세운다 */}
         <button
           type="button"
-          className="absolute top-1/2 left-0 z-20 hidden -translate-y-1/2 flex-col items-center gap-1 rounded-r-xl border border-l-0 bg-background py-4 pr-2 pl-1.5 shadow-sm transition-colors hover:bg-muted lg:flex"
+          className={cn(
+            "absolute top-1/2 left-3 z-20 hidden size-11 -translate-y-1/2 place-items-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:grid",
+            FLOATING_SURFACE,
+          )}
           aria-expanded={isSidebarOpen}
           aria-label={isSidebarOpen ? "매물 목록 접기" : "매물 목록 펼치기"}
           onClick={() => setIsSidebarOpen((current) => !current)}
         >
           {isSidebarOpen ? (
-            <ChevronLeft className="size-4 text-muted-foreground" />
+            <ChevronLeft className="size-5" />
           ) : (
-            <>
-              <ChevronRight className="size-4 text-muted-foreground" />
-              {!isPending && (
-                // 세로쓰기 — 숫자는 눕지 않게 세우고(text-orientation),
-                // 두 자리 이상도 한 칸에 모아 쓴다(text-combine-upright)
-                <span className="text-sm font-semibold [text-orientation:upright] [writing-mode:vertical-rl]">
-                  매물
-                  <span className="[text-combine-upright:all]">
-                    {resultCount}
-                  </span>
-                  건
-                </span>
-              )}
-            </>
+            <ChevronRight className="size-5" />
           )}
         </button>
 
@@ -783,10 +868,14 @@ function PropertyListPage({
           )}
         </div>
 
+        <div className="pointer-events-none absolute top-16 left-3 z-20">
+          <PropertyMarkerLegend />
+        </div>
+
         <section
           className={cn(
             "absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-2xl border-t bg-background shadow-[0_-4px_16px_rgba(15,23,42,0.12)] transition-[height] duration-300 motion-reduce:transition-none lg:hidden",
-            isSheetOpen ? "h-[70%]" : "h-16",
+            isSheetOpen ? "h-[50%]" : "h-16",
           )}
           aria-label="매물 목록"
         >

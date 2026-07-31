@@ -34,13 +34,25 @@ export interface KakaoLatLngBounds {
   extend: (position: KakaoLatLng) => void;
 }
 
+export interface KakaoPoint {
+  x: number;
+  y: number;
+}
+
+export interface KakaoMapProjection {
+  pointFromCoords: (position: KakaoLatLng) => KakaoPoint;
+  coordsFromPoint: (point: KakaoPoint) => KakaoLatLng;
+}
+
 export interface KakaoMap {
   panTo: (position: KakaoLatLng) => void;
   relayout: () => void;
   setBounds: (bounds: KakaoLatLngBounds) => void;
+  getProjection: () => KakaoMapProjection;
 }
 
 export type KakaoMarker = object;
+export type KakaoMarkerImage = object;
 
 export interface KakaoCluster {
   getMarkers: () => KakaoMarker[];
@@ -107,6 +119,13 @@ export type KakaoMapsSdk = {
   load: (callback: () => void) => void;
   LatLng: new (latitude: number, longitude: number) => KakaoLatLng;
   LatLngBounds: new () => KakaoLatLngBounds;
+  Size: new (width: number, height: number) => object;
+  Point: new (x: number, y: number) => KakaoPoint;
+  MarkerImage: new (
+    source: string,
+    size: object,
+    options: { offset: KakaoPoint },
+  ) => KakaoMarkerImage;
   Map: new (
     container: HTMLElement,
     options: { center: KakaoLatLng; level: number; draggable?: boolean },
@@ -114,6 +133,7 @@ export type KakaoMapsSdk = {
   Marker: new (options: {
     position: KakaoLatLng;
     title: string;
+    image?: KakaoMarkerImage;
   }) => KakaoMarker;
   MarkerClusterer: new (options: {
     map: KakaoMap;
@@ -267,6 +287,28 @@ export function lookupAddress(query: string): Promise<GeocodedAddress | null> {
     }
   });
   return lookup;
+}
+
+/**
+ * 좌표를 화면 정중앙이 아니라 중앙에서 `offsetPixel`만큼 위에 놓고 이동한다.
+ * 하단 시트처럼 지도 아래쪽을 덮는 UI가 있을 때, 방금 고른 핀이 그 아래로 숨지 않게 한다.
+ */
+export function panToAboveCenter(
+  maps: KakaoMapsSdk,
+  map: KakaoMap,
+  position: KakaoLatLng,
+  offsetPixel: number,
+) {
+  if (offsetPixel <= 0) {
+    map.panTo(position);
+    return;
+  }
+
+  const projection = map.getProjection();
+  const point = projection.pointFromCoords(position);
+  // 화면 y는 아래로 갈수록 커진다 — 지도 중심을 아래로 내리면 핀은 그만큼 위로 올라간다
+  const shifted = new maps.Point(point.x, point.y + offsetPixel);
+  map.panTo(projection.coordsFromPoint(shifted));
 }
 
 // 황금각(2.399963rad) 나선 — 같은 좌표에 겹친 핀을 균등하게 흩는다
