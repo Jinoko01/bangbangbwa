@@ -1,257 +1,174 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Heart,
   ImageIcon,
+  MapPin,
   Plus,
+  Search,
   SearchX,
+  X,
 } from "lucide-react";
 
 import {
   toPropertyCardItem,
   type PropertyCardItem,
 } from "@/components/PropertyCard";
-import PropertyFilterBar, {
+import PropertyFilterPanel, {
   DEFAULT_FILTERS,
-} from "@/components/PropertyFilterBar";
+  countActiveFilters,
+  resetPanelFilters,
+} from "@/components/PropertyFilterPanel";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  DEAL_TYPES,
-  MONTHLY_DEPOSIT_BANDS,
-  PRICE_BANDS,
-} from "@/data/properties";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MONTHLY_DEPOSIT_BANDS, PRICE_BANDS } from "@/data/properties";
 import { useToggleFavorite } from "@/hooks/queries/favoriteQueries";
 import { usePropertyList } from "@/hooks/queries/propertyQueries";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { formatPrice } from "@/lib/format";
-import { loadKakaoMapSdk } from "@/lib/kakaoMap";
+import {
+  getKakaoMaps,
+  loadKakaoMapSdk,
+  lookupAddress,
+  panToAboveCenter,
+  spreadOverlappingPosition,
+  waitForContainerSize,
+  type KakaoClusterStyle,
+  type KakaoClusterer,
+  type KakaoMap,
+  type KakaoMarker,
+  type KakaoMarkerImage,
+  type KakaoMapsSdk,
+} from "@/lib/kakaoMap";
 import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import type { DealType, Filters, PropertyFilters, RoomType } from "@/types";
 
-const SKELETON_COUNT = 6;
+const SKELETON_COUNT = 5;
 const MAP_RESULT_SIZE = 100;
-type KakaoPoint = object;
-type KakaoMap = {
-  panTo: (position: KakaoPoint) => void;
-  relayout: () => void;
-  setBounds: (bounds: { extend: (position: KakaoPoint) => void }) => void;
-};
-type KakaoMarker = object;
-type KakaoCluster = {
-  getMarkers: () => KakaoMarker[];
-};
-type KakaoClusterer = {
-  clear: () => void;
-  addMarkers: (markers: KakaoMarker[]) => void;
-};
-type KakaoClusterStyle = {
-  width: string;
-  height: string;
-  background: string;
-  borderRadius: string;
-  color: string;
-  fontSize: string;
-  fontWeight: string;
-  lineHeight: string;
-  textAlign: string;
-  boxShadow: string;
-};
-type KakaoSdk = {
-  load: (callback: () => void) => void;
-  Map: new (
-    container: HTMLElement,
-    options: { center: KakaoPoint; level: number; draggable?: boolean },
-  ) => KakaoMap;
-  LatLng: new (latitude: number, longitude: number) => KakaoPoint;
-  LatLngBounds: new () => { extend: (position: KakaoPoint) => void };
-  Marker: new (options: {
-    map?: KakaoMap;
-    position: KakaoPoint;
-    title: string;
-  }) => KakaoMarker;
-  MarkerClusterer: new (options: {
-    map: KakaoMap;
-    markers: KakaoMarker[];
-    averageCenter: boolean;
-    minLevel: number;
-    disableClickZoom: boolean;
-    clickable: boolean;
-    calculator: number[];
-    styles: KakaoClusterStyle[];
-  }) => KakaoClusterer;
-  event: {
-    addListener: (
-      target: object,
-      type: "click" | "clusterclick",
-      handler: (cluster?: KakaoCluster) => void,
-    ) => void;
-  };
-  services: {
-    Status: { OK: string };
-    Geocoder: new () => {
-      addressSearch: (
-        address: string,
-        callback: (
-          result: Array<{ x: string; y: string }>,
-          status: string,
-        ) => void,
-      ) => void;
-    };
-  };
-};
+// Tailwind lg — 사이드바(352px)를 빼고도 지도가 넉넉히 남는 최소 폭
+const DESKTOP_QUERY = "(min-width: 1024px)";
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const SEOUL_CITY_HALL = { latitude: 37.5665, longitude: 126.978 };
+const INITIAL_MAP_LEVEL = 8;
+// 이 거리 이상 끌어올리면(내리면) 탭이 아니라 시트 여닫기로 해석한다
+const SHEET_DRAG_THRESHOLD_PX = 30;
+const MARKER_WIDTH_PX = 42;
+const MARKER_HEIGHT_PX = 48;
+// 하단 시트가 지도를 덮는 화면에서 고른 핀이 놓일 자리 — 지도 높이 기준 위에서부터의 비율
+const MARKER_FOCUS_TOP_RATIO = 0.32;
+
+const DEAL_TYPE_MARKER = {
+  전세: { slug: "jeonse", label: "전세", color: "var(--marker-jeonse)" },
+  월세: { slug: "monthly", label: "월세", color: "var(--marker-monthly)" },
+  매매: { slug: "sale", label: "매매", color: "var(--marker-sale)" },
+} as const satisfies Record<
+  DealType,
+  { slug: string; label: string; color: string }
+>;
+
+const ROOM_TYPE_MARKER_SLUG = {
+  오피스텔: "officetel",
+  빌라: "villa",
+  원룸: "one-room",
+} as const satisfies Record<RoomType, string>;
+
+const markerImageCache = new Map<string, KakaoMarkerImage>();
+
+function getPropertyMarkerImage(
+  maps: KakaoMapsSdk,
+  dealType: DealType,
+  roomType: RoomType,
+) {
+  const imageUrl = `${import.meta.env.BASE_URL}map-markers/${DEAL_TYPE_MARKER[dealType].slug}-${ROOM_TYPE_MARKER_SLUG[roomType]}.svg`;
+  const cached = markerImageCache.get(imageUrl);
+  if (cached) {
+    return cached;
+  }
+
+  const markerImage = new maps.MarkerImage(
+    imageUrl,
+    new maps.Size(MARKER_WIDTH_PX, MARKER_HEIGHT_PX),
+    {
+      offset: new maps.Point(MARKER_WIDTH_PX / 2, MARKER_HEIGHT_PX),
+    },
+  );
+  markerImageCache.set(imageUrl, markerImage);
+  return markerImage;
+}
 
 const CLUSTER_STYLE: KakaoClusterStyle = {
   width: "48px",
   height: "48px",
-  background: "#1677ff",
+  background: "#165dfc",
   borderRadius: "50%",
   color: "#ffffff",
   fontSize: "15px",
   fontWeight: "700",
   lineHeight: "48px",
   textAlign: "center",
-  boxShadow: "0 3px 12px rgba(22, 119, 255, 0.38)",
+  boxShadow: "0 3px 12px rgba(22, 93, 252, 0.38)",
 };
 
-// 목록 응답에는 개별 위경도가 없어 같은 동의 매물이 동일 좌표에 겹친다.
-// 같은 주소의 두 번째 매물부터 가까운 반경에 펼쳐, 확대 시 모든 핀이 보이게 한다.
-function spreadOverlappingPosition(
-  latitude: number,
-  longitude: number,
-  overlapIndex: number,
-) {
-  if (overlapIndex === 0) {
-    return { latitude, longitude };
-  }
+// 지도 위에 뜨는 컨트롤은 모두 같은 재질을 쓴다 — 지도와 겹쳐도 읽히고, 지도를 가리지 않는다
+const FLOATING_SURFACE =
+  "rounded-full border bg-background/95 shadow-[0_2px_12px_rgba(15,23,42,0.12)] backdrop-blur";
 
-  const angle = overlapIndex * 2.399963;
-  const radius = 0.00045 * Math.sqrt(overlapIndex);
-  const longitudeScale = Math.max(Math.cos((latitude * Math.PI) / 180), 0.2);
+// 핀 하나를 고르면 그 매물만, 클러스터를 고르면 그 안의 매물만 목록에 남는다
+type MapSelection =
+  | { kind: "marker"; propertyId: number }
+  | { kind: "cluster"; propertyIds: number[] };
 
-  return {
-    latitude: latitude + Math.sin(angle) * radius,
-    longitude: longitude + (Math.cos(angle) * radius) / longitudeScale,
-  };
+interface SelectHandlers {
+  onSelectMarker: (propertyId: number) => void;
+  onSelectCluster: (propertyIds: number[]) => void;
 }
 
-function getKakaoMaps() {
-  return (window as Window & { kakao?: { maps: KakaoSdk } }).kakao?.maps;
+interface PropertyMapProps extends SelectHandlers {
+  properties: PropertyCardItem[];
+  hasBottomSheet: boolean;
 }
 
-// 지도 생성은 컨테이너가 실제 크기를 가진 뒤여야 한다 — 크기 확정 전에 만들면
-// 내부 뷰포트 계산이 어긋나 빈 지도가 나온다 (relayout 타이머로 때우지 않는다)
-function waitForContainerSize(el: HTMLElement) {
-  return new Promise<void>((resolve) => {
-    if (el.clientWidth > 0 && el.clientHeight > 0) {
-      resolve();
-      return;
-    }
-    const observer = new ResizeObserver(() => {
-      if (el.clientWidth > 0 && el.clientHeight > 0) {
-        observer.disconnect();
-        resolve();
-      }
-    });
-    observer.observe(el);
-  });
-}
-
-// 주소 → 좌표 캐시 — 필터가 바뀌어도 같은 동은 다시 지오코딩하지 않는다 (카카오 쿼터 절약)
-const geocodeCache = new Map<
-  string,
-  Promise<{ latitude: number; longitude: number } | null>
->();
-
-function geocodeAddress(maps: KakaoSdk, address: string) {
-  const cached = geocodeCache.get(address);
-  if (cached) {
-    return cached;
-  }
-
-  const lookup = new Promise<{ latitude: number; longitude: number } | null>(
-    (resolve) => {
-      new maps.services.Geocoder().addressSearch(address, (result, status) => {
-        if (status !== maps.services.Status.OK || !result[0]) {
-          resolve(null);
-          return;
-        }
-        resolve({
-          latitude: Number(result[0].y),
-          longitude: Number(result[0].x),
-        });
-      });
-    },
-  );
-  geocodeCache.set(address, lookup);
-  // 실패(쿼터·일시 오류)는 캐시에 남기지 않아 다음 갱신에서 재시도된다
-  void lookup.then((position) => {
-    if (position === null) {
-      geocodeCache.delete(address);
-    }
-  });
-  return lookup;
-}
-
-function PropertyCardSkeleton() {
-  return (
-    <Card className="gap-4 py-5">
-      <CardHeader className="px-5">
-        <div className="flex gap-1.5">
-          <Skeleton className="h-5 w-11 rounded-full" />
-          <Skeleton className="h-5 w-14 rounded-full" />
-        </div>
-        <Skeleton className="mt-1 h-5 w-2/3" />
-      </CardHeader>
-      <CardContent className="px-5">
-        <Skeleton className="h-7 w-28" />
-        <Skeleton className="mt-3 h-4 w-24" />
-        <Skeleton className="mt-2 h-4 w-40" />
-      </CardContent>
-    </Card>
-  );
-}
-
+// 지도와 핀만 담당한다. 무엇이 선택됐는지는 페이지가 소유하고, 목록 패널이 같은 값을 함께 본다
 function PropertyMap({
   properties,
-  onOpen,
-  onToggleSave,
-}: {
-  properties: PropertyCardItem[];
-  onOpen: (id: number) => void;
-  onToggleSave: (id: number, saved: boolean) => void;
-}) {
+  hasBottomSheet,
+  onSelectMarker,
+  onSelectCluster,
+}: PropertyMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const dragStartYRef = useRef<number | null>(null);
-  const didDragResultsRef = useRef(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [clusterPropertyIds, setClusterPropertyIds] = useState<number[] | null>(
-    null,
-  );
-  const [isResultsOpen, setIsResultsOpen] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
-  const [map, setMap] = useState<KakaoMap | null>(null);
   const clustererRef = useRef<KakaoClusterer | null>(null);
-  // clusterclick 리스너는 지도 생성 시 한 번만 달리므로,
-  // 마커 배치가 바뀔 때마다 ref로 최신 마커 → 매물 매핑을 넘겨준다
-  const propertyByMarkerRef = useRef(new Map<KakaoMarker, PropertyCardItem>());
+  const [map, setMap] = useState<KakaoMap | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   const appKey = import.meta.env.VITE_KAKAO_KEY;
-  const selectedProperty = properties.find(
-    (property) => property.id === selectedId,
-  );
-  const visibleProperties = selectedProperty
-    ? [selectedProperty]
-    : clusterPropertyIds
-      ? properties.filter((property) =>
-          clusterPropertyIds.includes(property.id),
-        )
-      : properties;
+
+  // 지도·마커 리스너는 한 번만 등록되므로, 최신 핸들러를 ref로 건네 stale closure를 막는다
+  const selectHandlersRef = useRef<SelectHandlers>({
+    onSelectMarker,
+    onSelectCluster,
+  });
+  // 시트 유무는 창 크기에 따라 바뀌지만 마커를 다시 그릴 이유는 아니다 — 최신 값만 참조한다
+  const hasBottomSheetRef = useRef(hasBottomSheet);
+  useEffect(() => {
+    selectHandlersRef.current = { onSelectMarker, onSelectCluster };
+    hasBottomSheetRef.current = hasBottomSheet;
+  });
+
+  // clusterclick 리스너도 생성 시 한 번만 달리므로, 최신 마커 → 매물 매핑을 ref로 넘겨준다
+  const propertyByMarkerRef = useRef(new Map<KakaoMarker, PropertyCardItem>());
 
   // 지도 생성은 마운트에 1회 — SDK 로드 후 컨테이너 크기가 확정되면 만든다
   useEffect(() => {
@@ -273,8 +190,11 @@ function PropertyMap({
         }
 
         const createdMap = new maps.Map(container, {
-          center: new maps.LatLng(37.5665, 126.978),
-          level: 8,
+          center: new maps.LatLng(
+            SEOUL_CITY_HALL.latitude,
+            SEOUL_CITY_HALL.longitude,
+          ),
+          level: INITIAL_MAP_LEVEL,
           draggable: true,
         });
 
@@ -293,17 +213,15 @@ function PropertyMap({
           if (!cluster) {
             return;
           }
-          const ids = cluster
+          const propertyIds = cluster
             .getMarkers()
             .map((marker) => propertyByMarkerRef.current.get(marker)?.id)
             .filter((id): id is number => id !== undefined);
 
-          setSelectedId(null);
-          setClusterPropertyIds(ids);
-          setIsResultsOpen(true);
+          selectHandlersRef.current.onSelectCluster(propertyIds);
         });
 
-        // 생성 이후의 창 크기 변경에는 relayout만 필요하다
+        // 사이드바를 여닫거나 창 크기가 바뀌면 지도만 다시 재도록 한다
         resizeObserver = new ResizeObserver(() => {
           cancelAnimationFrame(relayoutFrame);
           relayoutFrame = requestAnimationFrame(() => createdMap.relayout());
@@ -344,32 +262,44 @@ function PropertyMap({
     let cancelled = false;
     const addressOccurrences = new Map<string, number>();
 
+    // 하단 시트가 지도 아래를 덮는 화면에서는 고른 핀을 시트 위쪽으로 끌어올려 보여준다
+    const focusOffsetPixel = () => {
+      const container = mapContainerRef.current;
+      if (!hasBottomSheetRef.current || !container) {
+        return 0;
+      }
+      return container.clientHeight * (0.5 - MARKER_FOCUS_TOP_RATIO);
+    };
+
     const markerPromises = properties.map(async (property) => {
       const address = `${property.region} ${property.dong}`;
       const overlapIndex = addressOccurrences.get(address) ?? 0;
       addressOccurrences.set(address, overlapIndex + 1);
 
-      const geocoded = await geocodeAddress(maps, address);
+      const geocoded = await lookupAddress(address);
       if (cancelled || !geocoded) {
         return null;
       }
 
-      const spreadPosition = spreadOverlappingPosition(
+      const spread = spreadOverlappingPosition(
         geocoded.latitude,
         geocoded.longitude,
         overlapIndex,
       );
-      const position = new maps.LatLng(
-        spreadPosition.latitude,
-        spreadPosition.longitude,
-      );
-      const marker = new maps.Marker({ position, title: property.title });
+      const position = new maps.LatLng(spread.latitude, spread.longitude);
+      const marker = new maps.Marker({
+        position,
+        title: property.title,
+        image: getPropertyMarkerImage(
+          maps,
+          property.dealType,
+          property.roomType,
+        ),
+      });
 
       maps.event.addListener(marker, "click", () => {
-        setSelectedId(property.id);
-        setClusterPropertyIds(null);
-        setIsResultsOpen(true);
-        map.panTo(position);
+        selectHandlersRef.current.onSelectMarker(property.id);
+        panToAboveCenter(maps, map, position, focusOffsetPixel());
       });
       return { marker, property, position };
     });
@@ -404,153 +334,253 @@ function PropertyMap({
   }, [map, properties]);
 
   return (
-    <div className="relative h-[calc(100svh-12rem)] min-h-[32rem] overflow-hidden rounded-xl border bg-muted">
+    <>
       {/* touch-none — 지도 제스처를 페이지 스크롤에 뺏기지 않는다 */}
       <div ref={mapContainerRef} className="absolute inset-0 touch-none" />
 
-      <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-lg bg-background/95 px-3 py-2 text-sm shadow-sm">
-        지도에 표시된 매물 <strong>{properties.length}건</strong>
-      </div>
-
       {(!appKey || mapError) && (
-        <div className="absolute inset-0 grid place-items-center p-6 text-center">
-          <div className="rounded-xl border bg-background p-6 shadow-sm">
-            <p className="font-semibold">카카오맵 설정이 필요합니다</p>
+        <div className="absolute inset-0 grid place-items-center bg-muted p-6 text-center">
+          <div className="max-w-sm rounded-xl border bg-background p-6 shadow-sm">
+            <p className="font-semibold">지도를 표시할 수 없습니다</p>
             <p className="mt-2 text-sm text-muted-foreground">
               {mapError ??
-                "예상치 못한 에러가 발생했습니다. 관리자에게 문의해 주세요."}
+                "카카오맵 키가 설정되지 않았습니다. 관리자에게 문의해 주세요."}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              매물 목록은 그대로 이용할 수 있습니다.
             </p>
           </div>
         </div>
       )}
+    </>
+  );
+}
 
-      <section
-        className={cn(
-          "absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-2xl border-t bg-background shadow-[0_-4px_16px_rgba(15,23,42,0.12)] transition-[height] duration-300",
-          isResultsOpen ? "h-[72%]" : "h-16",
-        )}
-        aria-label="지도 검색 결과"
+interface PropertyResultItemProps {
+  property: PropertyCardItem;
+  isSelected: boolean;
+  onOpen: (id: number) => void;
+  onToggleSave: (id: number, saved: boolean) => void;
+  ref: Ref<HTMLDivElement>;
+}
+
+function PropertyResultItem({
+  property,
+  isSelected,
+  onOpen,
+  onToggleSave,
+  ref,
+}: PropertyResultItemProps) {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "flex items-center gap-3 rounded-xl p-2 transition-colors",
+        isSelected ? "bg-accent ring-1 ring-primary/30" : "hover:bg-muted",
+      )}
+    >
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        onClick={() => onOpen(property.id)}
       >
-        <button
-          type="button"
-          className="relative flex h-16 shrink-0 touch-none items-center justify-between px-5 pt-2 text-left"
-          aria-expanded={isResultsOpen}
-          onClick={() => {
-            if (didDragResultsRef.current) {
-              didDragResultsRef.current = false;
-              return;
-            }
-            setIsResultsOpen((current) => !current);
-          }}
-          onPointerDown={(event) => {
-            didDragResultsRef.current = false;
-            dragStartYRef.current = event.clientY;
-            event.currentTarget.setPointerCapture(event.pointerId);
-          }}
-          onPointerUp={(event) => {
-            const startY = dragStartYRef.current;
-            dragStartYRef.current = null;
-            if (startY === null) {
-              return;
-            }
-
-            const distance = event.clientY - startY;
-            if (distance < -30) {
-              didDragResultsRef.current = true;
-              setIsResultsOpen(true);
-            }
-            if (distance > 30) {
-              didDragResultsRef.current = true;
-              setIsResultsOpen(false);
-            }
-          }}
-        >
-          <span
-            aria-hidden
-            className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-border"
+        {property.imageUrl ? (
+          <img
+            src={property.imageUrl}
+            alt=""
+            className="size-20 shrink-0 rounded-lg object-cover"
           />
-          <span>
-            <span className="block font-semibold">
-              {selectedProperty
-                ? "매물 상세"
-                : `매물 ${visibleProperties.length}건`}
-            </span>
-            {!isResultsOpen && (
-              <span className="text-xs text-muted-foreground">
-                위로 올려 목록 보기
-              </span>
-            )}
+        ) : (
+          <span className="grid size-20 shrink-0 place-items-center rounded-lg bg-muted">
+            <ImageIcon className="size-5 text-muted-foreground" />
           </span>
-          {isResultsOpen ? (
-            <ChevronDown className="size-5 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="size-5 text-muted-foreground" />
+        )}
+        <span className="min-w-0">
+          <span className="block truncate font-semibold">{property.title}</span>
+          <span className="mt-1 block font-semibold text-primary">
+            {formatPrice(property)}
+          </span>
+          <span className="mt-1 block truncate text-xs text-muted-foreground">
+            {property.region} {property.dong} · {property.roomType}
+          </span>
+        </span>
+      </button>
+      <button
+        type="button"
+        className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-background"
+        aria-label={property.saved ? "매물 저장 취소" : "매물 저장"}
+        aria-pressed={property.saved}
+        onClick={() => onToggleSave(property.id, !property.saved)}
+      >
+        <Heart
+          className={cn(
+            "size-5",
+            property.saved
+              ? "fill-primary text-primary"
+              : "text-muted-foreground",
           )}
-        </button>
+        />
+      </button>
+    </div>
+  );
+}
 
-        <div className="min-h-0 flex-1 overflow-y-auto border-t px-4 py-2">
-          {visibleProperties.map((property) => {
-            const isSelected = property.id === selectedId;
+function PropertyResultSkeleton() {
+  return (
+    <div className="flex items-center gap-3 p-2">
+      <Skeleton className="size-20 shrink-0 rounded-lg" />
+      <div className="min-w-0 flex-1">
+        <Skeleton className="h-5 w-2/3" />
+        <Skeleton className="mt-2 h-5 w-24" />
+        <Skeleton className="mt-2 h-4 w-32" />
+      </div>
+    </div>
+  );
+}
 
-            return (
-              <div
-                key={property.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl p-2 transition-colors",
-                  isSelected
-                    ? "bg-primary/5 ring-1 ring-primary/20"
-                    : "hover:bg-muted",
-                )}
-              >
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                  onClick={() => onOpen(property.id)}
-                >
-                  {property.imageUrl ? (
-                    <img
-                      src={property.imageUrl}
-                      alt=""
-                      className="size-20 shrink-0 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <span className="grid size-20 shrink-0 place-items-center rounded-lg bg-muted">
-                      <ImageIcon className="size-5 text-muted-foreground" />
-                    </span>
-                  )}
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold">
-                      {property.title}
-                    </span>
-                    <span className="mt-1 block font-semibold text-primary">
-                      {formatPrice(property)}
-                    </span>
-                    <span className="mt-1 block truncate text-xs text-muted-foreground">
-                      {property.region} {property.dong} · {property.roomType}
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-background"
-                  aria-label={property.saved ? "매물 저장 취소" : "매물 저장"}
-                  aria-pressed={property.saved}
-                  onClick={() => onToggleSave(property.id, !property.saved)}
-                >
-                  <Heart
-                    className={cn(
-                      "size-5",
-                      property.saved
-                        ? "fill-primary text-primary"
-                        : "text-muted-foreground",
-                    )}
-                  />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+interface PropertyResultListProps {
+  properties: PropertyCardItem[];
+  isPending: boolean;
+  isError: boolean;
+  selectedId: number | null;
+  onRetry: () => void;
+  onResetFilters: () => void;
+  onOpen: (id: number) => void;
+  onToggleSave: (id: number, saved: boolean) => void;
+}
+
+// 사이드바(데스크탑)와 바텀시트(그 미만)가 함께 쓰는 결과 목록 — 조회 상태 분기를 여기서 끝낸다
+function PropertyResultList({
+  properties,
+  isPending,
+  isError,
+  selectedId,
+  onRetry,
+  onResetFilters,
+  onOpen,
+  onToggleSave,
+}: PropertyResultListProps) {
+  const itemRefs = useRef(new Map<number, HTMLDivElement>());
+  const prefersReducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
+
+  // 지도에서 핀을 고르면 목록도 그 매물로 따라 움직인다
+  useEffect(() => {
+    if (selectedId === null) {
+      return;
+    }
+    itemRefs.current.get(selectedId)?.scrollIntoView({
+      block: "nearest",
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+  }, [selectedId, prefersReducedMotion]);
+
+  if (isPending) {
+    return (
+      <div className="p-2">
+        {Array.from({ length: SKELETON_COUNT }, (_, index) => (
+          <PropertyResultSkeleton key={index} />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+        <p className="font-medium">매물 목록을 불러오지 못했습니다</p>
+        <p className="text-sm text-muted-foreground">
+          잠시 후 다시 시도해 주세요.
+        </p>
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          다시 시도
+        </Button>
+      </div>
+    );
+  }
+
+  if (properties.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+        <SearchX className="size-10 text-muted-foreground" />
+        <p className="font-medium">조건에 맞는 매물이 없습니다</p>
+        <p className="text-sm text-muted-foreground">
+          필터를 넓히면 더 많은 매물을 볼 수 있습니다.
+        </p>
+        <Button variant="outline" size="sm" onClick={onResetFilters}>
+          필터 초기화
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-2">
+      {properties.map((property) => (
+        <PropertyResultItem
+          key={property.id}
+          ref={(element) => {
+            if (!element) {
+              return;
+            }
+            itemRefs.current.set(property.id, element);
+            return () => {
+              itemRefs.current.delete(property.id);
+            };
+          }}
+          property={property}
+          isSelected={property.id === selectedId}
+          onOpen={onOpen}
+          onToggleSave={onToggleSave}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface ResultHeaderProps {
+  title: string;
+  isFiltered: boolean;
+  onClearSelection: () => void;
+}
+
+function ResultHeader({
+  title,
+  isFiltered,
+  onClearSelection,
+}: ResultHeaderProps) {
+  return (
+    <div className="flex items-center justify-between gap-2 px-4">
+      <p className="truncate font-semibold">{title}</p>
+      {isFiltered && (
+        <Button variant="ghost" size="sm" onClick={onClearSelection}>
+          전체 보기
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function PropertyMarkerLegend() {
+  return (
+    <div
+      className={cn(
+        "pointer-events-auto flex items-center gap-3 px-3 py-2 text-xs font-medium",
+        FLOATING_SURFACE,
+      )}
+      aria-label="매물 마커 색상 범례"
+    >
+      {Object.values(DEAL_TYPE_MARKER).map(({ label, color }) => (
+        <span key={label} className="flex items-center gap-1.5">
+          <MapPin
+            aria-hidden
+            className="size-3.5 shrink-0"
+            fill="currentColor"
+            strokeWidth={2.5}
+            style={{ color }}
+          />
+          {label}
+        </span>
+      ))}
     </div>
   );
 }
@@ -579,22 +609,45 @@ function toQueryFilters(filters: Filters, query: string): PropertyFilters {
   };
 }
 
+// 사이드바·바텀시트 머리글에 같은 문구를 쓴다 — 지금 목록이 무엇을 보여주는지 한 줄로 말한다.
+// 핀 하나를 고른 경우 목록은 그대로 두고 강조만 하므로 건수도 전체 그대로다
+function getResultTitle(
+  isPending: boolean,
+  isClusterSelected: boolean,
+  resultCount: number,
+) {
+  if (isPending) {
+    return "매물 찾는 중";
+  }
+  if (isClusterSelected) {
+    return `선택 영역 ${resultCount}건`;
+  }
+  return `매물 ${resultCount}건`;
+}
+
 interface PropertyListPageProps {
   canCreate: boolean;
   onOpen: (id: number) => void;
   onCreate: () => void;
 }
 
-// PAGE-03·04 통합 매물 탐색 — 지도와 목록은 같은 검색 결과를 함께 보여준다.
+// PAGE-03·04 매물 탐색 — 지도가 화면 전체를 쓰고, 검색·필터·결과 목록이 그 위에 얹힌다.
 function PropertyListPage({
   canCreate,
   onOpen,
   onCreate,
 }: PropertyListPageProps) {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [selection, setSelection] = useState<MapSelection | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const sheetDragStartYRef = useRef<number | null>(null);
+  const didDragSheetRef = useRef(false);
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const debouncedQuery = useDebouncedValue(filters.query.trim());
   const { mutate: toggleFavorite } = useToggleFavorite();
 
@@ -611,8 +664,37 @@ function PropertyListPage({
     [data],
   );
 
+  const selectedId = selection?.kind === "marker" ? selection.propertyId : null;
+  const isClusterSelected = selection?.kind === "cluster";
+  const listedProperties = isClusterSelected
+    ? items.filter((property) => selection.propertyIds.includes(property.id))
+    : items;
+  const activeFilterCount = countActiveFilters(filters);
+  const resultCount = isClusterSelected
+    ? listedProperties.length
+    : (data?.totalElements ?? 0);
+  const resultTitle = getResultTitle(isPending, isClusterSelected, resultCount);
+
   const changeFilters = (next: Filters) => {
     setFilters(next);
+    setSelection(null);
+  };
+
+  const resetFilters = () => changeFilters(resetPanelFilters(filters));
+
+  const showResults = () => {
+    setIsSidebarOpen(true);
+    setIsSheetOpen(true);
+  };
+
+  const selectMarker = (propertyId: number) => {
+    setSelection({ kind: "marker", propertyId });
+    showResults();
+  };
+
+  const selectCluster = (propertyIds: number[]) => {
+    setSelection({ kind: "cluster", propertyIds });
+    showResults();
   };
 
   // 저장은 로그인 사용자만 가능 — 비로그인 상태에서는 401 대신 로그인 화면으로 보낸다
@@ -635,139 +717,253 @@ function PropertyListPage({
     );
   };
 
-  // 거래유형이 바뀌면 가격 축 의미가 달라지므로 가격 구간을 초기화
-  const handleDealTypeChange = (dealType: string) =>
-    changeFilters({ ...filters, dealType, price: "all", rent: "all" });
+  // 지도를 가린 패널은 Esc로 즉시 걷어낼 수 있어야 한다
+  useEffect(() => {
+    if (!isFilterOpen) {
+      return;
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [isFilterOpen]);
+
+  const resultList = (
+    <PropertyResultList
+      properties={listedProperties}
+      isPending={isPending}
+      isError={isError}
+      selectedId={selectedId}
+      onRetry={() => refetch()}
+      onResetFilters={resetFilters}
+      onOpen={onOpen}
+      onToggleSave={handleToggleSave}
+    />
+  );
+
+  const filterPanel = (
+    <PropertyFilterPanel
+      filters={filters}
+      onChange={changeFilters}
+      resultCount={data?.totalElements}
+    />
+  );
 
   return (
-    <div className="min-h-svh bg-background">
-      <header>
-        <div className="mx-auto flex max-w-6xl flex-col items-start gap-4 px-4 py-6">
-          <div className="flex w-full items-center justify-between">
-            <h1 className="text-lg font-semibold">매물 찾기</h1>
-            {canCreate && (
-              <Button size="sm" onClick={onCreate}>
-                <Plus />
-                매물 등록
-              </Button>
+    <div className="flex h-[calc(100svh-var(--nav-h)-var(--tabbar-h))] overflow-hidden sm:h-[calc(100svh-var(--nav-h))]">
+      <aside
+        className={cn(
+          "hidden h-full shrink-0 overflow-hidden border-r bg-background transition-[width] duration-300 motion-reduce:transition-none lg:block",
+          isSidebarOpen ? "w-88" : "w-0",
+        )}
+        aria-label="매물 목록"
+      >
+        <div className="flex h-full w-88 flex-col py-4">
+          <ResultHeader
+            title={resultTitle}
+            isFiltered={isClusterSelected}
+            onClearSelection={() => setSelection(null)}
+          />
+          <div className="mt-3 min-h-0 flex-1 overflow-y-auto border-t">
+            {resultList}
+          </div>
+        </div>
+      </aside>
+
+      <main className="relative min-w-0 flex-1">
+        <PropertyMap
+          properties={items}
+          hasBottomSheet={!isDesktop}
+          onSelectMarker={selectMarker}
+          onSelectCluster={selectCluster}
+        />
+
+        {/* 목록 손잡이도 검색·필터·범례와 같은 왼쪽 여백(left-3)에 같은 재질로 세운다 */}
+        <button
+          type="button"
+          className={cn(
+            "absolute top-1/2 left-3 z-20 hidden size-11 -translate-y-1/2 place-items-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:grid",
+            FLOATING_SURFACE,
+          )}
+          aria-expanded={isSidebarOpen}
+          aria-label={isSidebarOpen ? "매물 목록 접기" : "매물 목록 펼치기"}
+          onClick={() => setIsSidebarOpen((current) => !current)}
+        >
+          {isSidebarOpen ? (
+            <ChevronLeft className="size-5" />
+          ) : (
+            <ChevronRight className="size-5" />
+          )}
+        </button>
+
+        {isFilterOpen && isDesktop && (
+          <button
+            type="button"
+            aria-label="필터 닫기"
+            className="absolute inset-0 z-20 cursor-default"
+            onClick={() => setIsFilterOpen(false)}
+          />
+        )}
+
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start gap-2 p-3">
+          <div className="pointer-events-auto relative min-w-0 flex-1 sm:max-w-72">
+            {/* z-10 — backdrop-blur를 쓰는 Input이 쌓임 맥락을 만들어 아이콘을 덮는다 */}
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="매물명·지역 검색"
+              className={cn("h-11 pl-10", FLOATING_SURFACE)}
+              value={filters.query}
+              onChange={(event) =>
+                changeFilters({ ...filters, query: event.target.value })
+              }
+            />
+          </div>
+
+          <div className="pointer-events-auto relative shrink-0">
+            <button
+              type="button"
+              className={cn(
+                "flex h-11 items-center gap-1.5 px-4 text-sm font-medium transition-colors",
+                FLOATING_SURFACE,
+                isFilterOpen &&
+                  "border-primary bg-primary text-primary-foreground",
+              )}
+              aria-expanded={isFilterOpen}
+              onClick={() => setIsFilterOpen((current) => !current)}
+            >
+              {isFilterOpen ? (
+                <X className="size-4" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              필터
+              {activeFilterCount > 0 && !isFilterOpen && (
+                <span className="grid size-5 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {isFilterOpen && isDesktop && (
+              <div className="absolute top-13 left-0 w-88 rounded-xl border bg-background p-4 shadow-lg">
+                {filterPanel}
+              </div>
             )}
           </div>
-        </div>
-      </header>
 
-      {/* top-14: 공통 GNB(h-14) 아래에 고정 */}
-      <div className="sticky top-14 z-10 border-y bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
-          <div
-            className="scrollbar-hidden -mx-4 flex items-center gap-1 overflow-x-auto px-4 sm:hidden"
-            role="tablist"
-            aria-label="거래유형 필터"
-          >
-            {["all", ...DEAL_TYPES].map((dealType) => {
-              const isActive = filters.dealType === dealType;
-              return (
-                <button
-                  key={dealType}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  className={cn(
-                    "shrink-0 rounded-full px-4 py-1.5 text-sm whitespace-nowrap transition-colors",
-                    isActive
-                      ? "bg-foreground font-semibold text-background"
-                      : "font-medium text-muted-foreground",
-                  )}
-                  onClick={() => handleDealTypeChange(dealType)}
-                >
-                  {dealType === "all" ? "전체" : dealType}
-                </button>
-              );
-            })}
-          </div>
-          <Tabs
-            value={filters.dealType}
-            onValueChange={handleDealTypeChange}
-            className="hidden sm:block"
-          >
-            <TabsList className="w-fit" aria-label="거래유형 필터">
-              <TabsTrigger value="all" className="sm:min-w-20">
-                전체
-              </TabsTrigger>
-              {DEAL_TYPES.map((dealType) => (
-                <TabsTrigger
-                  key={dealType}
-                  value={dealType}
-                  className="sm:min-w-20"
-                >
-                  {dealType}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          <PropertyFilterBar filters={filters} onChange={changeFilters} />
-        </div>
-      </div>
-
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        {isPending ? (
-          <>
-            <Skeleton className="h-[26rem] w-full rounded-xl sm:h-[34rem]" />
-            <Skeleton className="mt-8 h-5 w-24" />
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-                <PropertyCardSkeleton key={i} />
-              ))}
-            </div>
-          </>
-        ) : isError ? (
-          <div className="flex flex-col items-center gap-3 py-24 text-center">
-            <p className="font-medium">매물 목록을 불러오지 못했습니다</p>
-            <p className="text-sm text-muted-foreground">
-              잠시 후 다시 시도해 주세요.
-            </p>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              다시 시도
-            </Button>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-24 text-center">
-            <SearchX className="size-10 text-muted-foreground" />
-            <p className="font-medium">조건에 맞는 매물이 없습니다</p>
-            <p className="text-sm text-muted-foreground">
-              필터를 조정하거나 초기화해 보세요.
-            </p>
+          {/* 지도 우하단은 카카오 로고·축척이 쓰는 자리라, 등록 버튼도 상단 줄에 함께 세운다 */}
+          {canCreate && (
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => changeFilters(DEFAULT_FILTERS)}
+              className="pointer-events-auto ml-auto h-11 shrink-0 rounded-full shadow-md"
+              aria-label="매물 등록"
+              onClick={onCreate}
             >
-              필터 초기화
+              <Plus />
+              <span className="hidden sm:inline">매물 등록</span>
             </Button>
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">
-              매물{" "}
-              <span className="text-base font-semibold text-foreground">
-                {data.totalElements}
-              </span>
-              건
-            </p>
-            <div className="mt-4">
-              <PropertyMap
-                properties={items}
-                onOpen={onOpen}
-                onToggleSave={handleToggleSave}
-              />
+          )}
+        </div>
+
+        <div className="pointer-events-none absolute top-16 left-3 z-20">
+          <PropertyMarkerLegend />
+        </div>
+
+        <section
+          className={cn(
+            "absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-2xl border-t bg-background shadow-[0_-4px_16px_rgba(15,23,42,0.12)] transition-[height] duration-300 motion-reduce:transition-none lg:hidden",
+            isSheetOpen ? "h-[50%]" : "h-16",
+          )}
+          aria-label="매물 목록"
+        >
+          <button
+            type="button"
+            className="relative flex h-16 shrink-0 touch-none items-center justify-between px-5 pt-2 text-left"
+            aria-expanded={isSheetOpen}
+            onClick={() => {
+              if (didDragSheetRef.current) {
+                didDragSheetRef.current = false;
+                return;
+              }
+              setIsSheetOpen((current) => !current);
+            }}
+            onPointerDown={(event) => {
+              didDragSheetRef.current = false;
+              sheetDragStartYRef.current = event.clientY;
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerUp={(event) => {
+              const startY = sheetDragStartYRef.current;
+              sheetDragStartYRef.current = null;
+              if (startY === null) {
+                return;
+              }
+
+              const distance = event.clientY - startY;
+              if (distance < -SHEET_DRAG_THRESHOLD_PX) {
+                didDragSheetRef.current = true;
+                setIsSheetOpen(true);
+              }
+              if (distance > SHEET_DRAG_THRESHOLD_PX) {
+                didDragSheetRef.current = true;
+                setIsSheetOpen(false);
+              }
+            }}
+          >
+            <span
+              aria-hidden
+              className="absolute top-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-border"
+            />
+            <span>
+              <span className="block font-semibold">{resultTitle}</span>
+              {!isSheetOpen && (
+                <span className="text-xs text-muted-foreground">
+                  위로 올려 목록 보기
+                </span>
+              )}
+            </span>
+            {isSheetOpen ? (
+              <ChevronDown className="size-5 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="size-5 text-muted-foreground" />
+            )}
+          </button>
+
+          {isSheetOpen && isClusterSelected && (
+            <div className="shrink-0 px-4 pb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setSelection(null)}
+              >
+                전체 매물 보기
+              </Button>
             </div>
-          </>
-        )}
+          )}
+
+          <div className="min-h-0 flex-1 overflow-y-auto border-t">
+            {resultList}
+          </div>
+        </section>
       </main>
+
+      <Drawer open={isFilterOpen && !isDesktop} onOpenChange={setIsFilterOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>필터</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-8">{filterPanel}</div>
+        </DrawerContent>
+      </Drawer>
 
       {saveError && (
         <div
           role="alert"
-          className="fixed inset-x-0 bottom-4 z-30 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-xl border bg-background px-4 py-3 text-sm shadow-sm"
+          className="fixed inset-x-0 bottom-4 z-40 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-xl border bg-background px-4 py-3 text-sm shadow-sm"
         >
           {saveError}
         </div>
