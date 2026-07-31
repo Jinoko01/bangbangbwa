@@ -11,7 +11,13 @@ import {
   getFavoriteProperties,
   removeFavorite,
 } from "@/api/favorite";
-import type { Page, PagingParams, PropertySummary } from "@/types";
+import { propertyKeys } from "@/hooks/queries/propertyQueries";
+import type {
+  Page,
+  PagingParams,
+  PropertyDetail,
+  PropertySummary,
+} from "@/types";
 
 export const favoriteKeys = {
   all: ["favorites"] as const,
@@ -31,6 +37,9 @@ export function useFavoritePropertyList(paging: PagingParams = {}) {
   return useQuery(favoritePropertyListOptions(paging));
 }
 
+// 하트를 그리는 캐시 — 저장 목록과 매물 목록이 같은 요약 스키마를 공유한다
+const SAVED_LIST_KEYS = [favoriteKeys.lists(), propertyKeys.lists()];
+
 // PROP-04·05 저장 토글 — 하트는 즉시 반응해야 하므로 캐시를 선반영하고 실패하면 되돌린다.
 // 해제한 매물은 목록에서 곧바로 빼지 않고(다시 눌러 되돌릴 수 있게) 다음 진입 때 새로 받는다.
 export function useToggleFavorite() {
@@ -45,33 +54,52 @@ export function useToggleFavorite() {
       saved: boolean;
     }) => (saved ? addFavorite(propertyId) : removeFavorite(propertyId)),
     onMutate: async ({ propertyId, saved }) => {
-      await queryClient.cancelQueries({ queryKey: favoriteKeys.lists() });
-      const previous = queryClient.getQueriesData<Page<PropertySummary>>({
-        queryKey: favoriteKeys.lists(),
-      });
-      queryClient.setQueriesData<Page<PropertySummary>>(
-        { queryKey: favoriteKeys.lists() },
-        (page) =>
-          page && {
-            ...page,
-            content: page.content.map((property) =>
-              property.propertyId === propertyId
-                ? { ...property, saved }
-                : property,
-            ),
-          },
+      const detailKey = propertyKeys.detail(propertyId);
+      await Promise.all(
+        [...SAVED_LIST_KEYS, detailKey].map((queryKey) =>
+          queryClient.cancelQueries({ queryKey }),
+        ),
       );
-      return { previous };
+
+      const previousLists = SAVED_LIST_KEYS.flatMap((queryKey) =>
+        queryClient.getQueriesData<Page<PropertySummary>>({ queryKey }),
+      );
+      const previousDetail =
+        queryClient.getQueryData<PropertyDetail>(detailKey);
+
+      SAVED_LIST_KEYS.forEach((queryKey) =>
+        queryClient.setQueriesData<Page<PropertySummary>>(
+          { queryKey },
+          (page) =>
+            page && {
+              ...page,
+              content: page.content.map((property) =>
+                property.propertyId === propertyId
+                  ? { ...property, saved }
+                  : property,
+              ),
+            },
+        ),
+      );
+      queryClient.setQueryData<PropertyDetail>(
+        detailKey,
+        (property) => property && { ...property, saved },
+      );
+
+      return { previousLists, previousDetail, detailKey };
     },
     onError: (_error, _variables, context) => {
-      context?.previous.forEach(([queryKey, page]) =>
+      context?.previousLists.forEach(([queryKey, page]) =>
         queryClient.setQueryData(queryKey, page),
       );
+      if (context) {
+        queryClient.setQueryData(context.detailKey, context.previousDetail);
+      }
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({
-        queryKey: favoriteKeys.lists(),
-        refetchType: "none",
-      }),
+    onSettled: (_result, _error, { propertyId }) =>
+      [...SAVED_LIST_KEYS, propertyKeys.detail(propertyId)].forEach(
+        (queryKey) =>
+          queryClient.invalidateQueries({ queryKey, refetchType: "none" }),
+      ),
   });
 }

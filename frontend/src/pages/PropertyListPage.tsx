@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ChevronDown,
   ChevronUp,
@@ -24,15 +25,14 @@ import {
   MONTHLY_DEPOSIT_BANDS,
   PRICE_BANDS,
 } from "@/data/properties";
-import {
-  usePropertyList,
-  useToggleSavedInCache,
-} from "@/hooks/queries/propertyQueries";
+import { useToggleFavorite } from "@/hooks/queries/favoriteQueries";
+import { usePropertyList } from "@/hooks/queries/propertyQueries";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { formatPrice } from "@/lib/format";
 import { loadKakaoMapSdk } from "@/lib/kakaoMap";
 import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 import type { DealType, Filters, PropertyFilters, RoomType } from "@/types";
 
 const SKELETON_COUNT = 6;
@@ -225,7 +225,7 @@ function PropertyMap({
 }: {
   properties: PropertyCardItem[];
   onOpen: (id: number) => void;
-  onToggleSave: (id: number) => void;
+  onToggleSave: (id: number, saved: boolean) => void;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const dragStartYRef = useRef<number | null>(null);
@@ -535,7 +535,7 @@ function PropertyMap({
                   className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-background"
                   aria-label={property.saved ? "매물 저장 취소" : "매물 저장"}
                   aria-pressed={property.saved}
-                  onClick={() => onToggleSave(property.id)}
+                  onClick={() => onToggleSave(property.id, !property.saved)}
                 >
                   <Heart
                     className={cn(
@@ -557,7 +557,7 @@ function PropertyMap({
 
 // 화면 필터 → 매물 목록 API 쿼리 파라미터 (선택하지 않은 값은 보내지 않는다)
 // 월세 탭의 가격 축은 보증금 구간이라 밴드 목록이 갈린다.
-// "서울시 강남구 역삼동" 같은 검색어는 구 필터와 나머지 검색어로 분리하되,
+// "서울시 강남구 역삼동" 같은 검색어는 시군구 필터와 나머지 검색어로 분리하되,
 // 지역 셀렉트를 직접 골랐다면 그 선택이 우선한다
 function toQueryFilters(filters: Filters, query: string): PropertyFilters {
   const bands =
@@ -592,8 +592,11 @@ function PropertyListPage({
   onCreate,
 }: PropertyListPageProps) {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const debouncedQuery = useDebouncedValue(filters.query.trim());
-  const toggleSaved = useToggleSavedInCache();
+  const { mutate: toggleFavorite } = useToggleFavorite();
 
   const queryFilters = useMemo(
     () => toQueryFilters(filters, debouncedQuery),
@@ -610,6 +613,26 @@ function PropertyListPage({
 
   const changeFilters = (next: Filters) => {
     setFilters(next);
+  };
+
+  // 저장은 로그인 사용자만 가능 — 비로그인 상태에서는 401 대신 로그인 화면으로 보낸다
+  const handleToggleSave = (propertyId: number, saved: boolean) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    setSaveError(null);
+    toggleFavorite(
+      { propertyId, saved },
+      {
+        onError: () =>
+          setSaveError(
+            saved
+              ? "매물을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
+              : "저장을 취소하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          ),
+      },
+    );
   };
 
   // 거래유형이 바뀌면 가격 축 의미가 달라지므로 가격 구간을 초기화
@@ -734,12 +757,21 @@ function PropertyListPage({
               <PropertyMap
                 properties={items}
                 onOpen={onOpen}
-                onToggleSave={toggleSaved}
+                onToggleSave={handleToggleSave}
               />
             </div>
           </>
         )}
       </main>
+
+      {saveError && (
+        <div
+          role="alert"
+          className="fixed inset-x-0 bottom-4 z-30 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-xl border bg-background px-4 py-3 text-sm shadow-sm"
+        >
+          {saveError}
+        </div>
+      )}
     </div>
   );
 }

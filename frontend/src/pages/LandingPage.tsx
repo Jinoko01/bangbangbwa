@@ -27,7 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import HeroSearch from "@/components/HeroSearch";
-import { PROPERTIES } from "@/data/properties";
+import { usePropertyList } from "@/hooks/queries/propertyQueries";
 import { cn } from "@/lib/utils";
 
 const FLOW_STEPS = [
@@ -726,6 +726,9 @@ function FeaturesSection() {
 }
 
 function LandingPage() {
+  // 총 건수만 쓰므로 첫 페이지 1건만 받아온다 (실패해도 문구만 건수 없이 나간다)
+  const { data: properties } = usePropertyList({}, { page: 0, size: 1 });
+
   return (
     <main className="overflow-x-clip bg-background">
       <section className="lg:px-8 lg:py-10">
@@ -808,7 +811,8 @@ function LandingPage() {
         <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-16 text-center text-primary-foreground sm:px-12">
           <ShieldCheck className="mx-auto size-10" />
           <h2 className="mt-5 text-3xl font-bold tracking-tight">
-            오늘 올라온 매물 {PROPERTIES.length}건,
+            지금 올라온 매물
+            {properties ? ` ${properties.totalElements}건` : ""},
             <br className="sm:hidden" /> 방송으로 확인하세요
           </h2>
           <p className="mt-4 text-primary-foreground/75">

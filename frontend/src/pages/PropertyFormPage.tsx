@@ -33,6 +33,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { isApiError } from "@/api/error";
 import {
   useCreateProperty,
+  useIsMyProperty,
+  usePropertyDetail,
+  useUpdateProperty,
   useUploadPropertyImages,
 } from "@/hooks/queries/propertyQueries";
 import { isApprovedBroker } from "@/lib/auth";
@@ -53,9 +56,10 @@ import {
 import { cn } from "@/lib/utils";
 import type {
   DealType,
-  Property,
   PropertyCreateInput,
+  PropertyDetail,
   PropertyEnvironment,
+  PropertyUpdateInput,
   RoomType,
   User,
 } from "@/types";
@@ -475,10 +479,7 @@ function ExtraPhotoField({
 }
 
 interface PropertyFormProps {
-  property: Property | null;
-  nextId: number;
-  brokerId: number;
-  onSave: (property: Property) => void;
+  property: PropertyDetail | null;
 }
 
 // 사진 한 장 — url은 미리보기, file은 업로드용 원본 (수정 화면의 기존 사진은 file이 없다)
@@ -487,28 +488,23 @@ interface PhotoDraft {
   file?: File;
 }
 
-function PropertyForm({
-  property,
-  nextId,
-  brokerId,
-  onSave,
-}: PropertyFormProps) {
+function PropertyForm({ property }: PropertyFormProps) {
   const navigate = useNavigate();
   const { mutateAsync: createProperty } = useCreateProperty();
+  const { mutateAsync: updateProperty } = useUpdateProperty();
   const { mutateAsync: uploadImages } = useUploadPropertyImages();
   const [dealType, setDealType] = useState<DealType>(
-    property?.dealType ?? "전세",
+    property?.transactionType ?? "전세",
   );
   const [roomType, setRoomType] = useState<RoomType>(
-    // 목데이터의 "아파트"는 백엔드 enum에 없어 등록 가능한 유형으로 대체한다
-    property && property.buildingType !== "아파트"
-      ? property.buildingType
-      : ROOM_TYPES[0],
+    property?.roomType ?? ROOM_TYPES[0],
   );
   const [address, setAddress] = useState<GeocodedAddress | null>(null);
   // 검증 실패 시 폼이 리마운트되므로 주소 입력값은 폼 바깥에서 보관한다
   const [addressQuery, setAddressQuery] = useState(
-    property ? `${property.region} ${property.dong}` : "",
+    property
+      ? (property.roadAddress ?? `${property.sigungu} ${property.dong}`)
+      : "",
   );
   const [environment, setEnvironment] = useState<PropertyEnvironment | null>(
     null,
@@ -517,7 +513,7 @@ function PropertyForm({
   const [isLoadingEnvironment, startEnvironmentLoad] = useTransition();
   // 미리보기용 data URL과 업로드용 원본 File을 함께 들고 간다 (수정 화면의 기존 사진은 file 없이 url만 있다)
   const [coverPhoto, setCoverPhoto] = useState<PhotoDraft | null>(
-    property?.imageUrl ? { url: property.imageUrl } : null,
+    property?.imageUrls?.[0] ? { url: property.imageUrls[0] } : null,
   );
   const [extraPhotos, setExtraPhotos] = useState<PhotoDraft[]>(
     property?.imageUrls
@@ -609,6 +605,32 @@ function PropertyForm({
     }
   };
 
+  // 폼 입력 + 주소 검색 결과 → 등록·수정 공통 요청 본문 (금액 단위 변환은 api/property.ts 책임)
+  const toRequestInput = (
+    input: PropertyFormInput,
+    resolved: GeocodedAddress,
+  ): PropertyUpdateInput => ({
+    title: input.title,
+    transactionType: input.dealType,
+    roomType,
+    deposit: input.deposit,
+    monthlyRent: input.monthlyRent,
+    maintenanceFee: input.maintenanceFee,
+    sigungu: resolved.sigungu,
+    dong: resolved.dong,
+    lotNumber: resolved.lotNumber || undefined,
+    roadAddress: resolved.roadAddress || undefined,
+    complexName: input.complexName || undefined,
+    builtYear: input.builtYear,
+    latitude: resolved.latitude,
+    longitude: resolved.longitude,
+    area: input.areaM2,
+    floor: input.floor,
+    totalFloor: input.totalFloors,
+    description: input.description || undefined,
+    rooms: input.rooms,
+  });
+
   // 등록: POST /api/properties — 좌표·주변 편의시설은 주소 검색 결과에서 가져온다.
   // 사진은 매물 id가 나온 뒤 multipart로 따로 올린다 (실패해도 매물 등록 자체는 유효)
   const submitCreate = async (
@@ -616,25 +638,7 @@ function PropertyForm({
     resolved: GeocodedAddress,
   ) => {
     const body: PropertyCreateInput = {
-      title: input.title,
-      transactionType: input.dealType,
-      roomType,
-      deposit: input.deposit,
-      monthlyRent: input.monthlyRent,
-      maintenanceFee: input.maintenanceFee,
-      sigungu: resolved.sigungu,
-      dong: resolved.dong,
-      lotNumber: resolved.lotNumber || undefined,
-      roadAddress: resolved.roadAddress || undefined,
-      complexName: input.complexName || undefined,
-      builtYear: input.builtYear,
-      latitude: resolved.latitude,
-      longitude: resolved.longitude,
-      area: input.areaM2,
-      floor: input.floor,
-      totalFloor: input.totalFloors,
-      description: input.description || undefined,
-      rooms: input.rooms,
+      ...toRequestInput(input, resolved),
       environment: environment ?? undefined,
     };
     const created = await createProperty(body);
@@ -647,35 +651,6 @@ function PropertyForm({
     [coverPhoto, ...extraPhotos]
       .map((photo) => photo?.file)
       .filter((file): file is File => file !== undefined);
-
-  // 수정: 백엔드에 매물 수정 API가 없어 아직 로컬 상태만 갱신한다
-  const saveLocally = (input: PropertyFormInput, resolved: GeocodedAddress) => {
-    const imageUrl = coverPhoto?.url;
-    const extraUrls = extraPhotos.map((photo) => photo.url);
-    const imageUrls = imageUrl
-      ? [imageUrl, ...extraUrls]
-      : extraUrls.length > 0
-        ? extraUrls
-        : undefined;
-    onSave({
-      id: property?.id ?? nextId,
-      brokerId,
-      title: input.title,
-      dealType: input.dealType,
-      buildingType: roomType,
-      deposit: input.deposit,
-      monthlyRent: input.monthlyRent,
-      region: resolved.sigungu,
-      dong: resolved.dong,
-      areaM2: input.areaM2,
-      floor: input.floor,
-      totalFloors: input.totalFloors,
-      rooms: input.rooms,
-      saved: property?.saved ?? false,
-      imageUrl,
-      imageUrls,
-    });
-  };
 
   const [formState, submitAction, isPending] = useActionState(
     async (_prev: FormState | null, formData: FormData) => {
@@ -720,13 +695,8 @@ function PropertyForm({
       // validate가 address를 검증했으므로 여기서는 항상 값이 있다
       const resolved = address as GeocodedAddress;
 
-      if (property) {
-        saveLocally(input, resolved);
-        navigate(`/properties/${property.id}`, { replace: true });
-        return null;
-      }
-
-      let propertyId = createdPropertyId;
+      // 수정(PATCH)은 이미 있는 매물을 갱신하므로 등록과 달리 재시도 id를 기억할 필요가 없다
+      let propertyId = property?.propertyId ?? createdPropertyId;
       if (propertyId === null) {
         try {
           propertyId = await submitCreate(input, resolved);
@@ -741,26 +711,49 @@ function PropertyForm({
             values,
           };
         }
-      }
-
-      const files = collectPhotoFiles();
-      if (files.length > 0) {
+      } else if (property) {
         try {
-          await uploadImages({ propertyId, files });
-        } catch {
-          // 매물은 이미 등록됐으므로 다시 제출하면 사진 업로드만 재시도한다
+          await updateProperty({
+            propertyId: property.propertyId,
+            input: toRequestInput(input, resolved),
+          });
+        } catch (failure) {
           setFormVersion((version) => version + 1);
           return {
             errors: {
-              submit:
-                "매물은 등록됐지만 사진 업로드에 실패했어요. 저장을 다시 누르면 사진만 다시 올립니다",
+              submit: isApiError(failure)
+                ? failure.message
+                : "매물을 수정하지 못했습니다. 잠시 후 다시 시도해주세요",
             },
             values,
           };
         }
       }
 
-      navigate("/properties", { replace: true });
+      // 새로 고른 사진만 올린다 — 수정 화면의 기존 사진은 file 없이 url만 들고 있다
+      const files = collectPhotoFiles();
+      if (files.length > 0) {
+        try {
+          await uploadImages({ propertyId, files });
+        } catch {
+          // 매물은 이미 저장됐으므로 다시 제출하면 사진 업로드만 재시도한다
+          setFormVersion((version) => version + 1);
+          return {
+            errors: {
+              submit:
+                "매물은 저장됐지만 사진 업로드에 실패했어요. 저장을 다시 누르면 사진만 다시 올립니다",
+            },
+            values,
+          };
+        }
+      }
+
+      navigate(
+        property ? `/properties/${property.propertyId}` : "/properties",
+        {
+          replace: true,
+        },
+      );
       return null;
     },
     null,
@@ -889,7 +882,7 @@ function PropertyForm({
           <Input
             name="complexName"
             maxLength={PROPERTY_LIMITS.complexNameMax}
-            defaultValue={values?.complexName}
+            defaultValue={values?.complexName ?? property?.complexName}
             placeholder="예) 래미안 1단지"
           />
         </FormField>
@@ -899,7 +892,7 @@ function PropertyForm({
             type="number"
             min={PROPERTY_LIMITS.builtYearMin}
             max={PROPERTY_LIMITS.builtYearMax}
-            defaultValue={values?.builtYear}
+            defaultValue={values?.builtYear ?? property?.builtYear}
             aria-invalid={errors?.builtYear ? true : undefined}
           />
         </FormField>
@@ -923,7 +916,7 @@ function PropertyForm({
             min={1}
             max={PROPERTY_LIMITS.areaMax}
             step={0.01}
-            defaultValue={values?.areaM2 ?? property?.areaM2}
+            defaultValue={values?.areaM2 ?? property?.area}
             aria-invalid={errors?.areaM2 ? true : undefined}
           />
         </FormField>
@@ -953,7 +946,7 @@ function PropertyForm({
             type="number"
             min={1}
             max={PROPERTY_LIMITS.floorMax}
-            defaultValue={values?.totalFloors ?? property?.totalFloors}
+            defaultValue={values?.totalFloors ?? property?.totalFloor}
             aria-invalid={errors?.totalFloors ? true : undefined}
           />
         </FormField>
@@ -961,7 +954,7 @@ function PropertyForm({
           <PriceInput
             name="maintenanceFee"
             max={PROPERTY_LIMITS.maintenanceFeeMax}
-            defaultValue={values?.maintenanceFee}
+            defaultValue={values?.maintenanceFee ?? property?.maintenanceFee}
             invalid={Boolean(errors?.maintenanceFee)}
           />
         </FormField>
@@ -974,7 +967,7 @@ function PropertyForm({
             name="description"
             rows={4}
             maxLength={PROPERTY_LIMITS.descriptionMax}
-            defaultValue={values?.description}
+            defaultValue={values?.description ?? property?.description}
             placeholder="채광·옵션·주변 환경 등 세입자가 궁금해할 정보를 적어주세요"
             aria-invalid={errors?.description ? true : undefined}
           />
@@ -1036,35 +1029,32 @@ function FormPageSkeleton() {
 
 interface PropertyFormPageProps {
   user: User;
-  loading: boolean;
-  properties: Property[];
-  onSave: (property: Property) => void;
 }
 
 // PAGE-07 매물 등록·수정 — 중개사(승인 완료) 전용, 등록(PROP-07)과 수정(PROP-08)이 같은 폼을 공유
 // 수정은 본인이 등록한 매물만 가능 — 남의 매물 URL로 진입하면 상세로 돌려보낸다
 // 로그인 여부는 라우트의 RequireAuth가 보장하고, user는 그쪽에서 내려받는다
-function PropertyFormPage({
-  user,
-  loading,
-  properties,
-  onSave,
-}: PropertyFormPageProps) {
+function PropertyFormPage({ user }: PropertyFormPageProps) {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
+  const propertyId = Number(idParam);
+  const isEdit = idParam !== undefined;
+
+  const { data: property, isPending: isLoadingProperty } = usePropertyDetail(
+    propertyId,
+    isEdit,
+  );
+  const { isMyProperty, isPending: isCheckingOwner } =
+    useIsMyProperty(propertyId);
+  const loading = isEdit && (isLoadingProperty || isCheckingOwner);
 
   if (!isApprovedBroker(user)) {
     return <Navigate to="/properties" replace />;
   }
-
-  const isEdit = idParam !== undefined;
-  const property = isEdit
-    ? (properties.find((p) => p.id === Number(idParam)) ?? null)
-    : null;
-  if (property && property.brokerId !== user.id) {
-    return <Navigate to={`/properties/${property.id}`} replace />;
+  // 남의 매물은 수정할 수 없다 — 소유 여부는 내 매물 목록으로 판단한다
+  if (isEdit && !loading && property && !isMyProperty) {
+    return <Navigate to={`/properties/${propertyId}`} replace />;
   }
-  const nextId = properties.reduce((max, p) => Math.max(max, p.id), 0) + 1;
 
   return (
     <div className="min-h-svh bg-background">
@@ -1103,12 +1093,7 @@ function PropertyFormPage({
             </Button>
           </div>
         ) : (
-          <PropertyForm
-            property={property}
-            nextId={nextId}
-            brokerId={property?.brokerId ?? user.id}
-            onSave={onSave}
-          />
+          <PropertyForm property={property ?? null} />
         )}
       </main>
     </div>

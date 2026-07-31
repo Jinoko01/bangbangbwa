@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SEOUL_GUS, toSeoulRegionLabel } from "@/data/regions";
+import { usePropertyFilterOptions } from "@/hooks/queries/propertyQueries";
 import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
 
@@ -27,11 +27,12 @@ import { cn } from "@/lib/utils";
 // max-height는 important(!)로 radix 인라인 스타일보다 우선 적용.
 const dropdownViewportClass = "h-auto max-h-[168px]!";
 
-// 히어로 검색창 — 클릭 시 하얀 패널이 아래로 펼쳐지고 구를 고른다 (서비스 지역 서울 한정).
+// 히어로 검색창 — 클릭 시 하얀 패널이 아래로 펼쳐지고 지역을 고른다 (매물이 등록된 시군구 목록).
 // 검색하면 선택 지역과 키워드를 /properties?sigungu=&query=로 넘긴다 (역 이름 검색은 백엔드 미지원).
 function HeroSearch() {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
+  const { data: filterOptions } = usePropertyFilterOptions();
 
   const [open, setOpen] = useState(false);
   const [gu, setGu] = useState("");
@@ -72,8 +73,8 @@ function HeroSearch() {
       return;
     }
 
-    // "서울시 강남구 역삼동" 같은 입력은 구 필터와 나머지 검색어로 분리한다.
-    // sigungu 값은 목록 필터·백엔드와 같은 "강남구" 형태 — "서울시 강남구"는 표시 라벨뿐
+    // "서울시 강남구 역삼동" 같은 입력은 시군구 필터와 나머지 검색어로 분리한다.
+    // sigungu 값은 목록 필터·백엔드와 같은 "강남구" 형태 (시/도 표기는 버린다)
     const parsed = parseRegionQuery(keyword);
     const params = new URLSearchParams();
     const sigungu = gu || parsed.sigungu;
@@ -138,9 +139,9 @@ function HeroSearch() {
                     position="popper"
                     viewportClassName={dropdownViewportClass}
                   >
-                    {SEOUL_GUS.map((g) => (
-                      <SelectItem key={g} value={g}>
-                        {toSeoulRegionLabel(g)}
+                    {filterOptions?.sigungus.map((sigungu) => (
+                      <SelectItem key={sigungu} value={sigungu}>
+                        {sigungu}
                       </SelectItem>
                     ))}
                   </SelectContent>

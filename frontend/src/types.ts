@@ -1,5 +1,4 @@
 export type DealType = "전세" | "월세" | "매매";
-export type BuildingType = "아파트" | "오피스텔" | "빌라" | "원룸";
 
 export type FacilityCategory = "지하철" | "편의점" | "빨래방";
 
@@ -15,29 +14,11 @@ export interface NearbyFacility {
   longitude?: number;
 }
 
-export interface Property {
-  id: number;
-  brokerId: number;
-  title: string;
-  dealType: DealType;
-  buildingType: BuildingType;
-  deposit: number;
-  monthlyRent: number;
-  region: string;
-  dong: string;
-  areaM2: number;
-  floor: number;
-  totalFloors?: number;
-  rooms: number;
-  saved: boolean;
-  imageUrl?: string;
-  imageUrls?: string[];
-  nearbyFacilities?: NearbyFacility[];
-}
-
 // ── 매물 API 계약 (Swagger /api/properties) ──────────────────────────────
-// 백엔드 roomType enum이 허용하는 값 — BuildingType 중 "아파트"는 아직 미지원
-export type RoomType = Exclude<BuildingType, "아파트">;
+// 백엔드 roomType enum이 허용하는 값 ("아파트"는 아직 미지원)
+export type RoomType = "오피스텔" | "빌라" | "원룸";
+
+// 금액 단위: 화면·폼은 만원, 백엔드는 원 — 변환은 src/api/property.ts에서만 한다
 
 export interface Page<T> {
   content: T[];
@@ -66,6 +47,14 @@ export interface PropertyFilters {
   maxDeposit?: number;
 }
 
+// PROP-02 필터 선택지 — 등록된 매물에서 뽑아낸 값이라 매물이 늘면 자동으로 넓어진다.
+// sigungu는 시/도 없는 이름("중구")이라 이름이 겹치는 지역은 서로 구분되지 않는다 (백엔드 계약 한계)
+export interface PropertyFilterOptions {
+  transactionTypes: DealType[];
+  roomTypes: RoomType[];
+  sigungus: string[];
+}
+
 export interface MapBounds {
   swLat: number;
   swLng: number;
@@ -86,9 +75,10 @@ export interface PropertySummary {
   area?: number;
   floor?: number;
   totalFloor?: number;
+  rooms?: number;
   status: string;
   saved: boolean;
-  // 사진은 백엔드 목록 응답에 아직 없다 — 지금은 목데이터에서 채운다
+  // TBD: 백엔드 목록 응답(PropertySummaryResponse)에 대표 사진이 아직 없어 항상 비어 있다
   imageUrl?: string;
 }
 
@@ -101,9 +91,9 @@ export interface PropertyDetail extends PropertySummary {
   longitude?: number;
   description?: string;
   createdAt: string;
-  // 방 개수·사진·주변 편의시설은 백엔드 상세 응답에 아직 없다 — 지금은 목데이터에서 채운다
-  rooms?: number;
+  // 백엔드 상세 응답의 images(imageId·sequence 포함)를 순서대로 편 URL 목록
   imageUrls?: string[];
+  // TBD: 상세 응답의 environment는 시설 개수 집계라 목록 형태(주변 편의시설)로는 아직 못 채운다
   nearbyFacilities?: NearbyFacility[];
 }
 
@@ -152,6 +142,9 @@ export interface PropertyCreateInput {
   environment?: PropertyEnvironment;
 }
 
+// PROP-08 매물 수정(PATCH) — 등록 요청과 같은 필드를 받되 environment는 받지 않는다
+export type PropertyUpdateInput = Omit<PropertyCreateInput, "environment">;
+
 // ── 회의 API 계약 (Swagger /api/meetings) ────────────────────────────────
 export type MeetingStatus =
   "OPEN" | "REQUESTED" | "CONFIRMED" | "REJECTED" | "CANCELED";
@@ -192,17 +185,6 @@ export type MeetingDirection = "sent" | "received";
 export interface MeetingDateRange {
   from: string;
   to: string;
-}
-
-export interface Reservation {
-  id: string;
-  meetingId: number;
-  propertyId: number;
-  date: string;
-  time: string;
-  timeOptions: string[];
-  status: "예약 확정" | "예약 대기";
-  direction: "sent" | "received";
 }
 
 export interface PriceBand {

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Navigate,
   Route,
@@ -24,18 +23,13 @@ import ReservationLivePage from "@/pages/ReservationLivePage";
 import ReservationPage from "@/pages/ReservationPage";
 import BookingPage from "@/pages/BookingPage";
 import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
-import { removeMockProperty, upsertMockProperty } from "@/data/mockPropertyApi";
-import { PROPERTIES } from "@/data/properties";
 import {
-  propertyKeys,
-  useMyPropertyList,
+  useDeleteProperty,
+  useIsMyProperty,
 } from "@/hooks/queries/propertyQueries";
 import { isApprovedBroker } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
-import type { Memo, Property, Reservation } from "@/types";
-
-// API 연동 전 목데이터 로딩 시뮬레이션 시간(ms)
-const MOCK_LOADING_MS = 600;
+import type { Memo } from "@/types";
 
 // ADMIN 페이지 가드 — 관리자 계정이 아니면 랜딩으로 돌려보낸다
 function AdminRoute() {
@@ -55,40 +49,37 @@ interface MemoActions {
 interface DetailRouteProps {
   memos: Record<number, Memo[]>;
   onReserve: (id: number) => void;
-  onDelete: (id: number) => void;
+  onDeleted: (id: number) => void;
   memoActions: MemoActions;
 }
 
 function DetailRoute({
   memos,
   onReserve,
-  onDelete,
+  onDeleted,
   memoActions,
 }: DetailRouteProps) {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const user = useAuthStore((state) => state.user);
   const id = Number(idParam);
-  // 매물 상세 응답에 등록 중개사 정보가 없어, 내 매물 목록에 있는지로 관리 권한을 판단한다
-  const canManage = isApprovedBroker(user);
-  const { data: myProperties } = useMyPropertyList({}, canManage);
-  const isMyProperty = Boolean(
-    myProperties?.content.some((property) => property.propertyId === id),
-  );
+  const { isMyProperty } = useIsMyProperty(id);
+  const { mutateAsync: deleteProperty } = useDeleteProperty();
 
   return (
     <PropertyDetailPage
       propertyId={id}
-      canManage={canManage && isMyProperty}
+      canManage={isMyProperty}
       // 히스토리 뒤로가기로 지도 탭·찜 목록 등 이전 화면을 유지, 직접 진입 시엔 목록으로 폴백
       onBack={() =>
         location.key === "default" ? navigate("/properties") : navigate(-1)
       }
       onReserve={onReserve}
       onEdit={() => navigate(`/properties/${id}/edit`)}
-      onDelete={() => {
-        onDelete(id);
+      // 실패는 상세의 삭제 다이얼로그가 잡아 보여주므로, 성공했을 때만 목록으로 보낸다
+      onDelete={async () => {
+        await deleteProperty(id);
+        onDeleted(id);
         navigate("/properties", { replace: true });
       }}
       memos={memos[id] ?? []}
@@ -100,43 +91,8 @@ function DetailRoute({
 }
 
 function App() {
-  const [loading, setLoading] = useState(true);
-  const [properties, setProperties] = useState<Property[]>([]);
   const [memos, setMemos] = useState<Record<number, Memo[]>>({});
-  const [reservations, setReservations] = useState<Reservation[]>([
-    {
-      id: "reservation-demo-0918",
-      meetingId: 918,
-      propertyId: 2,
-      date: "2026-07-24",
-      time: "10:00, 13:00, 16:00",
-      timeOptions: ["10:00", "13:00", "16:00"],
-      status: "예약 대기",
-      direction: "sent",
-    },
-    {
-      id: "reservation-demo-0742",
-      meetingId: 742,
-      propertyId: 6,
-      date: "2026-07-26",
-      time: "19:00",
-      timeOptions: ["13:00", "16:00", "19:00"],
-      status: "예약 확정",
-      direction: "sent",
-    },
-    {
-      id: "reservation-demo-1024",
-      meetingId: 1024,
-      propertyId: 1,
-      date: "2026-07-24",
-      time: "11:00, 14:00, 17:00",
-      timeOptions: ["11:00", "14:00", "17:00"],
-      status: "예약 대기",
-      direction: "received",
-    },
-  ]);
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const restoreSession = useAuthStore((state) => state.restoreSession);
   const location = useLocation();
@@ -144,48 +100,17 @@ function App() {
   // 이 화면을 벗어나는 길은 확인 다이얼로그가 붙은 나가기 버튼 하나뿐이다
   const hideGlobalNav = matchPath("/reservation/:slug", location.pathname);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setProperties(PROPERTIES);
-      setLoading(false);
-    }, MOCK_LOADING_MS);
-    return () => clearTimeout(timer);
-  }, []);
-
   // 저장된 accessToken이 있으면 내 정보 조회로 로그인 상태 복원
   useEffect(() => {
     restoreSession();
   }, [restoreSession]);
 
-  const toggleSave = (id: number) =>
-    setProperties((previous) =>
-      previous.map((property) =>
-        property.id === id ? { ...property, saved: !property.saved } : property,
-      ),
-    );
-
-  // PROP-07·08 매물 등록·수정 — 같은 id가 있으면 교체, 없으면 맨 앞에 추가.
-  // 목록·상세는 목데이터 사본을 따로 보므로 그쪽에도 같은 변경을 반영한다
-  const saveProperty = (property: Property) => {
-    setProperties((prev) =>
-      prev.some((p) => p.id === property.id)
-        ? prev.map((p) => (p.id === property.id ? property : p))
-        : [property, ...prev],
-    );
-    upsertMockProperty(property);
-    queryClient.invalidateQueries({ queryKey: propertyKeys.all });
-  };
-
-  // PROP-09 매물 삭제 — 연결된 메모도 함께 정리 (회의는 서버가 소유한다)
-  const deleteProperty = (id: number) => {
-    setProperties((prev) => prev.filter((p) => p.id !== id));
-    setReservations((prev) => prev.filter((r) => r.propertyId !== id));
+  // PROP-09 매물 삭제 후 정리 — 메모는 아직 화면 상태라 지워진 매물의 것을 같이 버린다
+  const forgetPropertyMemos = (id: number) => {
     setMemos((prev) => {
       const { [id]: _removed, ...rest } = prev;
       return rest;
     });
-    removeMockProperty(id);
-    queryClient.invalidateQueries({ queryKey: propertyKeys.all });
   };
 
   // MEMO-01~03 메모 작성·수정·삭제
@@ -231,27 +156,7 @@ function App() {
         />
         <Route
           path="/reservations"
-          element={
-            <RequireAuth>
-              {() => (
-                <ReservationPage
-                  reservations={reservations}
-                  properties={properties}
-                  onConfirmReservation={(reservationId, time) =>
-                    setReservations((previous) =>
-                      previous.map((reservation) =>
-                        reservation.id === reservationId &&
-                        reservation.direction === "received" &&
-                        reservation.status === "예약 대기"
-                          ? { ...reservation, time, status: "예약 확정" }
-                          : reservation,
-                      ),
-                    )
-                  }
-                />
-              )}
-            </RequireAuth>
-          }
+          element={<RequireAuth>{() => <ReservationPage />}</RequireAuth>}
         />
         <Route
           path="/booking/:id"
@@ -259,16 +164,7 @@ function App() {
         />
         <Route
           path="/saved"
-          element={
-            <RequireAuth>
-              {() => (
-                <SavedPropertiesPage
-                  properties={properties}
-                  onToggleSave={toggleSave}
-                />
-              )}
-            </RequireAuth>
-          }
+          element={<RequireAuth>{() => <SavedPropertiesPage />}</RequireAuth>}
         />
         <Route
           path="/reservation/:slug"
@@ -288,14 +184,7 @@ function App() {
           path="/properties/new"
           element={
             <RequireAuth>
-              {(user) => (
-                <PropertyFormPage
-                  user={user}
-                  loading={loading}
-                  properties={properties}
-                  onSave={saveProperty}
-                />
-              )}
+              {(user) => <PropertyFormPage user={user} />}
             </RequireAuth>
           }
         />
@@ -303,14 +192,7 @@ function App() {
           path="/properties/:id/edit"
           element={
             <RequireAuth>
-              {(user) => (
-                <PropertyFormPage
-                  user={user}
-                  loading={loading}
-                  properties={properties}
-                  onSave={saveProperty}
-                />
-              )}
+              {(user) => <PropertyFormPage user={user} />}
             </RequireAuth>
           }
         />
@@ -320,7 +202,7 @@ function App() {
             <DetailRoute
               memos={memos}
               onReserve={(id) => navigate(`/booking/${id}`)}
-              onDelete={deleteProperty}
+              onDeleted={forgetPropertyMemos}
               memoActions={memoActions}
             />
           }

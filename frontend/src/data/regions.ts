@@ -274,11 +274,23 @@ export const REGIONS: RegionTree = {
 // 도/광역시 목록 (Select 1단계)
 export const SIDO_LIST = Object.keys(REGIONS);
 
-// 서비스 지역을 서울로 한정 — 검색·필터의 구 목록은 이것만 쓴다.
-// (전국 REGIONS 트리는 서비스 지역 확장 대비로 남겨둔다)
-export const SEOUL_GUS: string[] = REGIONS["서울특별시"]["서울특별시"];
+// 검색어에서 걷어낼 시/도 표기 — 표기 흔들림을 흡수한다
+// ("서울특별시" → 서울특별시 / 서울 / 서울시, "경기도" → 경기도 / 경기)
+export const SIDO_TOKENS = new Set(
+  SIDO_LIST.flatMap((sido) => {
+    const stem = sido.replace(
+      /(특별자치시|특별자치도|특별시|광역시|자치시|자치도|시|도)$/,
+      "",
+    );
+    return [sido, stem, `${stem}${sido.endsWith("도") ? "도" : "시"}`];
+  }),
+);
 
-// 화면 표시용 라벨 — API의 sigungu 값은 백엔드·카카오 지오코딩과 같은 "강남구" 형태를 유지한다
-export function toSeoulRegionLabel(gu: string): string {
-  return `서울시 ${gu}`;
-}
+// 검색어에서 지역으로 승격할 수 있는 시군구 이름 — 전국 기준.
+// 백엔드 sigungu가 시/도 없는 이름이라 여기서도 이름만 모은다 ("중구"처럼 겹치는 이름은 구분 불가)
+export const ALL_SIGUNGUS = new Set(
+  Object.values(REGIONS).flatMap((siGuns) => [
+    ...Object.keys(siGuns),
+    ...Object.values(siGuns).flat(),
+  ]),
+);

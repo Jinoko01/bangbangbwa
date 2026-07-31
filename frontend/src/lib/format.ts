@@ -1,4 +1,11 @@
-import type { Property } from "@/types";
+import type { DealType } from "@/types";
+
+// 가격 표기에 필요한 필드만 추린 입력 (목록 카드·상세 어느 쪽에서든 만든다)
+interface PriceInput {
+  dealType: DealType;
+  deposit: number;
+  monthlyRent: number;
+}
 
 // 금액(만원 단위)을 "8억 2,000" / "5,000" 형태로 변환
 export function formatManwon(man: number) {
@@ -15,11 +22,7 @@ export function formatManwon(man: number) {
 
 // 가격 표기 (거래유형은 뱃지·라벨로 별도 표시하므로 숫자만 반환, 단위는 만원)
 // 전세·매매: "5억 5,000" / 월세: "1,000/65" (보증금/월세)
-export function formatPrice({
-  dealType,
-  deposit,
-  monthlyRent,
-}: Pick<Property, "dealType" | "deposit" | "monthlyRent">) {
+export function formatPrice({ dealType, deposit, monthlyRent }: PriceInput) {
   if (dealType === "월세") {
     return `${formatManwon(deposit)}/${formatManwon(monthlyRent)}`;
   }
@@ -38,7 +41,7 @@ export function formatPriceLabel({
   dealType,
   deposit,
   monthlyRent,
-}: Pick<Property, "dealType" | "deposit" | "monthlyRent">) {
+}: PriceInput) {
   if (dealType === "월세") {
     return `${formatManwon(deposit)}/${formatManwon(monthlyRent)}만`;
   }
