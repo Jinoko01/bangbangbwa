@@ -224,6 +224,19 @@ function focusPlacedMarker(
   );
 }
 
+// 상세 보기 버튼은 오버레이가 지도에 실제로 붙어야 문서에 연결된다 — 붙기 전에 focus()는 조용히 실패한다.
+// 아직이면 플래그를 소비하지 않고 남겨, 오버레이가 붙는 시점(호출하는 쪽)에서 다시 시도하게 한다
+function focusDetailButtonIfReady(
+  shouldFocusRef: { current: boolean },
+  buttonRef: { current: HTMLButtonElement | null },
+) {
+  if (!shouldFocusRef.current || !buttonRef.current?.isConnected) {
+    return;
+  }
+  shouldFocusRef.current = false;
+  buttonRef.current.focus();
+}
+
 const CLUSTER_STYLE: KakaoClusterStyle = {
   width: "48px",
   height: "48px",
@@ -261,6 +274,8 @@ interface PropertyMapProps extends SelectHandlers {
   hasBottomSheet: boolean;
   selectedPropertyId: number | null;
   onOpenDetail: (propertyId: number) => void;
+  // 지오코딩이 끝났는데도 핀이 없는 매물 — 지도에서 열 방법이 없으니 상세로 바로 보낸다
+  onDetailUnavailable: (propertyId: number) => void;
   ref: Ref<PropertyMapHandle>;
 }
 
@@ -272,6 +287,7 @@ function PropertyMap({
   onSelectMarker,
   onSelectCluster,
   onOpenDetail,
+  onDetailUnavailable,
   ref,
 }: PropertyMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -287,10 +303,13 @@ function PropertyMap({
   });
   // 시트 유무는 창 크기에 따라 바뀌지만 마커를 다시 그릴 이유는 아니다 — 최신 값만 참조한다
   const hasBottomSheetRef = useRef(hasBottomSheet);
+  // 마커 없는 매물을 상세로 보내는 콜백도 리스너·프로미스 콜백에서 최신 값을 읽어야 한다
+  const onDetailUnavailableRef = useRef(onDetailUnavailable);
   useEffect(() => {
     selectHandlersRef.current = { onSelectMarker, onSelectCluster };
     hasBottomSheetRef.current = hasBottomSheet;
     selectedPropertyIdRef.current = selectedPropertyId;
+    onDetailUnavailableRef.current = onDetailUnavailable;
   });
 
   // clusterclick 리스너도 생성 시 한 번만 달리므로, 최신 마커 → 매물 매핑을 ref로 넘겨준다
@@ -303,6 +322,8 @@ function PropertyMap({
   const [detailOverlayElement, setDetailOverlayElement] =
     useState<HTMLDivElement | null>(null);
   const selectedPropertyIdRef = useRef(selectedPropertyId);
+  // "아직 지오코딩 중이라 마커가 없다"와 "끝났는데 마커가 없다"를 구분하는 데 쓴다
+  const placementSettledRef = useRef(false);
   // 지오코딩이 끝나기 전에 고른 매물 — 핀이 놓이는 즉시 한 번 이동한다
   const pendingFocusIdRef = useRef<number | null>(null);
   // 목록에서 고른 경우에만 상세 보기 버튼으로 포커스를 옮긴다
@@ -441,6 +462,7 @@ function PropertyMap({
       return;
     }
 
+    placementSettledRef.current = false;
     let cancelled = false;
     const addressOccurrences = new Map<string, number>();
 
@@ -513,6 +535,7 @@ function PropertyMap({
       }
       propertyByMarkerRef.current = propertyByMarker;
       placedMarkersRef.current = placed;
+      placementSettledRef.current = true;
 
       // 이전 마커 참조는 새 목록에서 의미가 없다 — clustered가 다시 채운다
       clusteredMarkersRef.current = new Set();
@@ -540,18 +563,30 @@ function PropertyMap({
         return;
       }
       pendingFocusIdRef.current = null;
+      // 지오코딩이 끝나기 전에 선택이 풀렸다면(Esc 등) 지금 와서 카메라를 튀길 이유가 없다
+      if (selectedPropertyIdRef.current !== pendingFocusId) {
+        return;
+      }
+
       const pendingTarget = placed.find(
         ({ property }) => property.id === pendingFocusId,
       );
-      if (pendingTarget) {
-        focusPlacedMarker(
-          maps,
-          map,
-          pendingTarget,
-          mapContainerRef.current,
-          hasBottomSheetRef.current,
-        );
+      if (!pendingTarget) {
+        // 지오코딩이 끝났는데도 핀이 없다 — 지도로는 영영 열 수 없으니 상세로 바로 보낸다
+        shouldFocusDetailButtonRef.current = false;
+        onDetailUnavailableRef.current(pendingFocusId);
+        return;
       }
+
+      focusPlacedMarker(
+        maps,
+        map,
+        pendingTarget,
+        mapContainerRef.current,
+        hasBottomSheetRef.current,
+      );
+      // 방금 syncDetailOverlay가 오버레이를 다시 붙였을 수 있다 — 그때만 버튼이 문서에 존재한다
+      focusDetailButtonIfReady(shouldFocusDetailButtonRef, detailButtonRef);
     });
 
     return () => {
@@ -586,17 +621,25 @@ function PropertyMap({
     ref,
     () => ({
       focusProperty: (propertyId: number) => {
+        // 지도가 아직 없어도(SDK 로딩 중) 클릭을 흘리지 않는다 — 지도가 뜨면 배치 이펙트가 이 값을 집어간다
+        pendingFocusIdRef.current = propertyId;
+        shouldFocusDetailButtonRef.current = true;
+
         const maps = getKakaoMaps();
         if (!map || !maps) {
           return;
         }
 
-        shouldFocusDetailButtonRef.current = true;
         const target = placedMarkersRef.current.find(
           ({ property }) => property.id === propertyId,
         );
         if (!target) {
-          pendingFocusIdRef.current = propertyId;
+          // placementSettledRef가 true면 지오코딩이 이미 끝난 뒤라는 뜻 — 이 매물은 핀이 영영 없다
+          if (placementSettledRef.current) {
+            pendingFocusIdRef.current = null;
+            shouldFocusDetailButtonRef.current = false;
+            onDetailUnavailableRef.current(propertyId);
+          }
           return;
         }
 
@@ -613,13 +656,11 @@ function PropertyMap({
     [map],
   );
 
-  // 목록 클릭이 더 이상 상세로 가지 않으므로, 키보드 사용자가 지도까지 Tab으로 넘어가지 않게 한다
+  // 목록 클릭이 더 이상 상세로 가지 않으므로, 키보드 사용자가 지도까지 Tab으로 넘어가지 않게 한다.
+  // 오버레이가 아직 지도에 안 붙어 버튼이 문서에 없으면 여기서는 넘기고, 배치가 끝나 오버레이가
+  // 붙는 시점(마커 배치 이펙트)에 다시 시도한다
   useEffect(() => {
-    if (!shouldFocusDetailButtonRef.current) {
-      return;
-    }
-    shouldFocusDetailButtonRef.current = false;
-    detailButtonRef.current?.focus();
+    focusDetailButtonIfReady(shouldFocusDetailButtonRef, detailButtonRef);
   }, [selectedPropertyId]);
 
   const selectedProperty = properties.find(
@@ -1105,6 +1146,7 @@ function PropertyListPage({
           onSelectMarker={selectMarker}
           onSelectCluster={selectCluster}
           onOpenDetail={onOpen}
+          onDetailUnavailable={onOpen}
         />
 
         {/* 목록 손잡이도 검색·필터·범례와 같은 왼쪽 여백(left-3)에 같은 재질로 세운다 */}
