@@ -210,9 +210,6 @@ function PropertyMap({
         });
 
         maps.event.addListener(clusterer, "clusterclick", (cluster) => {
-          if (!cluster) {
-            return;
-          }
           const propertyIds = cluster
             .getMarkers()
             .map((marker) => propertyByMarkerRef.current.get(marker)?.id)
