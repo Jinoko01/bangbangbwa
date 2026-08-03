@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type Ref } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -80,6 +87,8 @@ const MIN_CLUSTER_SIZE = 2;
 const MARKER_LABEL_Z_INDEX = 1;
 // 라벨보다 위에 뜬다 — 버튼이 다른 매물 라벨에 가리면 안 된다
 const DETAIL_OVERLAY_Z_INDEX = 10;
+// 목록에서 고른 매물로 좁혀 보여주는 지도 레벨 — 클러스터가 풀리는 수준(CLUSTER_MIN_LEVEL)보다 가깝다
+const LIST_FOCUS_MAP_LEVEL = 4;
 
 const DEAL_TYPE_MARKER = {
   전세: { slug: "jeonse", label: "전세", color: "var(--marker-jeonse)" },
@@ -198,6 +207,23 @@ function focusOffsetPixel(
   return container.clientHeight * (0.5 - MARKER_FOCUS_TOP_RATIO);
 }
 
+// setLevel은 즉시 반영하고 이동만 애니메이션한다 — 확대 도중 좌표 투영이 흔들리지 않게 한다
+function focusPlacedMarker(
+  maps: KakaoMapsSdk,
+  map: KakaoMap,
+  target: PlacedMarker,
+  container: HTMLElement | null,
+  hasBottomSheet: boolean,
+) {
+  map.setLevel(LIST_FOCUS_MAP_LEVEL);
+  panToAboveCenter(
+    maps,
+    map,
+    target.position,
+    focusOffsetPixel(container, hasBottomSheet),
+  );
+}
+
 const CLUSTER_STYLE: KakaoClusterStyle = {
   width: "48px",
   height: "48px",
@@ -225,11 +251,17 @@ interface SelectHandlers {
   onSelectCluster: (propertyIds: number[]) => void;
 }
 
+// 카메라 이동은 선택 상태에서 파생시키지 않는다 — 같은 매물을 다시 골라도 다시 그 핀으로 돌아와야 한다
+interface PropertyMapHandle {
+  focusProperty: (propertyId: number) => void;
+}
+
 interface PropertyMapProps extends SelectHandlers {
   properties: PropertyCardItem[];
   hasBottomSheet: boolean;
   selectedPropertyId: number | null;
   onOpenDetail: (propertyId: number) => void;
+  ref: Ref<PropertyMapHandle>;
 }
 
 // 지도와 핀만 담당한다. 무엇이 선택됐는지는 페이지가 소유하고, 목록 패널이 같은 값을 함께 본다
@@ -240,6 +272,7 @@ function PropertyMap({
   onSelectMarker,
   onSelectCluster,
   onOpenDetail,
+  ref,
 }: PropertyMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const clustererRef = useRef<KakaoClusterer | null>(null);
@@ -270,6 +303,11 @@ function PropertyMap({
   const [detailOverlayElement, setDetailOverlayElement] =
     useState<HTMLDivElement | null>(null);
   const selectedPropertyIdRef = useRef(selectedPropertyId);
+  // 지오코딩이 끝나기 전에 고른 매물 — 핀이 놓이는 즉시 한 번 이동한다
+  const pendingFocusIdRef = useRef<number | null>(null);
+  // 목록에서 고른 경우에만 상세 보기 버튼으로 포커스를 옮긴다
+  const shouldFocusDetailButtonRef = useRef(false);
+  const detailButtonRef = useRef<HTMLButtonElement>(null);
 
   // 지도 생성은 마운트에 1회 — SDK 로드 후 컨테이너 크기가 확정되면 만든다
   useEffect(() => {
@@ -496,6 +534,24 @@ function PropertyMap({
         placed,
         selectedPropertyIdRef.current,
       );
+
+      const pendingFocusId = pendingFocusIdRef.current;
+      if (pendingFocusId === null) {
+        return;
+      }
+      pendingFocusIdRef.current = null;
+      const pendingTarget = placed.find(
+        ({ property }) => property.id === pendingFocusId,
+      );
+      if (pendingTarget) {
+        focusPlacedMarker(
+          maps,
+          map,
+          pendingTarget,
+          mapContainerRef.current,
+          hasBottomSheetRef.current,
+        );
+      }
     });
 
     return () => {
@@ -526,6 +582,46 @@ function PropertyMap({
     );
   }, [map, selectedPropertyId]);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusProperty: (propertyId: number) => {
+        const maps = getKakaoMaps();
+        if (!map || !maps) {
+          return;
+        }
+
+        shouldFocusDetailButtonRef.current = true;
+        const target = placedMarkersRef.current.find(
+          ({ property }) => property.id === propertyId,
+        );
+        if (!target) {
+          pendingFocusIdRef.current = propertyId;
+          return;
+        }
+
+        pendingFocusIdRef.current = null;
+        focusPlacedMarker(
+          maps,
+          map,
+          target,
+          mapContainerRef.current,
+          hasBottomSheetRef.current,
+        );
+      },
+    }),
+    [map],
+  );
+
+  // 목록 클릭이 더 이상 상세로 가지 않으므로, 키보드 사용자가 지도까지 Tab으로 넘어가지 않게 한다
+  useEffect(() => {
+    if (!shouldFocusDetailButtonRef.current) {
+      return;
+    }
+    shouldFocusDetailButtonRef.current = false;
+    detailButtonRef.current?.focus();
+  }, [selectedPropertyId]);
+
   const selectedProperty = properties.find(
     ({ id }) => id === selectedPropertyId,
   );
@@ -541,6 +637,7 @@ function PropertyMap({
           // pb-13(52px) — 48px 핀 위로 버튼을 올린다. yAnchor 1이라 콘텐츠 아래쪽이 핀 끝에 붙는다
           <div className="pb-13">
             <Button
+              ref={detailButtonRef}
               size="sm"
               className="cursor-pointer rounded-full shadow-md"
               aria-label={`${selectedProperty.title} 상세 보기`}
@@ -573,7 +670,7 @@ function PropertyMap({
 interface PropertyResultItemProps {
   property: PropertyCardItem;
   isSelected: boolean;
-  onOpen: (id: number) => void;
+  onSelect: (id: number) => void;
   onToggleSave: (id: number, saved: boolean) => void;
   ref: Ref<HTMLDivElement>;
 }
@@ -581,7 +678,7 @@ interface PropertyResultItemProps {
 function PropertyResultItem({
   property,
   isSelected,
-  onOpen,
+  onSelect,
   onToggleSave,
   ref,
 }: PropertyResultItemProps) {
@@ -595,8 +692,8 @@ function PropertyResultItem({
     >
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        onClick={() => onOpen(property.id)}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+        onClick={() => onSelect(property.id)}
       >
         {property.imageUrl ? (
           <img
@@ -659,7 +756,7 @@ interface PropertyResultListProps {
   selectedId: number | null;
   onRetry: () => void;
   onResetFilters: () => void;
-  onOpen: (id: number) => void;
+  onSelect: (id: number) => void;
   onToggleSave: (id: number, saved: boolean) => void;
 }
 
@@ -671,7 +768,7 @@ function PropertyResultList({
   selectedId,
   onRetry,
   onResetFilters,
-  onOpen,
+  onSelect,
   onToggleSave,
 }: PropertyResultListProps) {
   const itemRefs = useRef(new Map<number, HTMLDivElement>());
@@ -743,7 +840,7 @@ function PropertyResultList({
           }}
           property={property}
           isSelected={property.id === selectedId}
-          onOpen={onOpen}
+          onSelect={onSelect}
           onToggleSave={onToggleSave}
         />
       ))}
@@ -859,6 +956,7 @@ function PropertyListPage({
   const [saveError, setSaveError] = useState<string | null>(null);
   const sheetDragStartYRef = useRef<number | null>(null);
   const didDragSheetRef = useRef(false);
+  const propertyMapRef = useRef<PropertyMapHandle>(null);
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
@@ -911,6 +1009,12 @@ function PropertyListPage({
     showResults();
   };
 
+  // 목록에서 고르면 상세로 튀지 않고 지도를 그 매물로 좁힌다 — 탐색 맥락을 잃지 않는다
+  const selectFromList = (propertyId: number) => {
+    setSelection({ kind: "marker", propertyId });
+    propertyMapRef.current?.focusProperty(propertyId);
+  };
+
   // 저장은 로그인 사용자만 가능 — 비로그인 상태에서는 401 대신 로그인 화면으로 보낸다
   const handleToggleSave = (propertyId: number, saved: boolean) => {
     if (!user) {
@@ -931,19 +1035,24 @@ function PropertyListPage({
     );
   };
 
-  // 지도를 가린 패널은 Esc로 즉시 걷어낼 수 있어야 한다
+  // 지도를 가린 패널과 지도 위 선택은 Esc로 즉시 걷어낼 수 있어야 한다
   useEffect(() => {
-    if (!isFilterOpen) {
+    if (!isFilterOpen && selection === null) {
       return;
     }
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsFilterOpen(false);
+      if (event.key !== "Escape") {
+        return;
       }
+      if (isFilterOpen) {
+        setIsFilterOpen(false);
+        return;
+      }
+      setSelection(null);
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [isFilterOpen]);
+  }, [isFilterOpen, selection]);
 
   const resultList = (
     <PropertyResultList
@@ -953,7 +1062,7 @@ function PropertyListPage({
       selectedId={selectedId}
       onRetry={() => refetch()}
       onResetFilters={resetFilters}
-      onOpen={onOpen}
+      onSelect={selectFromList}
       onToggleSave={handleToggleSave}
     />
   );
@@ -989,6 +1098,7 @@ function PropertyListPage({
 
       <main className="relative min-w-0 flex-1">
         <PropertyMap
+          ref={propertyMapRef}
           properties={items}
           hasBottomSheet={!isDesktop}
           selectedPropertyId={selectedId}
