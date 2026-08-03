@@ -224,16 +224,27 @@ function focusPlacedMarker(
   );
 }
 
-// 상세 보기 버튼은 오버레이가 지도에 실제로 붙어야 문서에 연결된다 — 붙기 전에 focus()는 조용히 실패한다.
-// 아직이면 플래그를 소비하지 않고 남겨, 오버레이가 붙는 시점(호출하는 쪽)에서 다시 시도하게 한다
+// 포커스 요청은 "어떤 매물"을 위한 것인지 함께 들고 있어야 한다 — 그 사이 지도 핀 클릭 등으로
+// 다른 매물이 선택되면 낡은 요청을 조용히 버려야, 엉뚱한 매물의 버튼이 포커스를 가로채지 않는다.
+// 요청이 아직 유효해도 오버레이가 지도에 안 붙어 버튼이 문서 밖에 있으면 focus()가 조용히 실패하므로,
+// 이때는 요청을 소비하지 않고 남겨 오버레이가 붙는 시점(호출하는 쪽)에 재시도하게 한다
 function focusDetailButtonIfReady(
-  shouldFocusRef: { current: boolean },
+  requestedPropertyIdRef: { current: number | null },
+  currentPropertyId: number | null,
   buttonRef: { current: HTMLButtonElement | null },
 ) {
-  if (!shouldFocusRef.current || !buttonRef.current?.isConnected) {
+  const requestedPropertyId = requestedPropertyIdRef.current;
+  if (requestedPropertyId === null) {
     return;
   }
-  shouldFocusRef.current = false;
+  if (requestedPropertyId !== currentPropertyId) {
+    requestedPropertyIdRef.current = null;
+    return;
+  }
+  if (!buttonRef.current?.isConnected) {
+    return;
+  }
+  requestedPropertyIdRef.current = null;
   buttonRef.current.focus();
 }
 
@@ -326,8 +337,9 @@ function PropertyMap({
   const placementSettledRef = useRef(false);
   // 지오코딩이 끝나기 전에 고른 매물 — 핀이 놓이는 즉시 한 번 이동한다
   const pendingFocusIdRef = useRef<number | null>(null);
-  // 목록에서 고른 경우에만 상세 보기 버튼으로 포커스를 옮긴다
-  const shouldFocusDetailButtonRef = useRef(false);
+  // 목록에서 고른 매물의 상세 보기 버튼으로 포커스를 옮긴다 — 어떤 매물이 요청했는지 들고 있어야
+  // 그 사이 지도 핀 클릭 등으로 다른 매물이 선택되면 낡은 요청을 버릴 수 있다
+  const focusRequestedPropertyIdRef = useRef<number | null>(null);
   const detailButtonRef = useRef<HTMLButtonElement>(null);
 
   // 지도 생성은 마운트에 1회 — SDK 로드 후 컨테이너 크기가 확정되면 만든다
@@ -573,7 +585,7 @@ function PropertyMap({
       );
       if (!pendingTarget) {
         // 지오코딩이 끝났는데도 핀이 없다 — 지도로는 영영 열 수 없으니 상세로 바로 보낸다
-        shouldFocusDetailButtonRef.current = false;
+        focusRequestedPropertyIdRef.current = null;
         onDetailUnavailableRef.current(pendingFocusId);
         return;
       }
@@ -586,7 +598,11 @@ function PropertyMap({
         hasBottomSheetRef.current,
       );
       // 방금 syncDetailOverlay가 오버레이를 다시 붙였을 수 있다 — 그때만 버튼이 문서에 존재한다
-      focusDetailButtonIfReady(shouldFocusDetailButtonRef, detailButtonRef);
+      focusDetailButtonIfReady(
+        focusRequestedPropertyIdRef,
+        selectedPropertyIdRef.current,
+        detailButtonRef,
+      );
     });
 
     return () => {
@@ -623,7 +639,7 @@ function PropertyMap({
       focusProperty: (propertyId: number) => {
         // 지도가 아직 없어도(SDK 로딩 중) 클릭을 흘리지 않는다 — 지도가 뜨면 배치 이펙트가 이 값을 집어간다
         pendingFocusIdRef.current = propertyId;
-        shouldFocusDetailButtonRef.current = true;
+        focusRequestedPropertyIdRef.current = propertyId;
 
         const maps = getKakaoMaps();
         if (!map || !maps) {
@@ -637,7 +653,7 @@ function PropertyMap({
           // placementSettledRef가 true면 지오코딩이 이미 끝난 뒤라는 뜻 — 이 매물은 핀이 영영 없다
           if (placementSettledRef.current) {
             pendingFocusIdRef.current = null;
-            shouldFocusDetailButtonRef.current = false;
+            focusRequestedPropertyIdRef.current = null;
             onDetailUnavailableRef.current(propertyId);
           }
           return;
@@ -657,10 +673,15 @@ function PropertyMap({
   );
 
   // 목록 클릭이 더 이상 상세로 가지 않으므로, 키보드 사용자가 지도까지 Tab으로 넘어가지 않게 한다.
-  // 오버레이가 아직 지도에 안 붙어 버튼이 문서에 없으면 여기서는 넘기고, 배치가 끝나 오버레이가
-  // 붙는 시점(마커 배치 이펙트)에 다시 시도한다
+  // 요청한 매물이 여전히 선택돼 있고, 오버레이가 지도에 붙어 버튼이 문서에 있을 때만 포커스를 옮긴다.
+  // 둘 중 하나라도 아니면(다른 매물이 선택됐거나 아직 배치 전이면) 여기서는 넘기고, 배치가 끝나
+  // 오버레이가 붙는 시점(마커 배치 이펙트)에 다시 시도한다
   useEffect(() => {
-    focusDetailButtonIfReady(shouldFocusDetailButtonRef, detailButtonRef);
+    focusDetailButtonIfReady(
+      focusRequestedPropertyIdRef,
+      selectedPropertyId,
+      detailButtonRef,
+    );
   }, [selectedPropertyId]);
 
   const selectedProperty = properties.find(
