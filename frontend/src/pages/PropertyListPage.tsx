@@ -47,6 +47,8 @@ import {
   waitForContainerSize,
   type KakaoClusterStyle,
   type KakaoClusterer,
+  type KakaoCustomOverlay,
+  type KakaoLatLng,
   type KakaoMap,
   type KakaoMarker,
   type KakaoMarkerImage,
@@ -70,6 +72,11 @@ const MARKER_WIDTH_PX = 42;
 const MARKER_HEIGHT_PX = 48;
 // 하단 시트가 지도를 덮는 화면에서 고른 핀이 놓일 자리 — 지도 높이 기준 위에서부터의 비율
 const MARKER_FOCUS_TOP_RATIO = 0.32;
+// 클러스터러가 핀을 묶기 시작하는 지도 레벨 — 이 아래에서는 모든 핀이 개별로 그려진다
+const CLUSTER_MIN_LEVEL = 6;
+// 이 개수 미만이면 클러스터러가 원 대신 개별 핀을 그대로 그린다
+const MIN_CLUSTER_SIZE = 2;
+const MARKER_LABEL_Z_INDEX = 1;
 
 const DEAL_TYPE_MARKER = {
   전세: { slug: "jeonse", label: "전세", color: "var(--marker-jeonse)" },
@@ -108,6 +115,54 @@ function getPropertyMarkerImage(
   );
   markerImageCache.set(imageUrl, markerImage);
   return markerImage;
+}
+
+const MARKER_LABEL_CLASS =
+  "block max-w-32 truncate rounded-full border bg-background/95 px-2 py-0.5 text-xs font-medium whitespace-nowrap shadow-sm backdrop-blur";
+
+// 라벨은 읽기 전용이다 — pointer-events를 끊어 클릭은 그대로 핀이 받는다
+function createMarkerLabel(title: string) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "pointer-events-none pt-1";
+
+  const pill = document.createElement("span");
+  pill.className = MARKER_LABEL_CLASS;
+  pill.textContent = title;
+  wrapper.append(pill);
+
+  return { wrapper, pill };
+}
+
+interface PlacedMarker {
+  marker: KakaoMarker;
+  property: PropertyCardItem;
+  position: KakaoLatLng;
+  labelPill: HTMLElement;
+  labelOverlay: KakaoCustomOverlay;
+}
+
+// 클러스터러는 마커만 관리하고 오버레이는 모른다 — 지금 개별로 그려지는 핀에만 이름을 남긴다
+function syncMarkerLabels(
+  map: KakaoMap,
+  placed: PlacedMarker[],
+  clusteredMarkers: Set<KakaoMarker>,
+) {
+  const isClustering = map.getLevel() >= CLUSTER_MIN_LEVEL;
+  for (const { marker, labelOverlay } of placed) {
+    const isHidden = isClustering && clusteredMarkers.has(marker);
+    labelOverlay.setMap(isHidden ? null : map);
+  }
+}
+
+// 하단 시트가 지도 아래를 덮는 화면에서는 고른 핀을 시트 위쪽으로 끌어올려 보여준다
+function focusOffsetPixel(
+  container: HTMLElement | null,
+  hasBottomSheet: boolean,
+) {
+  if (!hasBottomSheet || !container) {
+    return 0;
+  }
+  return container.clientHeight * (0.5 - MARKER_FOCUS_TOP_RATIO);
 }
 
 const CLUSTER_STYLE: KakaoClusterStyle = {
@@ -169,6 +224,9 @@ function PropertyMap({
 
   // clusterclick 리스너도 생성 시 한 번만 달리므로, 최신 마커 → 매물 매핑을 ref로 넘겨준다
   const propertyByMarkerRef = useRef(new Map<KakaoMarker, PropertyCardItem>());
+  // 라벨 표시 여부와 카메라 이동은 마커 배치 결과를 봐야 한다 — 리스너가 최신 값을 읽도록 ref로 둔다
+  const placedMarkersRef = useRef<PlacedMarker[]>([]);
+  const clusteredMarkersRef = useRef(new Set<KakaoMarker>());
 
   // 지도 생성은 마운트에 1회 — SDK 로드 후 컨테이너 크기가 확정되면 만든다
   useEffect(() => {
@@ -202,7 +260,7 @@ function PropertyMap({
           map: createdMap,
           markers: [],
           averageCenter: true,
-          minLevel: 6,
+          minLevel: CLUSTER_MIN_LEVEL,
           disableClickZoom: true,
           clickable: true,
           calculator: [10, 30, 50],
@@ -216,6 +274,34 @@ function PropertyMap({
             .filter((id): id is number => id !== undefined);
 
           selectHandlersRef.current.onSelectCluster(propertyIds);
+        });
+
+        // 클러스터로 묶인 핀의 라벨은 원 위에 겹쳐 뜨므로 숨긴다
+        maps.event.addListener(clusterer, "clustered", (clusters) => {
+          const clusteredMarkers = new Set<KakaoMarker>();
+          for (const cluster of clusters) {
+            if (cluster.getSize() < MIN_CLUSTER_SIZE) {
+              continue;
+            }
+            for (const marker of cluster.getMarkers()) {
+              clusteredMarkers.add(marker);
+            }
+          }
+          clusteredMarkersRef.current = clusteredMarkers;
+          syncMarkerLabels(
+            createdMap,
+            placedMarkersRef.current,
+            clusteredMarkers,
+          );
+        });
+
+        // clustered가 저레벨에서도 발화하는지에 의존하지 않는다 — 이동이 멎을 때마다 레벨로 다시 판정한다
+        maps.event.addListener(createdMap, "idle", () => {
+          syncMarkerLabels(
+            createdMap,
+            placedMarkersRef.current,
+            clusteredMarkersRef.current,
+          );
         });
 
         // 사이드바를 여닫거나 창 크기가 바뀌면 지도만 다시 재도록 한다
@@ -259,15 +345,6 @@ function PropertyMap({
     let cancelled = false;
     const addressOccurrences = new Map<string, number>();
 
-    // 하단 시트가 지도 아래를 덮는 화면에서는 고른 핀을 시트 위쪽으로 끌어올려 보여준다
-    const focusOffsetPixel = () => {
-      const container = mapContainerRef.current;
-      if (!hasBottomSheetRef.current || !container) {
-        return 0;
-      }
-      return container.clientHeight * (0.5 - MARKER_FOCUS_TOP_RATIO);
-    };
-
     const markerPromises = properties.map(async (property) => {
       const address = `${property.region} ${property.dong}`;
       const overlapIndex = addressOccurrences.get(address) ?? 0;
@@ -294,11 +371,31 @@ function PropertyMap({
         ),
       });
 
+      const label = createMarkerLabel(property.title);
+      // map을 넘기지 않는다 — 표시 여부는 syncMarkerLabels가 결정한다
+      const labelOverlay = new maps.CustomOverlay({
+        position,
+        content: label.wrapper,
+        yAnchor: 0,
+        zIndex: MARKER_LABEL_Z_INDEX,
+      });
+
       maps.event.addListener(marker, "click", () => {
         selectHandlersRef.current.onSelectMarker(property.id);
-        panToAboveCenter(maps, map, position, focusOffsetPixel());
+        panToAboveCenter(
+          maps,
+          map,
+          position,
+          focusOffsetPixel(mapContainerRef.current, hasBottomSheetRef.current),
+        );
       });
-      return { marker, property, position };
+      return {
+        marker,
+        property,
+        position,
+        labelPill: label.pill,
+        labelOverlay,
+      };
     });
 
     void Promise.all(markerPromises).then((results) => {
@@ -307,7 +404,7 @@ function PropertyMap({
       }
 
       const placed = results.filter(
-        (result): result is NonNullable<typeof result> => result !== null,
+        (result): result is PlacedMarker => result !== null,
       );
       const propertyByMarker = new Map<KakaoMarker, PropertyCardItem>();
       const bounds = new maps.LatLngBounds();
@@ -316,6 +413,7 @@ function PropertyMap({
         bounds.extend(position);
       }
       propertyByMarkerRef.current = propertyByMarker;
+      placedMarkersRef.current = placed;
 
       clusterer.clear();
       if (placed.length === 0) {
@@ -323,10 +421,15 @@ function PropertyMap({
       }
       clusterer.addMarkers(placed.map(({ marker }) => marker));
       map.setBounds(bounds);
+      syncMarkerLabels(map, placed, clusteredMarkersRef.current);
     });
 
     return () => {
       cancelled = true;
+      for (const { labelOverlay } of placedMarkersRef.current) {
+        labelOverlay.setMap(null);
+      }
+      placedMarkersRef.current = [];
     };
   }, [map, properties]);
 
