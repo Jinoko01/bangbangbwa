@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronDown,
@@ -77,6 +78,8 @@ const CLUSTER_MIN_LEVEL = 6;
 // 이 개수 미만이면 클러스터러가 원 대신 개별 핀을 그대로 그린다
 const MIN_CLUSTER_SIZE = 2;
 const MARKER_LABEL_Z_INDEX = 1;
+// 라벨보다 위에 뜬다 — 버튼이 다른 매물 라벨에 가리면 안 된다
+const DETAIL_OVERLAY_Z_INDEX = 10;
 
 const DEAL_TYPE_MARKER = {
   전세: { slug: "jeonse", label: "전세", color: "var(--marker-jeonse)" },
@@ -141,17 +144,47 @@ interface PlacedMarker {
   labelOverlay: KakaoCustomOverlay;
 }
 
-// 클러스터러는 마커만 관리하고 오버레이는 모른다 — 지금 개별로 그려지는 핀에만 이름을 남긴다
+// 클러스터러는 마커만 관리하고 오버레이는 모른다 — 지금 개별로 그려지는 핀에만 이름을 남긴다.
+// 고른 매물의 라벨은 강조해 핀·라벨·목록이 같은 매물을 가리키는지 한눈에 보이게 한다
 function syncMarkerLabels(
   map: KakaoMap,
   placed: PlacedMarker[],
   clusteredMarkers: Set<KakaoMarker>,
+  selectedPropertyId: number | null,
 ) {
   const isClustering = map.getLevel() >= CLUSTER_MIN_LEVEL;
-  for (const { marker, labelOverlay } of placed) {
+  for (const { marker, property, labelPill, labelOverlay } of placed) {
+    const isSelected = property.id === selectedPropertyId;
+    labelPill.classList.toggle("border-primary", isSelected);
+    labelPill.classList.toggle("text-primary", isSelected);
+
     const isHidden = isClustering && clusteredMarkers.has(marker);
     labelOverlay.setMap(isHidden ? null : map);
   }
+}
+
+// 상세 보기 버튼은 고른 매물의 핀 위에만 뜬다 — 핀이 아직 배치되지 않았으면 지도에서 뗀다
+function syncDetailOverlay(
+  map: KakaoMap,
+  overlay: KakaoCustomOverlay | null,
+  placed: PlacedMarker[],
+  selectedPropertyId: number | null,
+) {
+  if (!overlay) {
+    return;
+  }
+
+  const target =
+    selectedPropertyId === null
+      ? undefined
+      : placed.find(({ property }) => property.id === selectedPropertyId);
+  if (!target) {
+    overlay.setMap(null);
+    return;
+  }
+
+  overlay.setPosition(target.position);
+  overlay.setMap(map);
 }
 
 // 하단 시트가 지도 아래를 덮는 화면에서는 고른 핀을 시트 위쪽으로 끌어올려 보여준다
@@ -195,14 +228,18 @@ interface SelectHandlers {
 interface PropertyMapProps extends SelectHandlers {
   properties: PropertyCardItem[];
   hasBottomSheet: boolean;
+  selectedPropertyId: number | null;
+  onOpenDetail: (propertyId: number) => void;
 }
 
 // 지도와 핀만 담당한다. 무엇이 선택됐는지는 페이지가 소유하고, 목록 패널이 같은 값을 함께 본다
 function PropertyMap({
   properties,
   hasBottomSheet,
+  selectedPropertyId,
   onSelectMarker,
   onSelectCluster,
+  onOpenDetail,
 }: PropertyMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const clustererRef = useRef<KakaoClusterer | null>(null);
@@ -220,6 +257,7 @@ function PropertyMap({
   useEffect(() => {
     selectHandlersRef.current = { onSelectMarker, onSelectCluster };
     hasBottomSheetRef.current = hasBottomSheet;
+    selectedPropertyIdRef.current = selectedPropertyId;
   });
 
   // clusterclick 리스너도 생성 시 한 번만 달리므로, 최신 마커 → 매물 매핑을 ref로 넘겨준다
@@ -227,6 +265,11 @@ function PropertyMap({
   // 라벨 표시 여부와 카메라 이동은 마커 배치 결과를 봐야 한다 — 리스너가 최신 값을 읽도록 ref로 둔다
   const placedMarkersRef = useRef<PlacedMarker[]>([]);
   const clusteredMarkersRef = useRef(new Set<KakaoMarker>());
+  const detailOverlayRef = useRef<KakaoCustomOverlay | null>(null);
+  // 오버레이 콘텐츠는 지도 생성 시 만든 DOM에 portal로 그린다 — shadcn Button을 그대로 쓰기 위해서다
+  const [detailOverlayElement, setDetailOverlayElement] =
+    useState<HTMLDivElement | null>(null);
+  const selectedPropertyIdRef = useRef(selectedPropertyId);
 
   // 지도 생성은 마운트에 1회 — SDK 로드 후 컨테이너 크기가 확정되면 만든다
   useEffect(() => {
@@ -292,6 +335,7 @@ function PropertyMap({
             createdMap,
             placedMarkersRef.current,
             clusteredMarkers,
+            selectedPropertyIdRef.current,
           );
         });
 
@@ -301,6 +345,7 @@ function PropertyMap({
             createdMap,
             placedMarkersRef.current,
             clusteredMarkersRef.current,
+            selectedPropertyIdRef.current,
           );
         });
 
@@ -310,6 +355,20 @@ function PropertyMap({
           relayoutFrame = requestAnimationFrame(() => createdMap.relayout());
         });
         resizeObserver.observe(container);
+
+        const detailOverlayContent = document.createElement("div");
+        const detailOverlay = new maps.CustomOverlay({
+          position: new maps.LatLng(
+            SEOUL_CITY_HALL.latitude,
+            SEOUL_CITY_HALL.longitude,
+          ),
+          content: detailOverlayContent,
+          yAnchor: 1,
+          zIndex: DETAIL_OVERLAY_Z_INDEX,
+          clickable: true,
+        });
+        detailOverlayRef.current = detailOverlay;
+        setDetailOverlayElement(detailOverlayContent);
 
         clustererRef.current = clusterer;
         setMap(createdMap);
@@ -329,6 +388,8 @@ function PropertyMap({
       cancelAnimationFrame(relayoutFrame);
       resizeObserver?.disconnect();
       clustererRef.current = null;
+      detailOverlayRef.current = null;
+      setDetailOverlayElement(null);
       setMap(null);
       container.replaceChildren();
     };
@@ -415,13 +476,26 @@ function PropertyMap({
       propertyByMarkerRef.current = propertyByMarker;
       placedMarkersRef.current = placed;
 
+      // 이전 마커 참조는 새 목록에서 의미가 없다 — clustered가 다시 채운다
+      clusteredMarkersRef.current = new Set();
       clusterer.clear();
       if (placed.length === 0) {
         return;
       }
       clusterer.addMarkers(placed.map(({ marker }) => marker));
       map.setBounds(bounds);
-      syncMarkerLabels(map, placed, clusteredMarkersRef.current);
+      syncMarkerLabels(
+        map,
+        placed,
+        clusteredMarkersRef.current,
+        selectedPropertyIdRef.current,
+      );
+      syncDetailOverlay(
+        map,
+        detailOverlayRef.current,
+        placed,
+        selectedPropertyIdRef.current,
+      );
     });
 
     return () => {
@@ -433,10 +507,50 @@ function PropertyMap({
     };
   }, [map, properties]);
 
+  // 선택이 바뀌면 핀을 다시 그리지 않고 오버레이 위치와 라벨 강조만 갱신한다
+  useEffect(() => {
+    if (!map) {
+      return;
+    }
+    syncDetailOverlay(
+      map,
+      detailOverlayRef.current,
+      placedMarkersRef.current,
+      selectedPropertyId,
+    );
+    syncMarkerLabels(
+      map,
+      placedMarkersRef.current,
+      clusteredMarkersRef.current,
+      selectedPropertyId,
+    );
+  }, [map, selectedPropertyId]);
+
+  const selectedProperty = properties.find(
+    ({ id }) => id === selectedPropertyId,
+  );
+
   return (
     <>
       {/* touch-none — 지도 제스처를 페이지 스크롤에 뺏기지 않는다 */}
       <div ref={mapContainerRef} className="absolute inset-0 touch-none" />
+
+      {detailOverlayElement &&
+        selectedProperty &&
+        createPortal(
+          // pb-13(52px) — 48px 핀 위로 버튼을 올린다. yAnchor 1이라 콘텐츠 아래쪽이 핀 끝에 붙는다
+          <div className="pb-13">
+            <Button
+              size="sm"
+              className="cursor-pointer rounded-full shadow-md"
+              aria-label={`${selectedProperty.title} 상세 보기`}
+              onClick={() => onOpenDetail(selectedProperty.id)}
+            >
+              상세 보기
+            </Button>
+          </div>,
+          detailOverlayElement,
+        )}
 
       {(!appKey || mapError) && (
         <div className="absolute inset-0 grid place-items-center bg-muted p-6 text-center">
@@ -877,8 +991,10 @@ function PropertyListPage({
         <PropertyMap
           properties={items}
           hasBottomSheet={!isDesktop}
+          selectedPropertyId={selectedId}
           onSelectMarker={selectMarker}
           onSelectCluster={selectCluster}
+          onOpenDetail={onOpen}
         />
 
         {/* 목록 손잡이도 검색·필터·범례와 같은 왼쪽 여백(left-3)에 같은 재질로 세운다 */}
