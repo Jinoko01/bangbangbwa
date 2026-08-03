@@ -552,11 +552,15 @@ function PropertyMap({
       // 이전 마커 참조는 새 목록에서 의미가 없다 — clustered가 다시 채운다
       clusteredMarkersRef.current = new Set();
       clusterer.clear();
-      if (placed.length === 0) {
-        return;
+      // 핀이 하나도 없어도 아래 오버레이 정리와 보류 포커스 처리는 그대로 거쳐야 한다
+      if (placed.length > 0) {
+        clusterer.addMarkers(placed.map(({ marker }) => marker));
+        // 고른 매물이 있으면 사용자가 직접 맞춘 화면이다 — 저장 토글 같은 배경 갱신으로 이 이펙트가
+        // 다시 돌 때 전체 범위로 카메라를 되돌리지 않는다. 필터 변경은 선택을 지우므로 다시 맞춘다
+        if (selectedPropertyIdRef.current === null) {
+          map.setBounds(bounds);
+        }
       }
-      clusterer.addMarkers(placed.map(({ marker }) => marker));
-      map.setBounds(bounds);
       syncMarkerLabels(
         map,
         placed,
@@ -611,6 +615,8 @@ function PropertyMap({
         labelOverlay.setMap(null);
       }
       placedMarkersRef.current = [];
+      // 지난 배치의 마커는 새 목록에서 의미가 없다 — 남겨두면 그 핀 클릭이 낡은 매물을 고른다
+      propertyByMarkerRef.current = new Map();
     };
   }, [map, properties]);
 
@@ -637,6 +643,15 @@ function PropertyMap({
     ref,
     () => ({
       focusProperty: (propertyId: number) => {
+        // 키가 없거나 SDK 로드가 실패했으면 지도는 영영 만들어지지 않는다 — 기다려도 배치 이펙트가
+        // 돌지 않으므로 보류하지 않고, 지도로 열 수 없는 매물과 같은 길(상세 이동)로 보낸다
+        if (!appKey || mapError) {
+          pendingFocusIdRef.current = null;
+          focusRequestedPropertyIdRef.current = null;
+          onDetailUnavailableRef.current(propertyId);
+          return;
+        }
+
         // 지도가 아직 없어도(SDK 로딩 중) 클릭을 흘리지 않는다 — 지도가 뜨면 배치 이펙트가 이 값을 집어간다
         pendingFocusIdRef.current = propertyId;
         focusRequestedPropertyIdRef.current = propertyId;
@@ -669,7 +684,7 @@ function PropertyMap({
         );
       },
     }),
-    [map],
+    [map, appKey, mapError],
   );
 
   // 목록 클릭이 더 이상 상세로 가지 않으므로, 키보드 사용자가 지도까지 Tab으로 넘어가지 않게 한다.
@@ -734,7 +749,7 @@ interface PropertyResultItemProps {
   isSelected: boolean;
   onSelect: (id: number) => void;
   onToggleSave: (id: number, saved: boolean) => void;
-  ref: Ref<HTMLDivElement>;
+  ref: Ref<HTMLButtonElement>;
 }
 
 function PropertyResultItem({
@@ -746,15 +761,17 @@ function PropertyResultItem({
 }: PropertyResultItemProps) {
   return (
     <div
-      ref={ref}
       className={cn(
         "flex items-center gap-3 rounded-xl p-2 transition-colors",
         isSelected ? "bg-accent ring-1 ring-primary/30" : "hover:bg-muted",
       )}
     >
       <button
+        ref={ref}
         type="button"
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+        // 지금 지도가 가리키는 항목이라는 사실을 배경색 말고도 보조 기술에 전한다
+        aria-current={isSelected ? "true" : undefined}
         onClick={() => onSelect(property.id)}
       >
         {property.imageUrl ? (
@@ -833,7 +850,9 @@ function PropertyResultList({
   onSelect,
   onToggleSave,
 }: PropertyResultListProps) {
-  const itemRefs = useRef(new Map<number, HTMLDivElement>());
+  const itemRefs = useRef(new Map<number, HTMLButtonElement>());
+  // 목록에서 고른 매물 — 선택이 풀리면 포커스를 돌려줄 자리를 알아야 한다
+  const listInvokedIdRef = useRef<number | null>(null);
   const prefersReducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
 
   // 지도에서 핀을 고르면 목록도 그 매물로 따라 움직인다
@@ -846,6 +865,31 @@ function PropertyResultList({
       behavior: prefersReducedMotion ? "auto" : "smooth",
     });
   }, [selectedId, prefersReducedMotion]);
+
+  // 목록 클릭으로 옮겨간 포커스는 지도 위 상세 보기 버튼에 있다 — 선택이 풀려 그 버튼이 사라지면
+  // 포커스가 body로 떨어져 Tab이 문서 처음부터 다시 시작한다. 눌렀던 항목으로 되돌려준다
+  useEffect(() => {
+    const invokedId = listInvokedIdRef.current;
+    if (invokedId === null || invokedId === selectedId) {
+      return;
+    }
+    listInvokedIdRef.current = null;
+
+    const activeElement = document.activeElement;
+    // 지도 핀으로 다른 매물이 선택됐거나 사용자가 포커스를 이미 옮겼다면 빼앗지 않는다
+    if (
+      selectedId !== null ||
+      (activeElement !== null && activeElement !== document.body)
+    ) {
+      return;
+    }
+    itemRefs.current.get(invokedId)?.focus();
+  }, [selectedId]);
+
+  const selectFromItem = (id: number) => {
+    listInvokedIdRef.current = id;
+    onSelect(id);
+  };
 
   if (isPending) {
     return (
@@ -902,7 +946,7 @@ function PropertyResultList({
           }}
           property={property}
           isSelected={property.id === selectedId}
-          onSelect={onSelect}
+          onSelect={selectFromItem}
           onToggleSave={onToggleSave}
         />
       ))}
