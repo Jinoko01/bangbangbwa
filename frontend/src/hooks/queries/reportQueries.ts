@@ -7,6 +7,7 @@ import {
 
 import {
   createReport,
+  deleteReport,
   getMyReports,
   getReport,
   getReportStatus,
@@ -70,5 +71,16 @@ export function useCreateReport() {
     mutationFn: (sessionId: number) => createReportAndWait(sessionId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: reportKeys.lists() }),
+  });
+}
+
+export function useDeleteReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (reportId: number) => deleteReport(reportId),
+    onSuccess: (_data, reportId) => {
+      queryClient.removeQueries({ queryKey: reportKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: reportKeys.lists() });
+    },
   });
 }

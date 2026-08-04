@@ -29,6 +29,15 @@ export function isActiveMeeting({ status }: Pick<Meeting, "status">) {
   return status !== "REJECTED" && status !== "CANCELED";
 }
 
+export function isPastMeeting(meeting: Meeting, now = Date.now()) {
+  if (!isActiveMeeting(meeting) || meeting.status === "COMPLETED") {
+    return true;
+  }
+
+  const at = getMeetingDateTime(meeting);
+  return at !== undefined && new Date(at).getTime() < now;
+}
+
 // 두 자리 0 패딩 없이 Date를 백엔드 LocalDateTime 표기로 직렬화한다.
 // toISOString()은 UTC로 변환되면서 날짜가 밀리므로 로컬 값을 그대로 조립한다
 export function toLocalDateTime(date: Date) {

@@ -6,17 +6,17 @@ import {
 } from "@tanstack/react-query";
 
 import {
-  type ChecklistItemInput,
   createChecklistItem,
   deleteChecklistItem,
   getChecklist,
   updateChecklistItem,
   updateChecklistItemStatus,
-} from "@/api/checklist";
+} from "@/data/mockChecklistApi";
+import { type ChecklistItemInput, MAX_CHECKLIST_ITEMS } from "@/api/checklist";
 import { isApiError } from "@/api/error";
 import type { Checklist, ChecklistItemStatus } from "@/types";
 
-export { MAX_CHECKLIST_ITEMS } from "@/api/checklist";
+export { MAX_CHECKLIST_ITEMS };
 export type { ChecklistItemInput } from "@/api/checklist";
 
 export const checklistKeys = {

@@ -25,15 +25,10 @@ import {
   useUpdateChecklistItemStatus,
 } from "@/hooks/queries/checklistQueries";
 import { cn } from "@/lib/utils";
-import type {
-  ChecklistItem,
-  ChecklistItemStatus,
-  MeetingStatus,
-} from "@/types";
+import type { ChecklistItem, ChecklistItemStatus } from "@/types";
 
 interface ReservationChecklistProps {
   meetingId: number | undefined;
-  meetingStatus?: MeetingStatus;
   // bare — 이미 제목이 있는 탭·패널 안에 들어갈 때 카드 껍데기와 제목을 뺀다
   variant?: "card" | "bare";
 }
@@ -53,7 +48,6 @@ const STATUS_LABEL: Record<ChecklistItemStatus, string> = {
 
 function ReservationChecklist({
   meetingId,
-  meetingStatus,
   variant = "card",
 }: ReservationChecklistProps) {
   const isBare = variant === "bare";
@@ -68,21 +62,6 @@ function ReservationChecklist({
     );
   }
 
-  if (
-    meetingStatus !== undefined &&
-    meetingStatus !== "CONFIRMED" &&
-    meetingStatus !== "COMPLETED"
-  ) {
-    return (
-      <ChecklistFrame isBare={isBare}>
-        <ChecklistNotice isBare={isBare}>
-          {meetingStatus === "OPEN" || meetingStatus === "REQUESTED"
-            ? "예약이 확정되면 체크리스트가 자동으로 생성됩니다."
-            : "취소되거나 거절된 미팅에는 체크리스트가 생성되지 않습니다."}
-        </ChecklistNotice>
-      </ChecklistFrame>
-    );
-  }
   return <ChecklistContent meetingId={meetingId} isBare={isBare} />;
 }
 

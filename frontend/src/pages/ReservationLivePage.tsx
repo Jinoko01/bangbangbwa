@@ -41,7 +41,7 @@ import { useChecklist } from "@/hooks/queries/checklistQueries";
 import { useMeetingDetail } from "@/hooks/queries/meetingQueries";
 import { usePropertyDetail } from "@/hooks/queries/propertyQueries";
 import {
-  useEndSession,
+  useLeaveSession,
   useLiveSession,
   useUploadSessionCapture,
 } from "@/hooks/queries/sessionQueries";
@@ -410,7 +410,7 @@ function ReservationLivePage() {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const sessionEndedRef = useRef(false);
+  const sessionLeftRef = useRef(false);
 
   const [status, setStatus] = useState<SessionStatus>("connecting");
   const [micOn, setMicOn] = useState(true);
@@ -499,8 +499,8 @@ function ReservationLivePage() {
   );
   const { mutateAsync: createSessionReport, isPending: isSavingReport } =
     useCreateReport();
-  const { mutateAsync: endLiveSession, isPending: isEndingSession } =
-    useEndSession(meetingId);
+  const { mutateAsync: leaveLiveSession, isPending: isLeavingSession } =
+    useLeaveSession(meetingId);
   const { mutateAsync: uploadCapture, isPending: isUploadingCapture } =
     useUploadSessionCapture();
   const [reportError, setReportError] = useState<string | null>(null);
@@ -534,13 +534,13 @@ function ReservationLivePage() {
       return;
     }
 
-    if (!sessionEndedRef.current) {
+    if (!sessionLeftRef.current) {
       try {
-        await endLiveSession(session.sessionId);
-        sessionEndedRef.current = true;
+        await leaveLiveSession(session.sessionId);
+        sessionLeftRef.current = true;
       } catch (error) {
         setReportError(
-          `미팅 종료 요청 실패: ${isApiError(error) ? error.message : "잠시 후 다시 시도해 주세요."}`,
+          `미팅 나가기 요청 실패: ${isApiError(error) ? error.message : "잠시 후 다시 시도해 주세요."}`,
         );
         return;
       }
@@ -1057,15 +1057,17 @@ function ReservationLivePage() {
             )}
             <Button
               variant="destructive"
-              disabled={isSavingReport || isEndingSession || isUploadingCapture}
+              disabled={
+                isSavingReport || isLeavingSession || isUploadingCapture
+              }
               onClick={() => void leaveSession()}
             >
-              {isSavingReport || isEndingSession || isUploadingCapture ? (
+              {isSavingReport || isLeavingSession || isUploadingCapture ? (
                 <Loader2 className="animate-spin" />
               ) : (
                 <PhoneOff />
               )}
-              {isSavingReport || isEndingSession || isUploadingCapture
+              {isSavingReport || isLeavingSession || isUploadingCapture
                 ? "종료 처리 중..."
                 : "종료하고 저장"}
             </Button>
