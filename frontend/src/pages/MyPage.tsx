@@ -110,19 +110,21 @@ function IdentityRail({
               <UserRound className="size-4" /> 계정
             </button>
           </li>
-          <li className="flex-1">
-            <button
-              type="button"
-              aria-current={section === "reports" ? "page" : undefined}
-              onClick={() => onSectionChange("reports")}
-              className={cn(
-                "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted",
-                section === "reports" && "bg-primary/10 text-primary",
-              )}
-            >
-              <FileText className="size-4" /> 매물 리포트
-            </button>
-          </li>
+          {user.role === "세입자" && (
+            <li className="flex-1">
+              <button
+                type="button"
+                aria-current={section === "reports" ? "page" : undefined}
+                onClick={() => onSectionChange("reports")}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted",
+                  section === "reports" && "bg-primary/10 text-primary",
+                )}
+              >
+                <FileText className="size-4" /> 매물 리포트
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
     </aside>
@@ -1069,7 +1071,9 @@ function MyPage({ user }: { user: User }) {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const section: MyPageSection =
-    searchParams.get("section") === "reports" ? "reports" : "account";
+    user.role === "세입자" && searchParams.get("section") === "reports"
+      ? "reports"
+      : "account";
 
   const setSection = (nextSection: MyPageSection) => {
     setSearchParams(nextSection === "reports" ? { section: "reports" } : {});

@@ -2,6 +2,7 @@ import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 
 import {
   createSession,
+  endSession,
   joinSession,
   leaveSession,
   uploadUserCapture,
@@ -41,6 +42,13 @@ export function useLeaveSession(meetingId: number) {
   return useMutation({
     mutationFn: (sessionId: number) => leaveSession(sessionId),
     mutationKey: [...sessionKeys.join(meetingId), "leave"],
+  });
+}
+
+export function useEndSession(meetingId: number) {
+  return useMutation({
+    mutationFn: (sessionId: number) => endSession(sessionId),
+    mutationKey: [...sessionKeys.join(meetingId), "end"],
   });
 }
 

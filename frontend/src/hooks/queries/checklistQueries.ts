@@ -9,10 +9,11 @@ import {
   createChecklistItem,
   deleteChecklistItem,
   getChecklist,
+  type ChecklistItemInput,
+  MAX_CHECKLIST_ITEMS,
   updateChecklistItem,
   updateChecklistItemStatus,
-} from "@/data/mockChecklistApi";
-import { type ChecklistItemInput, MAX_CHECKLIST_ITEMS } from "@/api/checklist";
+} from "@/api/checklist";
 import { isApiError } from "@/api/error";
 import type { Checklist, ChecklistItemStatus } from "@/types";
 

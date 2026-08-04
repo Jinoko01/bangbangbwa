@@ -195,6 +195,9 @@ function ReservationPage() {
   const activeId = meetings.some((meeting) => meeting.meetingId === selectedId)
     ? selectedId
     : meetings[0]?.meetingId;
+  const activeMeeting = meetings.find(
+    (meeting) => meeting.meetingId === activeId,
+  );
   const confirmedCount = fetched.filter(
     (meeting) => meeting.status === "CONFIRMED",
   ).length;
@@ -400,7 +403,14 @@ function ReservationPage() {
           {!isBroker && (
             <Card className="gap-3 py-4">
               <CardContent className="px-4">
-                <ReservationChecklist meetingId={activeId} />
+                {activeMeeting?.status === "CONFIRMED" ||
+                activeMeeting?.status === "COMPLETED" ? (
+                  <ReservationChecklist meetingId={activeId} />
+                ) : (
+                  <div className="rounded-lg border border-dashed bg-white px-3 py-8 text-center text-sm text-muted-foreground">
+                    예약이 확정되면 체크리스트를 작성할 수 있습니다.
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
