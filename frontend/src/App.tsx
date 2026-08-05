@@ -24,6 +24,7 @@ import ReservationPage from "@/pages/ReservationPage";
 import ReportDetailPage from "@/pages/ReportDetailPage";
 import BookingPage from "@/pages/BookingPage";
 import SavedPropertiesPage from "@/pages/SavedPropertiesPage";
+import SessionCaptureReviewPage from "@/pages/SessionCaptureReviewPage";
 import {
   useDeleteProperty,
   useIsMyProperty,
@@ -52,6 +53,20 @@ function TenantReportRoute() {
           <ReportDetailPage />
         ) : (
           <Navigate to="/mypage" replace />
+        )
+      }
+    </RequireAuth>
+  );
+}
+
+function TenantCaptureReviewRoute() {
+  return (
+    <RequireAuth>
+      {(user) =>
+        user.role === "세입자" ? (
+          <SessionCaptureReviewPage />
+        ) : (
+          <Navigate to="/reservations" replace />
         )
       }
     </RequireAuth>
@@ -125,6 +140,10 @@ function App() {
           element={<RequireAuth>{() => <ReservationPage />}</RequireAuth>}
         />
         <Route path="/reports/:reportId" element={<TenantReportRoute />} />
+        <Route
+          path="/sessions/:sessionId/captures/review"
+          element={<TenantCaptureReviewRoute />}
+        />
         <Route
           path="/booking/:id"
           element={<RequireAuth>{() => <BookingPage />}</RequireAuth>}

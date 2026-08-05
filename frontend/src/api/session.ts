@@ -82,3 +82,23 @@ export function uploadUserCapture(
     body: form,
   });
 }
+
+export function getSessionCaptures(
+  sessionId: number,
+  signal?: AbortSignal,
+): Promise<StoredSessionCapture[]> {
+  return api.get<StoredSessionCapture[]>({
+    path: `${SESSIONS_PATH}/${sessionId}/captures`,
+    config: { signal },
+  });
+}
+
+export function deleteSessionCaptures(
+  sessionId: number,
+  captureIds: number[],
+): Promise<void> {
+  return api.delete<void>({
+    path: `${SESSIONS_PATH}/${sessionId}/captures`,
+    body: { captureIds },
+  });
+}

@@ -176,12 +176,16 @@ export const api = {
    */
   delete: <T>({
     path,
+    body,
     headers,
     config,
   }: {
     path: string;
+    body?: unknown;
     headers?: FetcherHeaders;
     config?: FetcherConfig;
   }) =>
-    client.delete<ApiResponse<T>>(path, { ...config, headers }).then(unwrap),
+    client
+      .delete<ApiResponse<T>>(path, { ...config, headers, data: body })
+      .then(unwrap),
 };
