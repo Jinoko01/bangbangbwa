@@ -78,7 +78,7 @@ export interface PropertySummary {
   rooms?: number;
   status: string;
   saved: boolean;
-  // TBD: 백엔드 목록 응답(PropertySummaryResponse)에 대표 사진이 아직 없어 항상 비어 있다
+  // 목록 응답의 thumbnailUrl(대표 사진) — 사진이 없는 매물은 비어 있다
   imageUrl?: string;
 }
 
