@@ -538,7 +538,7 @@ function FeatureVisual({ index }: { index: number }) {
 // (lg 이상은 커서 hover/focus, 미만은 카드 클릭으로 전환)
 function FeaturesSection() {
   const reducedMotion = useReducedMotion();
-  const [selected, setSelected] = useState(1);
+  const [selected, setSelected] = useState(0);
   const active = selected;
   const { icon: ActiveIcon, title, description } = FEATURES[active];
 
