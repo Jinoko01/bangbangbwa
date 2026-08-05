@@ -66,7 +66,7 @@ export function getReport(reportId: number, signal?: AbortSignal) {
 }
 
 export function deleteReport(reportId: number) {
-  return api.delete<void>({ path: `${REPORTS_PATH}/${reportId}` });
+  return api.delete<void>({ path: `${REPORTS_PATH}/${reportId}/delete` });
 }
 
 export function getReportStatus(reportId: number) {
