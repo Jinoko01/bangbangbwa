@@ -42,7 +42,10 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MONTHLY_DEPOSIT_BANDS, PRICE_BANDS } from "@/data/properties";
 import { useToggleFavorite } from "@/hooks/queries/favoriteQueries";
-import { usePropertyList } from "@/hooks/queries/propertyQueries";
+import {
+  usePropertiesInBounds,
+  usePropertyList,
+} from "@/hooks/queries/propertyQueries";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { formatPrice } from "@/lib/format";
@@ -65,7 +68,13 @@ import {
 import { parseRegionQuery } from "@/lib/regionSearch";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
-import type { DealType, Filters, PropertyFilters, RoomType } from "@/types";
+import type {
+  DealType,
+  Filters,
+  MapBounds,
+  PropertyFilters,
+  RoomType,
+} from "@/types";
 
 const SKELETON_COUNT = 5;
 const MAP_RESULT_SIZE = 100;
@@ -74,6 +83,13 @@ const DESKTOP_QUERY = "(min-width: 1024px)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const SEOUL_CITY_HALL = { latitude: 37.5665, longitude: 126.978 };
 const INITIAL_MAP_LEVEL = 8;
+// 대한민국 전역(제주·독도 포함)을 덮는 범위 — 지도 핀 API를 한 번만 불러 전 매물의 실좌표를 받는다
+const ALL_PROPERTIES_BOUNDS: MapBounds = {
+  swLat: 33,
+  swLng: 124,
+  neLat: 39,
+  neLng: 132,
+};
 // 이 거리 이상 끌어올리면(내리면) 탭이 아니라 시트 여닫기로 해석한다
 const SHEET_DRAG_THRESHOLD_PX = 30;
 const MARKER_WIDTH_PX = 42;
@@ -306,6 +322,10 @@ function PropertyMap({
   const [map, setMap] = useState<KakaoMap | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const appKey = import.meta.env.VITE_KAKAO_KEY;
+  // 핀은 백엔드에 저장된 실좌표에 찍는다 — 조회 실패 시 동 단위 지오코딩 폴백만으로 그린다
+  const { data: mapPins, isPending: isMapPinsPending } = usePropertiesInBounds(
+    ALL_PROPERTIES_BOUNDS,
+  );
 
   // 지도·마커 리스너는 한 번만 등록되므로, 최신 핸들러를 ref로 건네 stale closure를 막는다
   const selectHandlersRef = useRef<SelectHandlers>({
@@ -470,75 +490,101 @@ function PropertyMap({
   useEffect(() => {
     const clusterer = clustererRef.current;
     const maps = getKakaoMaps();
-    if (!map || !clusterer || !maps) {
+    // 실좌표 응답을 기다렸다 배치한다 — 동 중심에 찍혔다가 실제 위치로 튀는 화면을 막는다
+    if (!map || !clusterer || !maps || isMapPinsPending) {
       return;
     }
 
     placementSettledRef.current = false;
     let cancelled = false;
-    const addressOccurrences = new Map<string, number>();
+    const exactPositionById = new Map(
+      (mapPins ?? []).map((pin) => [
+        pin.propertyId,
+        { latitude: pin.latitude, longitude: pin.longitude },
+      ]),
+    );
 
-    const markerPromises = properties.map(async (property) => {
-      const address = `${property.region} ${property.dong}`;
-      const overlapIndex = addressOccurrences.get(address) ?? 0;
-      addressOccurrences.set(address, overlapIndex + 1);
-
-      const geocoded = await lookupAddress(address);
-      if (cancelled || !geocoded) {
+    // 좌표가 저장되지 않은 매물만 동 단위 지오코딩으로 대신한다 (동 중심에 찍힌다)
+    const positionPromises = properties.map(async (property) => {
+      const resolved =
+        exactPositionById.get(property.id) ??
+        (await lookupAddress(`${property.region} ${property.dong}`));
+      if (!resolved) {
         return null;
       }
-
-      const spread = spreadOverlappingPosition(
-        geocoded.latitude,
-        geocoded.longitude,
-        overlapIndex,
-      );
-      const position = new maps.LatLng(spread.latitude, spread.longitude);
-      const marker = new maps.Marker({
-        position,
-        title: property.title,
-        image: getPropertyMarkerImage(
-          maps,
-          property.dealType,
-          property.roomType,
-        ),
-      });
-
-      const label = createMarkerLabel(property.title);
-      // map을 넘기지 않는다 — 표시 여부는 syncMarkerLabels가 결정한다
-      const labelOverlay = new maps.CustomOverlay({
-        position,
-        content: label.wrapper,
-        yAnchor: 0,
-        zIndex: MARKER_LABEL_Z_INDEX,
-      });
-
-      maps.event.addListener(marker, "click", () => {
-        selectHandlersRef.current.onSelectMarker(property.id);
-        panToAboveCenter(
-          maps,
-          map,
-          position,
-          focusOffsetPixel(mapContainerRef.current, hasBottomSheetRef.current),
-        );
-      });
       return {
-        marker,
         property,
-        position,
-        labelPill: label.pill,
-        labelOverlay,
+        latitude: resolved.latitude,
+        longitude: resolved.longitude,
       };
     });
 
-    void Promise.all(markerPromises).then((results) => {
+    // 마커는 좌표가 모두 모인 뒤 목록 순서대로 만든다 — 겹침 흩기(spread) 결과가 매번 같아진다
+    void Promise.all(positionPromises).then((resolvedPositions) => {
       if (cancelled) {
         return;
       }
 
-      const placed = results.filter(
-        (result): result is PlacedMarker => result !== null,
-      );
+      const overlapOccurrences = new Map<string, number>();
+      const placed: PlacedMarker[] = [];
+      for (const resolved of resolvedPositions) {
+        if (!resolved) {
+          continue;
+        }
+        const { property, latitude, longitude } = resolved;
+
+        // 같은 건물의 매물들은 실좌표까지 같다 — 두 번째부터 흩어 확대 시 모두 보이게 한다
+        const overlapKey = `${latitude},${longitude}`;
+        const overlapIndex = overlapOccurrences.get(overlapKey) ?? 0;
+        overlapOccurrences.set(overlapKey, overlapIndex + 1);
+
+        const spread = spreadOverlappingPosition(
+          latitude,
+          longitude,
+          overlapIndex,
+        );
+        const position = new maps.LatLng(spread.latitude, spread.longitude);
+        const marker = new maps.Marker({
+          position,
+          title: property.title,
+          image: getPropertyMarkerImage(
+            maps,
+            property.dealType,
+            property.roomType,
+          ),
+        });
+
+        const label = createMarkerLabel(property.title);
+        // map을 넘기지 않는다 — 표시 여부는 syncMarkerLabels가 결정한다
+        const labelOverlay = new maps.CustomOverlay({
+          position,
+          content: label.wrapper,
+          yAnchor: 0,
+          zIndex: MARKER_LABEL_Z_INDEX,
+        });
+
+        maps.event.addListener(marker, "click", () => {
+          selectHandlersRef.current.onSelectMarker(property.id);
+          panToAboveCenter(
+            maps,
+            map,
+            position,
+            focusOffsetPixel(
+              mapContainerRef.current,
+              hasBottomSheetRef.current,
+            ),
+          );
+        });
+
+        placed.push({
+          marker,
+          property,
+          position,
+          labelPill: label.pill,
+          labelOverlay,
+        });
+      }
+
       const propertyByMarker = new Map<KakaoMarker, PropertyCardItem>();
       const bounds = new maps.LatLngBounds();
       for (const { marker, property, position } of placed) {
@@ -618,7 +664,7 @@ function PropertyMap({
       // 지난 배치의 마커는 새 목록에서 의미가 없다 — 남겨두면 그 핀 클릭이 낡은 매물을 고른다
       propertyByMarkerRef.current = new Map();
     };
-  }, [map, properties]);
+  }, [map, properties, mapPins, isMapPinsPending]);
 
   // 선택이 바뀌면 핀을 다시 그리지 않고 오버레이 위치와 라벨 강조만 갱신한다
   useEffect(() => {
