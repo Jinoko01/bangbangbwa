@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Building2,
   CheckCircle2,
   FileText,
   ImageIcon,
@@ -67,7 +68,7 @@ function formatPhoneNumber(value: string) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
-type MyPageSection = "account" | "reports";
+type MyPageSection = "account" | "reports" | "listings";
 
 function IdentityRail({
   user,
@@ -78,6 +79,23 @@ function IdentityRail({
   section: MyPageSection;
   onSectionChange: (section: MyPageSection) => void;
 }) {
+  // 계정 외 탭은 역할 전용 — 세입자는 리포트, 인증 중개사는 본인 매물
+  const menuItems = [
+    { key: "account", label: "계정", icon: UserRound, visible: true },
+    {
+      key: "reports",
+      label: "매물 리포트",
+      icon: FileText,
+      visible: user.role === "세입자",
+    },
+    {
+      key: "listings",
+      label: "내가 올린 매물",
+      icon: Building2,
+      visible: isApprovedBroker(user),
+    },
+  ] as const;
+
   return (
     <aside className="flex flex-col gap-6 self-start md:sticky md:top-24">
       <div className="flex items-center gap-4 md:flex-col md:items-start">
@@ -97,34 +115,23 @@ function IdentityRail({
       </div>
       <nav aria-label="마이페이지 메뉴" className="border-t pt-4">
         <ul className="flex gap-2 md:flex-col">
-          <li className="flex-1">
-            <button
-              type="button"
-              aria-current={section === "account" ? "page" : undefined}
-              onClick={() => onSectionChange("account")}
-              className={cn(
-                "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted",
-                section === "account" && "bg-primary/10 text-primary",
-              )}
-            >
-              <UserRound className="size-4" /> 계정
-            </button>
-          </li>
-          {user.role === "세입자" && (
-            <li className="flex-1">
-              <button
-                type="button"
-                aria-current={section === "reports" ? "page" : undefined}
-                onClick={() => onSectionChange("reports")}
-                className={cn(
-                  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted",
-                  section === "reports" && "bg-primary/10 text-primary",
-                )}
-              >
-                <FileText className="size-4" /> 매물 리포트
-              </button>
-            </li>
-          )}
+          {menuItems
+            .filter((item) => item.visible)
+            .map(({ key, label, icon: Icon }) => (
+              <li key={key} className="flex-1">
+                <button
+                  type="button"
+                  aria-current={section === key ? "page" : undefined}
+                  onClick={() => onSectionChange(key)}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted",
+                    section === key && "bg-primary/10 text-primary",
+                  )}
+                >
+                  <Icon className="size-4" /> {label}
+                </button>
+              </li>
+            ))}
         </ul>
       </nav>
     </aside>
@@ -1070,13 +1077,17 @@ function AccountSection() {
 function MyPage({ user }: { user: User }) {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  // 역할에 없는 탭 주소로 들어오면 계정 탭으로 흡수한다
+  const requestedSection = searchParams.get("section");
   const section: MyPageSection =
-    user.role === "세입자" && searchParams.get("section") === "reports"
+    user.role === "세입자" && requestedSection === "reports"
       ? "reports"
-      : "account";
+      : isApprovedBroker(user) && requestedSection === "listings"
+        ? "listings"
+        : "account";
 
   const setSection = (nextSection: MyPageSection) => {
-    setSearchParams(nextSection === "reports" ? { section: "reports" } : {});
+    setSearchParams(nextSection === "account" ? {} : { section: nextSection });
   };
 
   return (
@@ -1095,6 +1106,8 @@ function MyPage({ user }: { user: User }) {
               <AgentVerificationPanel user={user} />
               <AccountSection />
             </>
+          ) : section === "listings" ? (
+            <MyListingsSection />
           ) : (
             <ReportsSection
               reportSaved={location.state?.reportSaved === true}

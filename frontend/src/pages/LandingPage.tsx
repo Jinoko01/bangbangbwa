@@ -932,7 +932,7 @@ function LandingPage() {
           {/* 영상 전체를 고르게 덮는 반투명 검정 오버레이 — 텍스트 대비 확보 */}
           <div className="absolute inset-0 bg-slate-950/60" />
 
-          {/* 모바일은 배지·제목을 정중앙에, 검색·둘러보기 버튼을 하단에 두고 설명·CTA 행은 lg부터 보인다 */}
+          {/* 모바일은 배지·제목·둘러보기 버튼을 정중앙에 두고, 검색과 설명·CTA 행은 lg부터 보인다 */}
           {/* 배경은 풀블리드지만 콘텐츠는 기존 폭으로 가운데 정렬 */}
           <div className="relative z-10 mx-auto grid h-full w-full max-w-[1180px] grid-rows-[1fr_auto] items-center justify-items-center gap-6 px-6 py-8 sm:p-9 lg:grid-cols-[1.15fr_.85fr] lg:grid-rows-1 lg:justify-items-stretch lg:gap-7 lg:p-10">
             <motion.div
@@ -947,17 +947,34 @@ function LandingPage() {
               >
                 세입자와 중개사를 잇는 1:1 라이브 투어
               </motion.p>
-              <h1 className="text-[2.5rem] leading-[1.12] font-bold tracking-[-0.04em] sm:text-5xl lg:text-6xl">
-                <motion.span variants={HERO_RISE} className="block">
-                  방송으로 방을 봐
-                </motion.span>
-                <motion.span
-                  variants={HERO_RISE}
-                  className="block text-primary"
-                >
-                  방방봐
-                </motion.span>
-              </h1>
+              {/* w-fit 래퍼로 제목 글씨 폭만큼 줄여, 아래 모바일 버튼(w-full)이
+                  로고 폭과 같아지게 한다 */}
+              <div className="mx-auto w-fit lg:mx-0">
+                <h1 className="text-[2.5rem] leading-[1.12] font-bold tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+                  <motion.span variants={HERO_RISE} className="block">
+                    방송으로 방을 봐
+                  </motion.span>
+                  <motion.span
+                    variants={HERO_RISE}
+                    className="block text-primary"
+                  >
+                    방방봐
+                  </motion.span>
+                </h1>
+                {/* lg 미만 전용 CTA — 검색창 대신 제목 바로 아래에서 전체 매물로 안내한다.
+                    w-full이 w-fit 래퍼를 따라가 "방송으로 방을 봐" 글씨 폭과 같아진다 */}
+                <motion.div variants={HERO_RISE} className="mt-7 lg:hidden">
+                  <Button
+                    size="lg"
+                    className="h-13 w-full rounded-full text-base"
+                    asChild
+                  >
+                    <Link to="/properties">
+                      <MapPin /> 매물 둘러보기 <ArrowRight />
+                    </Link>
+                  </Button>
+                </motion.div>
+              </div>
               <motion.p
                 variants={HERO_RISE}
                 className="mt-6 hidden max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg lg:block lg:text-xl"
@@ -989,18 +1006,9 @@ function LandingPage() {
               </motion.div>
             </motion.div>
 
-            <div className="mx-auto w-full max-w-md space-y-4">
+            {/* 검색은 데스크톱 전용 — 모바일에서는 제목 아래 버튼이 CTA를 맡는다 */}
+            <div className="mx-auto hidden w-full max-w-md lg:block">
               <HeroSearch />
-              {/* lg 미만 전용 — 숨겨진 데스크톱 CTA 대신 검색 아래에서 전체 매물로 안내한다 */}
-              <Button
-                size="lg"
-                className="h-13 w-full rounded-2xl text-base lg:hidden"
-                asChild
-              >
-                <Link to="/properties">
-                  <MapPin /> 매물 둘러보기 <ArrowRight />
-                </Link>
-              </Button>
             </div>
           </div>
         </div>

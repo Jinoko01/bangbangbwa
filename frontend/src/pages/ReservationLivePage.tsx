@@ -18,6 +18,7 @@ import {
   PhoneOff,
   RotateCcw,
   ScanSearch,
+  SwitchCamera,
   Trash2,
   Users,
   Video,
@@ -143,6 +144,9 @@ interface VideoTileProps {
   label: string;
   className: string;
   muted?: boolean;
+  // 전면 카메라 셀프뷰는 거울처럼 보여야 움직임이 자연스럽다.
+  // CSS 반전이라 송출 영상과 캡처(canvas)에는 영향이 없다
+  mirrored?: boolean;
   aspect?: number | null;
   notice?: ReactNode;
 }
@@ -152,6 +156,7 @@ function VideoTile({
   label,
   className,
   muted = false,
+  mirrored = false,
   aspect,
   notice,
 }: VideoTileProps) {
@@ -169,7 +174,7 @@ function VideoTile({
         autoPlay
         playsInline
         muted={muted}
-        className="size-full object-contain"
+        className={cn("size-full object-contain", mirrored && "-scale-x-100")}
       />
       {notice}
       <span className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate rounded-md bg-slate-950/70 px-2 py-0.5 text-xs font-medium text-white">
@@ -412,6 +417,10 @@ function ReservationLivePage() {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  // 카메라 전환 시 재협상 없이 송출 트랙만 갈아끼우기 위한 현재 연결 참조
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  // 연결 effect(재시도 포함)가 최신 카메라 방향으로 스트림을 열기 위한 고정 참조
+  const facingRef = useRef<"user" | "environment">("user");
   const sessionEndedRef = useRef(false);
   const uploadedCaptureIdsRef = useRef(new Set<string>());
 
@@ -420,6 +429,10 @@ function ReservationLivePage() {
   const [peerPresent, setPeerPresent] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [facing, setFacing] = useState<"user" | "environment">("user");
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  const [switchingCamera, setSwitchingCamera] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [mediaStatus, setMediaStatus] = useState<MediaStatus>("pending");
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -477,6 +490,8 @@ function ReservationLivePage() {
     videoRef: localVideoRef,
     label: isBroker ? "내 카메라 (송출 중)" : myLabel,
     muted: true,
+    // 후면 카메라는 현장을 비추므로 거울 모드 없이 실제 방향 그대로 보여준다
+    mirrored: facing === "user",
     aspect: localAspect,
     notice: <LocalTileNotice mediaStatus={mediaStatus} camOn={camOn} />,
   };
@@ -484,6 +499,7 @@ function ReservationLivePage() {
     videoRef: remoteVideoRef,
     label: peerLabel,
     muted: false,
+    mirrored: false,
     aspect: remoteAspect,
     notice: <PeerPreparingNotice status={displayStatus} />,
   };
@@ -668,6 +684,7 @@ function ReservationLivePage() {
 
       const next = new RTCPeerConnection({ iceServers: buildIceServers() });
       pc = next;
+      pcRef.current = next;
 
       if (localStream) {
         for (const track of localStream.getTracks()) {
@@ -713,9 +730,14 @@ function ReservationLivePage() {
     async function start() {
       try {
         // AI 하자 검수 입력(긴 변 960px)을 보장하려고 1080p를 요청한다.
-        // ideal이라 미지원 카메라는 가능한 최대 해상도로 열린다
+        // ideal이라 미지원 카메라는 가능한 최대 해상도로 열린다.
+        // facingMode도 소프트 제약이라 방향 구분이 없는 카메라(노트북 등)도 그대로 열린다
         localStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            facingMode: facingRef.current,
+          },
           audio: true,
         });
       } catch {
@@ -730,6 +752,22 @@ function ReservationLivePage() {
       setMediaStatus(localStream ? "ready" : "blocked");
       if (localVideoRef.current && localStream) {
         localVideoRef.current.srcObject = localStream;
+      }
+
+      // 카메라가 두 대 이상일 때만 전환 버튼을 노출한다.
+      // 시그널링 연결과 무관한 부가 기능이라 실패해도 입장 흐름을 막지 않는다
+      if (localStream) {
+        void navigator.mediaDevices
+          .enumerateDevices()
+          .then((devices) => {
+            if (!disposed) {
+              setHasMultipleCameras(
+                devices.filter((device) => device.kind === "videoinput")
+                  .length > 1,
+              );
+            }
+          })
+          .catch(() => setHasMultipleCameras(false));
       }
 
       resetPeerConnection();
@@ -834,6 +872,7 @@ function ReservationLivePage() {
       localStream?.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
       pc?.close();
+      pcRef.current = null;
       ws?.close();
     };
   }, [signalingUrl]);
@@ -856,6 +895,84 @@ function ReservationLivePage() {
   const handleToggleCam = () => {
     toggleTrack("video", !camOn);
     setCamOn(!camOn);
+  };
+
+  // 전·후면 카메라 전환 — 연결은 유지한 채 송출 중인 비디오 트랙만 갈아끼운다.
+  // iOS 등은 카메라 두 대를 동시에 열 수 없어 기존 트랙을 먼저 멈춘 뒤 새 카메라를 연다
+  const handleSwitchCamera = async () => {
+    const stream = localStreamRef.current;
+    if (!stream || switchingCamera) {
+      return;
+    }
+    const next = facing === "user" ? "environment" : "user";
+    setSwitchingCamera(true);
+    setCameraError(null);
+
+    const [oldTrack] = stream.getVideoTracks();
+    oldTrack?.stop();
+
+    let newStream: MediaStream | null = null;
+    try {
+      newStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          facingMode: { exact: next },
+        },
+      });
+    } catch {
+      // 반대 방향 카메라가 없거나 열 수 없으면 쓰던 카메라로 복구한다
+      try {
+        newStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            facingMode: facing,
+          },
+        });
+        setCameraError(
+          next === "environment"
+            ? "후면 카메라를 열 수 없어 기존 카메라를 유지해요."
+            : "전면 카메라를 열 수 없어 기존 카메라를 유지해요.",
+        );
+      } catch {
+        setCameraError(
+          "카메라를 다시 열 수 없어요. 브라우저 권한을 확인한 뒤 다시 시도해 주세요.",
+        );
+      }
+    }
+
+    if (!newStream) {
+      setSwitchingCamera(false);
+      return;
+    }
+
+    const [newTrack] = newStream.getVideoTracks();
+    newTrack.enabled = camOn;
+
+    if (oldTrack) {
+      stream.removeTrack(oldTrack);
+    }
+    stream.addTrack(newTrack);
+
+    const sender = pcRef.current
+      ?.getSenders()
+      .find((s) => s.track?.kind === "video");
+    await sender?.replaceTrack(newTrack);
+
+    // 같은 스트림 객체지만 트랙 교체 후 미리보기가 멈추는 브라우저가 있어 다시 연결한다
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+    }
+
+    // 복구로 기존 카메라가 다시 열렸을 수도 있으니 실제 열린 트랙 기준으로 방향을 맞춘다
+    const actualFacing =
+      newTrack.getSettings().facingMode === "environment"
+        ? "environment"
+        : "user";
+    facingRef.current = actualFacing;
+    setFacing(actualFacing);
+    setSwitchingCamera(false);
   };
 
   return (
@@ -908,6 +1025,7 @@ function ReservationLivePage() {
                 videoRef={primaryTile.videoRef}
                 label={primaryTile.label}
                 muted={primaryTile.muted}
+                mirrored={primaryTile.mirrored}
                 className="size-full"
                 notice={primaryTile.notice}
               />
@@ -915,6 +1033,7 @@ function ReservationLivePage() {
                 videoRef={secondaryTile.videoRef}
                 label={secondaryTile.label}
                 muted={secondaryTile.muted}
+                mirrored={secondaryTile.mirrored}
                 aspect={secondaryTile.aspect}
                 className="absolute top-2 right-2 w-24 border border-slate-700/70 shadow-sm sm:w-28 lg:top-3 lg:right-3 lg:w-40"
                 notice={secondaryTile.notice}
@@ -967,6 +1086,15 @@ function ReservationLivePage() {
               </p>
             )}
 
+            {cameraError && (
+              <p
+                role="alert"
+                className="mx-auto mb-2 w-fit rounded-md bg-slate-900/90 px-3 py-1.5 text-xs text-slate-200"
+              >
+                {cameraError}
+              </p>
+            )}
+
             <div className="flex items-center justify-center gap-2">
               <ControlButton
                 on={micOn}
@@ -984,6 +1112,23 @@ function ReservationLivePage() {
               >
                 {camOn ? <Video /> : <VideoOff />}
               </ControlButton>
+              {hasMultipleCameras && (
+                <Button
+                  type="button"
+                  size="icon-lg"
+                  aria-label="전면·후면 카메라 전환"
+                  title="전면·후면 카메라 전환"
+                  disabled={mediaBlocked || switchingCamera}
+                  onClick={() => void handleSwitchCamera()}
+                  className="rounded-full border border-slate-700 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  {switchingCamera ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <SwitchCamera />
+                  )}
+                </Button>
+              )}
               {!isBroker && (
                 // 캡처는 세입자 화면에서만 사용자 캡처 API로 즉시 저장한다.
                 <form action={captureAction} className="contents">
