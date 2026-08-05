@@ -38,17 +38,17 @@ export function useLiveSession(meetingId: number | undefined) {
   });
 }
 
-export function useEndSession(meetingId: number) {
-  return useMutation({
-    mutationFn: (sessionId: number) => endSession(sessionId),
-    mutationKey: [...sessionKeys.join(meetingId), "end"],
-  });
-}
-
 export function useLeaveSession(meetingId: number) {
   return useMutation({
     mutationFn: (sessionId: number) => leaveSession(sessionId),
     mutationKey: [...sessionKeys.join(meetingId), "leave"],
+  });
+}
+
+export function useEndSession(meetingId: number) {
+  return useMutation({
+    mutationFn: (sessionId: number) => endSession(sessionId),
+    mutationKey: [...sessionKeys.join(meetingId), "end"],
   });
 }
 

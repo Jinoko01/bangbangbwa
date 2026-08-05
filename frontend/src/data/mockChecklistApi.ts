@@ -6,15 +6,10 @@ import type { Checklist, ChecklistItem, ChecklistItemStatus } from "@/types";
 // 체크리스트 API(feature/27-checklist-crud)가 backend에 머지될 때까지 쓰는 임시 어댑터.
 // src/api/checklist.ts와 시그니처가 같으므로, 서버에 붙일 때는
 // hooks/queries/checklistQueries.ts의 import 경로만 "@/api/checklist"로 되돌리면 된다.
-// 항목 20개 제한은 서버 규칙과 같다. 다만 서버는 회의 확정 시 빈 체크리스트를 만들지만,
-// 목에서는 조회 시점에 기본 항목 2개와 함께 만들어 기존 UX를 유지한다(시딩 주체는 백엔드와 협의 중).
+// 항목 20개 제한은 서버 규칙과 같다. 체크리스트 항목은 세입자가 직접 작성한다.
 
 const STORAGE_KEY = "bangbangbwa:mock-checklists";
 const MOCK_LATENCY_MS = 300;
-const DEFAULT_ITEM_CONTENTS = [
-  "벽지·천장 곰팡이 확인",
-  "등기부등본 근저당 확인",
-];
 
 // 새로고침해도 유지되도록 localStorage에 저장하고, 모듈 사본으로 읽고 쓴다
 const store: Record<number, Checklist> = readStoredJson(STORAGE_KEY, {});
@@ -47,18 +42,12 @@ function ensureChecklist(meetingId: number): Checklist {
     return existing;
   }
 
-  const baseItemId = nextItemId();
   const created: Checklist = {
     checklistId: meetingId,
     meetingId,
     title: "입주 체크리스트",
     createdAt: new Date().toISOString(),
-    items: DEFAULT_ITEM_CONTENTS.map((content, index) => ({
-      itemId: baseItemId + index,
-      content,
-      status: "PENDING",
-      memo: null,
-    })),
+    items: [],
   };
   store[meetingId] = created;
   persist();

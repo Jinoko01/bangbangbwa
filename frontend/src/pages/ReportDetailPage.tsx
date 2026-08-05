@@ -6,8 +6,8 @@ import {
   Circle,
   ClipboardCheck,
   Clock3,
-  FileText,
   MapPin,
+  Sparkles,
   TriangleAlert,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -18,7 +18,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useReportDetail } from "@/hooks/queries/reportQueries";
 import { usePropertyDetail } from "@/hooks/queries/propertyQueries";
 import { formatDateTime } from "@/lib/format";
-import type { ChecklistItem, ChecklistItemStatus } from "@/types";
+import type { ChecklistItem } from "@/types";
+
+type ChecklistDisplayStatus = "COMPLETED" | "PENDING";
 
 interface ChecklistStatusStyle {
   label: string;
@@ -29,7 +31,7 @@ interface ChecklistStatusStyle {
   groupClassName: string;
 }
 
-const CHECKLIST_STATUS: Record<ChecklistItemStatus, ChecklistStatusStyle> = {
+const CHECKLIST_STATUS: Record<ChecklistDisplayStatus, ChecklistStatusStyle> = {
   COMPLETED: {
     label: "확인 완료",
     description: "현장에서 확인을 마친 항목",
@@ -39,18 +41,9 @@ const CHECKLIST_STATUS: Record<ChecklistItemStatus, ChecklistStatusStyle> = {
       "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300",
     groupClassName: "border-emerald-200/80 dark:border-emerald-900",
   },
-  ISSUE_FOUND: {
-    label: "확인 필요",
-    description: "문제가 있거나 추가 확인이 필요한 항목",
-    icon: TriangleAlert,
-    iconClassName: "text-amber-600",
-    badgeClassName:
-      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300",
-    groupClassName: "border-amber-200/80 dark:border-amber-900",
-  },
   PENDING: {
-    label: "미확인",
-    description: "미팅에서 아직 확인하지 않은 항목",
+    label: "점검 전",
+    description: "아직 현장에서 점검하지 않은 항목",
     icon: Circle,
     iconClassName: "text-slate-400",
     badgeClassName:
@@ -59,17 +52,13 @@ const CHECKLIST_STATUS: Record<ChecklistItemStatus, ChecklistStatusStyle> = {
   },
 };
 
-const CHECKLIST_ORDER: ChecklistItemStatus[] = [
-  "ISSUE_FOUND",
-  "PENDING",
-  "COMPLETED",
-];
+const CHECKLIST_ORDER: ChecklistDisplayStatus[] = ["PENDING", "COMPLETED"];
 
 function ChecklistGroup({
   status,
   items,
 }: {
-  status: ChecklistItemStatus;
+  status: ChecklistDisplayStatus;
   items: ChecklistItem[];
 }) {
   if (items.length === 0) {
@@ -85,7 +74,13 @@ function ChecklistGroup({
     >
       <header className="flex flex-col gap-2 border-b bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <StatusIcon className={`size-5 shrink-0 ${style.iconClassName}`} />
+          {status === "PENDING" ? (
+            <span className="text-lg leading-none" aria-hidden="true">
+              ⚠️
+            </span>
+          ) : (
+            <StatusIcon className={`size-5 shrink-0 ${style.iconClassName}`} />
+          )}
           <div>
             <h3 className="text-sm font-semibold">{style.label}</h3>
             <p className="text-xs text-muted-foreground">{style.description}</p>
@@ -100,34 +95,27 @@ function ChecklistGroup({
 
       <ul className="divide-y">
         {items.map((item) => (
-          <li key={item.itemId} className="flex gap-3 bg-background px-4 py-4">
-            <span
-              className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border ${style.badgeClassName}`}
-              aria-hidden="true"
-            >
-              {status === "COMPLETED" ? (
-                <Check className="size-3.5 stroke-[3]" />
-              ) : (
-                <StatusIcon className="size-3.5" />
-              )}
-            </span>
+          <li
+            key={item.itemId}
+            className="flex gap-3 bg-background px-4 py-4 transition-colors hover:bg-muted/20"
+          >
+            {status === "COMPLETED" ? (
+              <CheckCircle2
+                className="mt-0.5 size-6 shrink-0 fill-emerald-600 text-white"
+                aria-hidden="true"
+              />
+            ) : (
+              <Circle
+                className="mt-0.5 size-6 shrink-0 text-slate-300"
+                aria-hidden="true"
+              />
+            )}
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium leading-6">{item.content}</p>
-                <span
-                  className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${style.badgeClassName}`}
-                >
-                  {style.label}
-                </span>
-              </div>
-              {item.memo ? (
+              <p className="text-sm font-medium leading-6">{item.content}</p>
+              {item.memo && (
                 <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-sm leading-6 text-muted-foreground">
                   <span className="mr-2 font-medium text-foreground">메모</span>
                   {item.memo}
-                </p>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  작성된 메모 없음
                 </p>
               )}
             </div>
@@ -135,6 +123,116 @@ function ChecklistGroup({
         ))}
       </ul>
     </section>
+  );
+}
+
+const EMOJI_SHORTCODES: Record<string, string> = {
+  ":house:": "🏠",
+  ":warning:": "⚠️",
+  ":white_check_mark:": "✅",
+  ":memo:": "📝",
+  ":bulb:": "💡",
+  ":mag:": "🔍",
+  ":sparkles:": "✨",
+};
+
+function cleanSummaryText(value: string) {
+  return Object.entries(EMOJI_SHORTCODES)
+    .reduce(
+      (text, [shortcode, emoji]) => text.replaceAll(shortcode, emoji),
+      value,
+    )
+    .replace(/\*\*|__|`/g, "")
+    .replace(/^>+\s*/, "")
+    .replace(/[<>]+$/g, "")
+    .trim();
+}
+
+function normalizeSummary(summary: string) {
+  return summary
+    .replaceAll("\\n", "\n")
+    .replace(/\s*(#{1,3})\s*/g, "\n$1 ")
+    .replace(/\s+([-*]\s+(?:\[[ xX]\]\s+)?)/g, "\n$1")
+    .replace(/\s*---+\s*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function ReportSummaryDocument({ summary }: { summary: string }) {
+  const lines = normalizeSummary(summary).split("\n");
+
+  return (
+    <div className="mt-5 space-y-3 text-sm leading-7 text-foreground/90">
+      {lines.map((rawLine, index) => {
+        const line = rawLine.trim();
+        const heading = /^(#{1,3})\s*(.+)$/.exec(line);
+        const checkbox = /^[-*]\s+\[([ xX])\]\s+(.+)$/.exec(line);
+        const bullet = /^[-*]\s+(.+)$/.exec(line);
+
+        if (!line) {
+          return <div key={index} className="h-1" aria-hidden="true" />;
+        }
+        if (heading) {
+          const level = heading[1].length;
+          return (
+            <h3
+              key={index}
+              className={
+                level === 1
+                  ? "flex items-center gap-2 pt-3 text-2xl font-bold tracking-tight"
+                  : level === 2
+                    ? "flex items-center gap-2 pt-3 text-xl font-bold tracking-tight"
+                    : "pt-2 text-lg font-semibold"
+              }
+            >
+              {level <= 2 && (
+                <Sparkles
+                  className="size-5 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+              )}
+              {cleanSummaryText(heading[2])}
+            </h3>
+          );
+        }
+        if (checkbox) {
+          const checked = checkbox[1].toLowerCase() === "x";
+          return (
+            <div
+              key={index}
+              className="flex items-start gap-3 rounded-xl bg-muted/40 px-3 py-2.5"
+            >
+              <span
+                className={`mt-1 flex size-5 shrink-0 items-center justify-center rounded-md border ${
+                  checked
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-slate-300 bg-background"
+                }`}
+                aria-hidden="true"
+              >
+                {checked && <Check className="size-3.5 stroke-[3]" />}
+              </span>
+              <span>{cleanSummaryText(checkbox[2])}</span>
+            </div>
+          );
+        }
+        if (bullet) {
+          return (
+            <p key={index} className="flex gap-3 pl-1">
+              <span className="text-primary" aria-hidden="true">
+                •
+              </span>
+              <span>{cleanSummaryText(bullet[1])}</span>
+            </p>
+          );
+        }
+        return (
+          <p key={index} className="break-words whitespace-pre-wrap">
+            {cleanSummaryText(line)}
+          </p>
+        );
+      })}
+    </div>
   );
 }
 
@@ -178,21 +276,13 @@ function ReportDetailPage() {
   }
 
   const items = report.checklist?.items ?? [];
-  const statusCounts = {
-    COMPLETED: items.filter((item) => item.status === "COMPLETED").length,
-    ISSUE_FOUND: items.filter((item) => item.status === "ISSUE_FOUND").length,
+  const statusCounts: Record<ChecklistDisplayStatus, number> = {
+    COMPLETED: items.filter((item) => item.status !== "PENDING").length,
     PENDING: items.filter((item) => item.status === "PENDING").length,
-  } satisfies Record<ChecklistItemStatus, number>;
-  const checkedCount = statusCounts.COMPLETED + statusCounts.ISSUE_FOUND;
+  };
+  const checkedCount = statusCounts.COMPLETED;
   const progress =
     items.length === 0 ? 0 : Math.round((checkedCount / items.length) * 100);
-
-  const documentStatus =
-    report.status === "CONFIRMED"
-      ? "작성 완료"
-      : report.status === "REJECTED"
-        ? "검토 필요"
-        : "작성 중";
 
   return (
     <main className="min-h-[calc(100svh-3.5rem)] bg-slate-50/60 px-4 py-8 dark:bg-slate-950/30 sm:px-6 sm:py-10">
@@ -207,12 +297,9 @@ function ReportDetailPage() {
 
         <header className="overflow-hidden rounded-2xl border bg-background shadow-sm">
           <div className="border-b px-5 py-6 sm:px-8 sm:py-8">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
               <div>
-                <p className="flex items-center gap-2 text-sm font-medium text-primary">
-                  <FileText className="size-4" /> 현장 점검 리포트
-                </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                   {property?.title ?? `매물 #${report.propertyId}`}
                 </h1>
                 <p className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -222,9 +309,6 @@ function ReportDetailPage() {
                     : "매물 위치 확인 중"}
                 </p>
               </div>
-              <span className="w-fit rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm font-semibold text-primary">
-                {documentStatus}
-              </span>
             </div>
           </div>
 
@@ -258,16 +342,16 @@ function ReportDetailPage() {
           </dl>
         </header>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
+        <div className="mt-6">
           <div className="space-y-6">
             <section className="rounded-2xl border bg-background p-5 shadow-sm sm:p-6">
               <div className="flex items-center gap-2">
                 <ClipboardCheck className="size-5 text-primary" />
                 <h2 className="text-lg font-semibold">점검 요약</h2>
               </div>
-              <p className="mt-4 border-l-2 border-primary pl-4 text-sm leading-7 text-foreground/90">
-                {report.summary || "점검 내용을 정리하고 있습니다."}
-              </p>
+              <ReportSummaryDocument
+                summary={report.summary || "점검 내용을 정리하고 있습니다."}
+              />
             </section>
 
             <section className="rounded-2xl border bg-background p-5 shadow-sm sm:p-6">
@@ -314,7 +398,11 @@ function ReportDetailPage() {
                     <ChecklistGroup
                       key={status}
                       status={status}
-                      items={items.filter((item) => item.status === status)}
+                      items={items.filter((item) =>
+                        status === "PENDING"
+                          ? item.status === "PENDING"
+                          : item.status !== "PENDING",
+                      )}
                     />
                   ))}
                 </div>
@@ -379,48 +467,6 @@ function ReportDetailPage() {
               )}
             </section>
           </div>
-
-          <aside className="rounded-2xl border bg-background p-5 shadow-sm lg:sticky lg:top-20">
-            <h2 className="text-sm font-semibold">체크리스트 상태</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              색상뿐 아니라 아이콘과 상태명으로 구분합니다.
-            </p>
-            <dl className="mt-4 space-y-4">
-              {(
-                ["COMPLETED", "ISSUE_FOUND", "PENDING"] as ChecklistItemStatus[]
-              ).map((status) => {
-                const style = CHECKLIST_STATUS[status];
-                const StatusIcon = style.icon;
-                return (
-                  <div
-                    key={status}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <dt className="flex items-center gap-2 text-sm">
-                      <StatusIcon className={`size-4 ${style.iconClassName}`} />{" "}
-                      {style.label}
-                    </dt>
-                    <dd className="font-semibold tabular-nums">
-                      {statusCounts[status]}개
-                    </dd>
-                  </div>
-                );
-              })}
-            </dl>
-            <div className="mt-5 border-t pt-4">
-              <div className="flex items-end justify-between">
-                <p className="text-xs text-muted-foreground">전체 진행률</p>
-                <p className="text-xl font-semibold tabular-nums">
-                  {progress}%
-                </p>
-              </div>
-              {statusCounts.PENDING > 0 && (
-                <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
-                  아직 확인하지 않은 항목이 {statusCounts.PENDING}개 있습니다.
-                </p>
-              )}
-            </div>
-          </aside>
         </div>
       </article>
     </main>

@@ -61,6 +61,7 @@ import {
   getMeetingDateTime,
   getMeetingDirection,
   getPreferredTimes,
+  isPastMeeting,
   isPendingMeeting,
 } from "@/lib/meeting";
 import { cn } from "@/lib/utils";
@@ -72,13 +73,15 @@ import type {
   PreferredRank,
 } from "@/types";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 4;
+const LIST_FETCH_SIZE = 100;
 // 매물 선택 드롭다운은 한 번에 다 보여준다 (중개사 보유 매물 수가 많지 않다)
 const MY_PROPERTY_PAGE_SIZE = 100;
 
 // mine: 내 회의 목록(공통) / property-request: 매물별 회의 요청(중개사) /
 // property-schedule: 매물별 회의 일정 전체(중개사)
 type MeetingSource = "mine" | "property-request" | "property-schedule";
+type MeetingPeriod = "upcoming" | "past";
 
 const SOURCE_LABEL: Record<MeetingSource, string> = {
   mine: "내 회의",
@@ -90,6 +93,11 @@ const DIRECTION_LABEL: Record<MeetingDirection | "all", string> = {
   all: "전체",
   sent: "보낸 요청",
   received: "받은 요청",
+};
+
+const PERIOD_LABEL: Record<MeetingPeriod, string> = {
+  upcoming: "예정 예약",
+  past: "지난 예약",
 };
 
 const STATUS_TONE: Record<MeetingStatus, string> = {
@@ -133,11 +141,12 @@ function ReservationPage() {
 
   const [source, setSource] = useState<MeetingSource>("mine");
   const [direction, setDirection] = useState<MeetingDirection | "all">("all");
+  const [period, setPeriod] = useState<MeetingPeriod>("upcoming");
   const [propertyId, setPropertyId] = useState<number | undefined>(undefined);
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
 
-  const paging = { page, size: PAGE_SIZE, direction: "DESC" as const };
+  const paging = { page: 0, size: LIST_FETCH_SIZE, direction: "DESC" as const };
   const isPropertySource = source !== "mine";
   const myMeetings = useMyMeetingList(paging);
   const propertyRequests = usePropertyMeetingRequests(
@@ -163,13 +172,25 @@ function ReservationPage() {
   );
 
   const fetched = activeQuery.data?.content ?? [];
-  const meetings = [
+  const filteredMeetings = [
     ...(source === "mine" && direction !== "all"
       ? fetched.filter(
           (meeting) => getMeetingDirection(meeting, user?.id) === direction,
         )
       : fetched),
-  ].sort(compareByNearest);
+  ]
+    .filter((meeting) =>
+      period === "past" ? isPastMeeting(meeting) : !isPastMeeting(meeting),
+    )
+    .sort(compareByNearest);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredMeetings.length / PAGE_SIZE),
+  );
+  const meetings = filteredMeetings.slice(
+    page * PAGE_SIZE,
+    (page + 1) * PAGE_SIZE,
+  );
   // 목록이 바뀌어 이전 선택이 사라졌을 때는 첫 항목으로 되돌린다
   const activeId = meetings.some((meeting) => meeting.meetingId === selectedId)
     ? selectedId
@@ -177,8 +198,6 @@ function ReservationPage() {
   const activeMeeting = meetings.find(
     (meeting) => meeting.meetingId === activeId,
   );
-
-  const totalPages = activeQuery.data?.totalPages ?? 1;
   const confirmedCount = fetched.filter(
     (meeting) => meeting.status === "CONFIRMED",
   ).length;
@@ -213,6 +232,27 @@ function ReservationPage() {
       </section>
 
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 pt-4">
+        <div className="inline-flex rounded-xl bg-slate-100 p-1">
+          {(["upcoming", "past"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={cn(
+                "cursor-pointer rounded-lg px-4 py-2 text-sm transition-colors",
+                period === tab
+                  ? "bg-white font-semibold text-primary shadow-sm"
+                  : "text-muted-foreground",
+              )}
+              onClick={() => {
+                setPeriod(tab);
+                setPage(0);
+              }}
+            >
+              {PERIOD_LABEL[tab]}
+            </button>
+          ))}
+        </div>
+
         {isBroker && (
           <div className="inline-flex rounded-xl bg-slate-100 p-1">
             {(["mine", "property-request", "property-schedule"] as const).map(
@@ -247,7 +287,10 @@ function ReservationPage() {
                     ? "bg-white font-semibold text-primary shadow-sm"
                     : "text-muted-foreground",
                 )}
-                onClick={() => setDirection(tab)}
+                onClick={() => {
+                  setDirection(tab);
+                  setPage(0);
+                }}
               >
                 {DIRECTION_LABEL[tab]}
               </button>
@@ -307,9 +350,11 @@ function ReservationPage() {
         <EmptyState
           title="아직 표시할 예약이 없습니다"
           description={
-            source === "mine"
-              ? "매물 목록에서 원하는 매물의 미팅을 예약해 보세요."
-              : "이 매물에는 아직 들어온 회의 요청이 없습니다."
+            period === "past"
+              ? "지난 미팅이나 취소·거절된 예약이 없습니다."
+              : source === "mine"
+                ? "매물 목록에서 원하는 매물의 미팅을 예약해 보세요."
+                : "이 매물에는 아직 들어온 회의 요청이 없습니다."
           }
           action={
             <Button className="mt-5" onClick={() => navigate("/properties")}>
@@ -318,13 +363,18 @@ function ReservationPage() {
           }
         />
       ) : (
-        <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 lg:grid-cols-[280px_minmax(0,1fr)_350px] xl:grid-cols-[300px_minmax(0,1fr)_370px]">
+        <div
+          className={cn(
+            "mx-auto grid max-w-7xl gap-5 px-4 py-5",
+            isBroker
+              ? "lg:grid-cols-[300px_minmax(0,1fr)]"
+              : "lg:grid-cols-[280px_minmax(0,1fr)_350px] xl:grid-cols-[300px_minmax(0,1fr)_370px]",
+          )}
+        >
           <Card className="gap-3 py-4">
             <CardHeader className="flex-row items-center justify-between px-4">
               <CardTitle className="text-base">예약 목록</CardTitle>
-              <Badge variant="secondary">
-                {activeQuery.data?.totalElements ?? meetings.length}건
-              </Badge>
+              <Badge variant="secondary">{filteredMeetings.length}건</Badge>
             </CardHeader>
             <CardContent className="space-y-2 px-4">
               {meetings.map((meeting) => (
@@ -350,14 +400,20 @@ function ReservationPage() {
             onEnter={(meetingId) => navigate(`/reservation/${meetingId}`)}
           />
 
-          <Card className="gap-3 py-4">
-            <CardContent className="px-4">
-              <ReservationChecklist
-                meetingId={activeId}
-                meetingStatus={activeMeeting?.status}
-              />
-            </CardContent>
-          </Card>
+          {!isBroker && (
+            <Card className="gap-3 py-4">
+              <CardContent className="px-4">
+                {activeMeeting?.status === "CONFIRMED" ||
+                activeMeeting?.status === "COMPLETED" ? (
+                  <ReservationChecklist meetingId={activeId} />
+                ) : (
+                  <div className="rounded-lg border border-dashed bg-white px-3 py-8 text-center text-sm text-muted-foreground">
+                    예약이 확정되면 체크리스트를 작성할 수 있습니다.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </main>

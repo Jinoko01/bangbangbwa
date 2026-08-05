@@ -29,6 +29,16 @@ export function isActiveMeeting({ status }: Pick<Meeting, "status">) {
   return status !== "REJECTED" && status !== "CANCELED";
 }
 
+export function isPastMeeting(meeting: Meeting) {
+  // 탭은 날짜가 아니라 예약 상태로 나눈다. 대기·확정 건은 미팅 시각이
+  // 지났더라도 완료 처리 전까지 계속 예정 예약에서 확인할 수 있어야 한다.
+  return (
+    meeting.status === "COMPLETED" ||
+    meeting.status === "REJECTED" ||
+    meeting.status === "CANCELED"
+  );
+}
+
 // 두 자리 0 패딩 없이 Date를 백엔드 LocalDateTime 표기로 직렬화한다.
 // toISOString()은 UTC로 변환되면서 날짜가 밀리므로 로컬 값을 그대로 조립한다
 export function toLocalDateTime(date: Date) {
@@ -75,15 +85,9 @@ export function getMeetingDirection(
   return meeting.agentId === userId ? "received" : "sent";
 }
 
-// 거절·취소된 회의를 맨 뒤로 보내고, 나머지는 다가오는 회의를 가까운 순으로 먼저,
-// 지난 회의는 최근 순으로 뒤에 둔다
+// 상태와 무관하게 시각만 기준으로 정렬한다. 다가오는 미팅은 가까운 순으로 먼저,
+// 이미 지난 시각은 그 뒤에서 최근 순으로 둔다. 시각이 없으면 항상 마지막이다.
 export function compareByNearest(first: Meeting, second: Meeting) {
-  const firstIsActive = isActiveMeeting(first);
-
-  if (firstIsActive !== isActiveMeeting(second)) {
-    return firstIsActive ? -1 : 1;
-  }
-
   const now = Date.now();
   const firstTime = toTimestamp(first);
   const secondTime = toTimestamp(second);

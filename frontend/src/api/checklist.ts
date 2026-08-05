@@ -1,8 +1,7 @@
 import { api } from "@/api/client";
 import type { Checklist, ChecklistItem, ChecklistItemStatus } from "@/types";
 
-// CHECK-01~03 (/api/checklist) — 회의(Meeting) 확정 시 백엔드가 체크리스트를
-// 자동 생성·취소 시 삭제하므로 생성 API는 없다. 확정 전 조회는 CHECKLIST_NOT_FOUND로 실패한다.
+// CHECK-01~03 (/api/checklist) — 세입자가 예약별 체크리스트 항목을 직접 관리한다.
 
 const CHECKLIST_PATH = "/api/checklist";
 

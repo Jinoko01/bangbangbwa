@@ -413,6 +413,7 @@ function ReservationLivePage() {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const sessionEndedRef = useRef(false);
+  const uploadedCaptureIdsRef = useRef(new Set<string>());
 
   const [status, setStatus] = useState<SessionStatus>("connecting");
   // 나가기 다이얼로그 분기용 — 상대가 세션에 남아 있으면 퇴장만, 혼자면 종료까지 제안한다
@@ -547,18 +548,18 @@ function ReservationLivePage() {
 
     setReportError(null);
     try {
-      await Promise.all(
-        captures.map(async (item) => {
-          const image = await fetch(item.url).then((response) =>
-            response.blob(),
-          );
-          const stored = await uploadCapture({
-            sessionId: session.sessionId,
-            image,
-          });
-          return stored;
-        }),
-      );
+      // 리포트 생성 시점에 백엔드가 세션 캡처를 조회하므로 반드시 먼저 저장한다.
+      // 일부만 성공한 뒤 재시도해도 같은 사진이 중복 저장되지 않게 성공 건을 기억한다.
+      for (const item of captures) {
+        if (uploadedCaptureIdsRef.current.has(item.id)) {
+          continue;
+        }
+        await uploadCapture({
+          sessionId: session.sessionId,
+          image: item.image,
+        });
+        uploadedCaptureIdsRef.current.add(item.id);
+      }
     } catch (error) {
       setReportError(
         `현장 캡처 저장 실패: ${isApiError(error) ? error.message : "잠시 후 다시 시도해 주세요."}`,
@@ -572,7 +573,7 @@ function ReservationLivePage() {
         sessionEndedRef.current = true;
       } catch (error) {
         setReportError(
-          `미팅 종료 요청 실패: ${isApiError(error) ? error.message : "잠시 후 다시 시도해 주세요."}`,
+          `미팅 나가기 요청 실패: ${isApiError(error) ? error.message : "잠시 후 다시 시도해 주세요."}`,
         );
         return;
       }
@@ -580,9 +581,13 @@ function ReservationLivePage() {
 
     try {
       await createSessionReport(session.sessionId);
-      navigate("/mypage?section=reports", {
-        state: { reportSaved: true },
-      });
+      if (isBroker) {
+        navigate("/reservations");
+      } else {
+        navigate("/mypage?section=reports", {
+          state: { reportSaved: true },
+        });
+      }
     } catch (error) {
       const reportFailure = isApiError(error)
         ? error.message
@@ -600,14 +605,30 @@ function ReservationLivePage() {
     isBroker && status === "connected",
   );
 
-  // RTC-05 — 캡처는 영상 프레임이 있어야 가능하므로 실패를 사용자에게 알린다
+  // 사용자 캡처 API는 세입자 전용이다. 촬영 즉시 서버에 저장해야 세입자가 먼저
+  // 퇴장하고 중개사가 세션을 종료해도 이후 리포트에 사진이 남는다.
   const [captureError, captureAction, capturing] = useActionState<
     string | null
   >(async () => {
     const captured = await capture();
-    return captured
-      ? null
-      : "지금은 화면을 캡처할 수 없어요. 영상이 나온 뒤 다시 시도해 주세요.";
+    if (!captured) {
+      return "지금은 화면을 캡처할 수 없어요. 영상이 나온 뒤 다시 시도해 주세요.";
+    }
+    if (!session || isBroker) {
+      removeCapture(captured.id);
+      return "세입자만 현장 사진을 저장할 수 있어요.";
+    }
+    try {
+      await uploadCapture({
+        sessionId: session.sessionId,
+        image: captured.image,
+      });
+      uploadedCaptureIdsRef.current.add(captured.id);
+      return null;
+    } catch (error) {
+      removeCapture(captured.id);
+      return `현장 캡처 저장 실패: ${isApiError(error) ? error.message : "잠시 후 다시 시도해 주세요."}`;
+    }
   }, null);
 
   const deletePreviewCapture = () => {
@@ -963,23 +984,25 @@ function ReservationLivePage() {
               >
                 {camOn ? <Video /> : <VideoOff />}
               </ControlButton>
-              {/* 캡처는 이 화면에서 유일한 primary — 남길 것을 남기는 동작이다 */}
-              <form action={captureAction} className="contents">
-                <Button
-                  type="submit"
-                  size="icon-lg"
-                  aria-label="화면 캡처"
-                  title="화면 캡처"
-                  disabled={capturing}
-                  className="rounded-full"
-                >
-                  {capturing ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Camera />
-                  )}
-                </Button>
-              </form>
+              {!isBroker && (
+                // 캡처는 세입자 화면에서만 사용자 캡처 API로 즉시 저장한다.
+                <form action={captureAction} className="contents">
+                  <Button
+                    type="submit"
+                    size="icon-lg"
+                    aria-label="화면 캡처"
+                    title="화면 캡처"
+                    disabled={capturing}
+                    className="rounded-full"
+                  >
+                    {capturing ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Camera />
+                    )}
+                  </Button>
+                </form>
+              )}
               <Button
                 variant="destructive"
                 size="lg"

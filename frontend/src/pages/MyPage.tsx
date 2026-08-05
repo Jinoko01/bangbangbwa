@@ -12,6 +12,7 @@ import {
   ImageIcon,
   LogOut,
   Search,
+  Trash2,
   UserRound,
 } from "lucide-react";
 
@@ -37,7 +38,10 @@ import {
 } from "@/hooks/queries/agentVerificationQueries";
 import { useMyPropertyList } from "@/hooks/queries/propertyQueries";
 import { useUpdateProfile } from "@/hooks/queries/userQueries";
-import { usePropertyReports } from "@/hooks/queries/reportQueries";
+import {
+  useDeleteReport,
+  usePropertyReports,
+} from "@/hooks/queries/reportQueries";
 import { useAuthStore } from "@/stores/authStore";
 import { isApprovedBroker } from "@/lib/auth";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -106,19 +110,21 @@ function IdentityRail({
               <UserRound className="size-4" /> 계정
             </button>
           </li>
-          <li className="flex-1">
-            <button
-              type="button"
-              aria-current={section === "reports" ? "page" : undefined}
-              onClick={() => onSectionChange("reports")}
-              className={cn(
-                "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted",
-                section === "reports" && "bg-primary/10 text-primary",
-              )}
-            >
-              <FileText className="size-4" /> 매물 리포트
-            </button>
-          </li>
+          {user.role === "세입자" && (
+            <li className="flex-1">
+              <button
+                type="button"
+                aria-current={section === "reports" ? "page" : undefined}
+                onClick={() => onSectionChange("reports")}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted",
+                  section === "reports" && "bg-primary/10 text-primary",
+                )}
+              >
+                <FileText className="size-4" /> 매물 리포트
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
     </aside>
@@ -827,7 +833,21 @@ export function MyListingsSection() {
 function ReportsSection({ reportSaved }: { reportSaved: boolean }) {
   const navigate = useNavigate();
   const { data, isPending, isError, refetch } = usePropertyReports();
+  const deleteReport = useDeleteReport();
+  const [reportToDelete, setReportToDelete] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
   const reports = data?.content ?? [];
+
+  const handleDeleteReport = () => {
+    if (!reportToDelete) {
+      return;
+    }
+    deleteReport.mutate(reportToDelete.id, {
+      onSuccess: () => setReportToDelete(null),
+    });
+  };
 
   return (
     <section>
@@ -862,11 +882,14 @@ function ReportsSection({ reportSaved }: { reportSaved: boolean }) {
       ) : (
         <ul>
           {reports.map((report) => (
-            <li key={report.reportId} className="border-b py-3 last:border-b-0">
+            <li
+              key={report.reportId}
+              className="flex items-center gap-2 border-b py-3 last:border-b-0"
+            >
               <button
                 type="button"
                 onClick={() => navigate(`/reports/${report.reportId}`)}
-                className="flex w-full cursor-pointer items-start gap-3 rounded-lg p-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-lg p-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span
                   aria-hidden
@@ -886,10 +909,63 @@ function ReportsSection({ reportSaved }: { reportSaved: boolean }) {
                   </span>
                 </span>
               </button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label={`${report.propertyTitle} 리포트 삭제`}
+                onClick={() =>
+                  setReportToDelete({
+                    id: report.reportId,
+                    title: report.propertyTitle,
+                  })
+                }
+              >
+                <Trash2 />
+              </Button>
             </li>
           ))}
         </ul>
       )}
+      <Dialog
+        open={reportToDelete !== null}
+        onOpenChange={(open) => !open && setReportToDelete(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>리포트를 삭제할까요?</DialogTitle>
+            <DialogDescription>
+              {reportToDelete?.title} 리포트는 삭제 후 복구할 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteReport.isError && (
+            <p role="alert" className="text-sm text-destructive">
+              {isApiError(deleteReport.error)
+                ? deleteReport.error.message
+                : "리포트 삭제에 실패했습니다. 다시 시도해 주세요."}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteReport.isPending}
+              onClick={() => setReportToDelete(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteReport.isPending}
+              onClick={handleDeleteReport}
+            >
+              {deleteReport.isPending ? "삭제 중…" : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
@@ -995,7 +1071,9 @@ function MyPage({ user }: { user: User }) {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const section: MyPageSection =
-    searchParams.get("section") === "reports" ? "reports" : "account";
+    user.role === "세입자" && searchParams.get("section") === "reports"
+      ? "reports"
+      : "account";
 
   const setSection = (nextSection: MyPageSection) => {
     setSearchParams(nextSection === "reports" ? { section: "reports" } : {});

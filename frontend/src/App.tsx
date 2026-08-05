@@ -43,6 +43,21 @@ function AdminRoute() {
   );
 }
 
+// 매물 리포트는 세입자 전용 결과물이다. URL 직접 입력도 역할 가드에서 차단한다.
+function TenantReportRoute() {
+  return (
+    <RequireAuth>
+      {(user) =>
+        user.role === "세입자" ? (
+          <ReportDetailPage />
+        ) : (
+          <Navigate to="/mypage" replace />
+        )
+      }
+    </RequireAuth>
+  );
+}
+
 interface DetailRouteProps {
   onReserve: (id: number) => void;
 }
@@ -109,10 +124,7 @@ function App() {
           path="/reservations"
           element={<RequireAuth>{() => <ReservationPage />}</RequireAuth>}
         />
-        <Route
-          path="/reports/:reportId"
-          element={<RequireAuth>{() => <ReportDetailPage />}</RequireAuth>}
-        />
+        <Route path="/reports/:reportId" element={<TenantReportRoute />} />
         <Route
           path="/booking/:id"
           element={<RequireAuth>{() => <BookingPage />}</RequireAuth>}
