@@ -15,7 +15,7 @@ import type {
 // PROP-02 목록 / PROP-03 상세 / PROP-06 지도 / PROP-07 등록 / PROP-08 수정 / PROP-09 삭제 (/api/properties)
 // 필드명은 도메인 타입과 대부분 1:1이라, 여기서는 두 가지만 변환한다.
 //  - 금액: 백엔드는 원 단위, 화면·폼은 만원 단위
-//  - 사진: 상세·업로드 응답은 { imageId, imageUrl, sequence } 배열, 화면은 URL 목록
+//  - 사진: 목록 응답은 thumbnailUrl 한 장, 상세·업로드 응답은 { imageId, imageUrl, sequence } 배열
 
 const PROPERTIES_PATH = "/api/properties";
 const WON_PER_MANWON = 10_000;
@@ -42,7 +42,9 @@ interface PropertyAgentResponse {
 }
 
 // 백엔드 원본 응답 — 도메인 타입과 다른 부분(금액 단위·사진 형태)만 따로 표기한다
-export type PropertySummaryResponse = Omit<PropertySummary, "imageUrl">;
+export type PropertySummaryResponse = Omit<PropertySummary, "imageUrl"> & {
+  thumbnailUrl?: string | null;
+};
 
 type PropertyDetailResponse = Omit<
   PropertyDetail,
@@ -62,11 +64,15 @@ function toImageUrls(images: PropertyImageResponse[] | null | undefined) {
     .map((image) => image.imageUrl);
 }
 
-function toPropertySummary(response: PropertySummaryResponse): PropertySummary {
+function toPropertySummary({
+  thumbnailUrl,
+  ...rest
+}: PropertySummaryResponse): PropertySummary {
   return {
-    ...response,
-    deposit: toManwon(response.deposit),
-    monthlyRent: toManwon(response.monthlyRent),
+    ...rest,
+    deposit: toManwon(rest.deposit),
+    monthlyRent: toManwon(rest.monthlyRent),
+    imageUrl: thumbnailUrl ?? undefined,
   };
 }
 

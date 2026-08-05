@@ -795,12 +795,21 @@ export function MyListingsSection() {
               key={property.propertyId}
               className="flex items-center gap-4 border-b py-3 last:border-b-0"
             >
-              <span
-                aria-hidden
-                className="grid h-12 w-16 shrink-0 place-items-center rounded-lg bg-muted"
-              >
-                <ImageIcon className="size-4 text-muted-foreground" />
-              </span>
+              {property.imageUrl ? (
+                <img
+                  src={property.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  className="h-12 w-16 shrink-0 rounded-lg bg-muted object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className="grid h-12 w-16 shrink-0 place-items-center rounded-lg bg-muted"
+                >
+                  <ImageIcon className="size-4 text-muted-foreground" />
+                </span>
+              )}
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <button
                   type="button"
