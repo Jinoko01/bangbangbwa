@@ -841,7 +841,7 @@ function PhotoCarousel({ title, imageUrls, onPhotoClick }: PhotoCarouselProps) {
               <img
                 src={url}
                 alt={`${title} 사진 ${index + 1}`}
-                className="h-52 w-full object-cover"
+                className="h-72 w-full object-cover sm:h-96 lg:h-[30rem]"
               />
             </button>
           </SwiperSlide>
@@ -1045,7 +1045,7 @@ function PropertyDetailPage({
               ) : (
                 <div
                   aria-hidden
-                  className="grid h-64 w-full place-items-center bg-muted"
+                  className="grid h-72 w-full place-items-center bg-muted sm:h-96 lg:h-[30rem]"
                 >
                   <ImageIcon className="size-10 text-muted-foreground" />
                 </div>
