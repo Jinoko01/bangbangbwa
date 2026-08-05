@@ -1,8 +1,15 @@
-import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   createSession,
+  deleteSessionCaptures,
   endSession,
+  getSessionCaptures,
   joinSession,
   leaveSession,
   uploadUserCapture,
@@ -12,6 +19,9 @@ export const sessionKeys = {
   all: ["sessions"] as const,
   joins: () => [...sessionKeys.all, "join"] as const,
   join: (meetingId: number) => [...sessionKeys.joins(), meetingId] as const,
+  captures: () => [...sessionKeys.all, "captures"] as const,
+  captureList: (sessionId: number) =>
+    [...sessionKeys.captures(), sessionId] as const,
 };
 
 // 세션 생성이 멱등(있으면 기존 세션 반환)이라 참가자 양쪽 모두 "생성 → 입장"을
@@ -56,5 +66,30 @@ export function useUploadSessionCapture() {
   return useMutation({
     mutationFn: ({ sessionId, image }: { sessionId: number; image: Blob }) =>
       uploadUserCapture(sessionId, image),
+  });
+}
+
+export const sessionCapturesOptions = (sessionId: number) =>
+  queryOptions({
+    queryKey: sessionKeys.captureList(sessionId),
+    queryFn: ({ signal }) => getSessionCaptures(sessionId, signal),
+  });
+
+export function useStoredSessionCaptures(sessionId: number | undefined) {
+  return useQuery({
+    ...sessionCapturesOptions(sessionId ?? -1),
+    enabled: sessionId !== undefined,
+  });
+}
+
+export function useDeleteSessionCaptures(sessionId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (captureIds: number[]) =>
+      deleteSessionCaptures(sessionId, captureIds),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: sessionKeys.captureList(sessionId),
+      }),
   });
 }
