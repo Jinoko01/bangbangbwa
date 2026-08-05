@@ -495,7 +495,9 @@ function ReservationLivePage() {
     videoRef: remoteVideoRef,
     label: peerLabel,
     muted: false,
-    mirrored: false,
+    // 세입자 화면은 중개인이 본인 셀프뷰(거울 모드)로 보는 방향과 일치하게 미러링한다.
+    // CSS 반전이라 캡처(canvas)는 원본 방향 그대로 저장된다
+    mirrored: !isBroker,
     aspect: remoteAspect,
     notice: <PeerPreparingNotice status={displayStatus} />,
   };
