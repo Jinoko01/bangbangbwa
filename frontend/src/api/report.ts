@@ -20,12 +20,17 @@ export interface ReportSummary {
   createdAt: string;
 }
 
+// bbox는 YOLO 형식의 0~1 정규화 좌표 (중심 x, 중심 y, 너비, 높이)
 export interface ReportDefect {
   defectId: number;
   type: "MOLD" | "WALLPAPER_DAMAGE";
   confidence: number;
   description: string;
   status: ReportStatus;
+  bboxXCenter?: number;
+  bboxYCenter?: number;
+  bboxWidth?: number;
+  bboxHeight?: number;
 }
 
 export interface ReportCapture {
