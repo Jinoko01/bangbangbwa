@@ -2,12 +2,13 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 
 import { createInspectionSession, inspectFrame } from "@/api/inspection";
 
-const FRAME_INTERVAL_MS = 1_000;
-// AI 서버 권장 입력 크기 — 긴 변 960px (클수록 탐지 정확도가 좋다)
+const FRAME_INTERVAL_MS = 500;
+// AI 서버 권장 입력은 긴 변 960px이지만 클수록 탐지 정확도가 좋아
+// 카메라 최대 해상도(1080p) 원본 그대로 보낸다
 const TARGET_LONG_EDGE = 960;
-const JPEG_QUALITY = 0.85;
+const JPEG_QUALITY = 0.95;
 
-// RTC-06 AI 하자 검수 — 영상 프레임을 1초 간격으로 AI 탐지 서버에 흘려보낸다.
+// RTC-06 AI 하자 검수 — 영상 프레임을 0.5초 간격으로 AI 탐지 서버에 흘려보낸다.
 // 서버가 후보로 채택(saved)한 프레임의 원본 blob을 candidate_id로 보관해 두어,
 // 추후 백엔드 세션 캡처 저장(POST /api/sessions/{id}/captures)에 그대로 쓸 수 있다.
 // 이전 요청이 끝나기 전에는 다음 프레임을 건너뛰어 전송이 밀리지 않게 한다.
