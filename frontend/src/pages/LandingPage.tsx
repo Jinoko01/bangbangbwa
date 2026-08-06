@@ -442,8 +442,8 @@ function FlowSection() {
       className="border-y bg-muted/40 lg:h-[calc(100svh-3.5rem)]"
     >
       <div className="lg:flex lg:h-full lg:items-center">
-        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:max-w-5xl lg:px-8 lg:py-0">
-          <div className="mb-8">
+        <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-16 lg:max-w-5xl lg:px-8 lg:py-0">
+          <div className="mb-6 sm:mb-8">
             <p className="text-sm font-bold tracking-wider text-primary">
               이용 흐름
             </p>
@@ -452,7 +452,7 @@ function FlowSection() {
             </h2>
           </div>
 
-          <div className="grid gap-16 lg:grid-cols-[1fr_340px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_340px] lg:gap-16">
             <ol className="hidden lg:flex lg:flex-col">
               {FLOW_STEPS.map(([Icon, title, description], index) => (
                 <FlowStep
