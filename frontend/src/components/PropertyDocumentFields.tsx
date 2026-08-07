@@ -129,16 +129,7 @@ function PropertyDocumentFields({
             <SlotShell
               key={documentType}
               documentType={documentType}
-              description={
-                <>
-                  {draft.file.name}
-                  <span className="mt-0.5 block">
-                    {existing
-                      ? "저장하면 기존 서류를 교체하고 다시 분석해요"
-                      : "저장하면 업로드하고 AI 분석을 시작해요"}
-                  </span>
-                </>
-              }
+              description={<>{draft.file.name}</>}
               actions={
                 <Button
                   type="button"
@@ -234,9 +225,8 @@ function PropertyDocumentFields({
         <p className="text-xs text-destructive">{error}</p>
       ) : (
         <p className="text-xs font-normal text-muted-foreground">
-          등기부등본·건축물대장을 올리면 AI가 권리관계를 분석해 매물 상세에
-          위험도와 요약을 보여줍니다 (PDF, {PROPERTY_LIMITS.documentMaxSizeMb}MB
-          이하)
+          등기부등본·건축물대장을 올리면 매물 상세에서 요약을 보여줍니다 (PDF,
+          {PROPERTY_LIMITS.documentMaxSizeMb}MB 이하)
         </p>
       )}
     </div>
