@@ -23,9 +23,11 @@ export const PROPERTY_LIMITS = {
   builtYearMin: 1900,
   builtYearMax: 2100,
   imageMaxSizeMb: 5,
+  documentMaxSizeMb: 10,
 } as const;
 
 const IMAGE_MAX_SIZE_BYTES = PROPERTY_LIMITS.imageMaxSizeMb * 1024 * 1024;
+const DOCUMENT_MAX_SIZE_BYTES = PROPERTY_LIMITS.documentMaxSizeMb * 1024 * 1024;
 
 export interface PropertyFormInput {
   title: string;
@@ -157,6 +159,17 @@ export function validateImageFile(file: File) {
   }
   if (file.size > IMAGE_MAX_SIZE_BYTES) {
     return `${PROPERTY_LIMITS.imageMaxSizeMb}MB 이하 이미지만 등록할 수 있어요`;
+  }
+  return null;
+}
+
+// 매물 서류 검증 — 서버가 PDF만 분석할 수 있다 (통과 시 null)
+export function validateDocumentFile(file: File) {
+  if (file.type !== "application/pdf") {
+    return "PDF 파일만 등록할 수 있어요";
+  }
+  if (file.size > DOCUMENT_MAX_SIZE_BYTES) {
+    return `${PROPERTY_LIMITS.documentMaxSizeMb}MB 이하 PDF만 등록할 수 있어요`;
   }
   return null;
 }

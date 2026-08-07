@@ -17,6 +17,10 @@ import {
   X,
 } from "lucide-react";
 
+import PropertyDocumentFields, {
+  type DocumentDraft,
+  type DocumentDrafts,
+} from "@/components/PropertyDocumentFields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +35,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ROOM_TYPES } from "@/data/properties";
 import { Textarea } from "@/components/ui/textarea";
 import { isApiError } from "@/api/error";
+import {
+  useDeletePropertyDocument,
+  usePropertyDocuments,
+  useRegisterPropertyDocument,
+  useReplacePropertyDocument,
+} from "@/hooks/queries/propertyDocumentQueries";
 import {
   useCreateProperty,
   useIsMyProperty,
@@ -49,6 +59,7 @@ import {
 import {
   DEPOSIT_LABEL,
   PROPERTY_LIMITS,
+  validateDocumentFile,
   validateImageFile,
   validatePropertyForm,
   type PropertyFormInput,
@@ -56,6 +67,7 @@ import {
 import { cn } from "@/lib/utils";
 import type {
   DealType,
+  DocumentType,
   PropertyCreateInput,
   PropertyDetail,
   PropertyEnvironment,
@@ -493,6 +505,12 @@ function PropertyForm({ property }: PropertyFormProps) {
   const { mutateAsync: createProperty } = useCreateProperty();
   const { mutateAsync: updateProperty } = useUpdateProperty();
   const { mutateAsync: uploadImages } = useUploadPropertyImages();
+  // 서류는 매물이 있어야 조회할 수 있다 — 신규 등록 화면은 빈 슬롯에서 시작한다
+  const { data: documents = [], isPending: isLoadingDocuments } =
+    usePropertyDocuments(property?.propertyId ?? 0, property !== null);
+  const { mutateAsync: registerDocument } = useRegisterPropertyDocument();
+  const { mutateAsync: replaceDocument } = useReplacePropertyDocument();
+  const { mutateAsync: deleteDocument } = useDeletePropertyDocument();
   const [dealType, setDealType] = useState<DealType>(
     property?.transactionType ?? "전세",
   );
@@ -521,6 +539,9 @@ function PropertyForm({ property }: PropertyFormProps) {
       .map((url) => ({ url })) ?? [],
   );
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // 서류도 사진과 같은 규칙 — 고르면 슬롯에 담아두고 저장할 때 한 번에 서버로 보낸다
+  const [documentDrafts, setDocumentDrafts] = useState<DocumentDrafts>({});
+  const [documentError, setDocumentError] = useState<string | null>(null);
   // 등록은 성공했는데 사진 업로드만 실패한 경우 — 다시 제출해도 매물이 중복 생성되지 않게 id를 기억한다
   const [createdPropertyId, setCreatedPropertyId] = useState<number | null>(
     null,
@@ -579,6 +600,27 @@ function PropertyForm({ property }: PropertyFormProps) {
   const handleExtraRemove = (index: number) => {
     setExtraPhotos((prev) => prev.filter((_, i) => i !== index));
     setPhotoError(null);
+  };
+
+  const handleDocumentChange = (
+    documentType: DocumentType,
+    draft: DocumentDraft | null,
+  ) => {
+    const fileError = draft?.file ? validateDocumentFile(draft.file) : null;
+    if (fileError) {
+      setDocumentError(fileError);
+      return;
+    }
+    setDocumentError(null);
+    setDocumentDrafts((prev) => {
+      const next = { ...prev };
+      if (draft) {
+        next[documentType] = draft;
+      } else {
+        delete next[documentType];
+      }
+      return next;
+    });
   };
 
   const loadEnvironment = (resolved: GeocodedAddress) => {
@@ -651,6 +693,40 @@ function PropertyForm({ property }: PropertyFormProps) {
     [coverPhoto, ...extraPhotos]
       .map((photo) => photo?.file)
       .filter((file): file is File => file !== undefined);
+
+  // 업로드가 끝난 원본은 버린다 — 뒤 단계가 실패해 다시 제출해도 같은 사진이 또 올라가지 않게
+  const forgetUploadedPhotoFiles = () => {
+    setCoverPhoto((prev) => (prev ? { url: prev.url } : prev));
+    setExtraPhotos((prev) => prev.map(({ url }) => ({ url })));
+  };
+
+  // 슬롯에 담아둔 변경을 종류별로 반영한다. 성공한 슬롯은 바로 비워
+  // 뒤 슬롯에서 실패해 다시 제출해도 앞 슬롯이 중복 등록되지 않게 한다
+  const submitDocuments = async (propertyId: number) => {
+    const drafts = Object.entries(documentDrafts) as Array<
+      [DocumentType, DocumentDraft]
+    >;
+
+    for (const [documentType, draft] of drafts) {
+      const existing = documents.find(
+        (document) => document.documentType === documentType,
+      );
+
+      if (draft.file) {
+        await (existing
+          ? replaceDocument({
+              propertyId,
+              documentId: existing.documentId,
+              file: draft.file,
+            })
+          : registerDocument({ propertyId, documentType, file: draft.file }));
+      } else if (draft.removed && existing) {
+        await deleteDocument({ propertyId, documentId: existing.documentId });
+      }
+
+      handleDocumentChange(documentType, null);
+    }
+  };
 
   const [formState, submitAction, isPending] = useActionState(
     async (_prev: FormState | null, formData: FormData) => {
@@ -735,6 +811,7 @@ function PropertyForm({ property }: PropertyFormProps) {
       if (files.length > 0) {
         try {
           await uploadImages({ propertyId, files });
+          forgetUploadedPhotoFiles();
         } catch {
           // 매물은 이미 저장됐으므로 다시 제출하면 사진 업로드만 재시도한다
           setFormVersion((version) => version + 1);
@@ -746,6 +823,21 @@ function PropertyForm({ property }: PropertyFormProps) {
             values,
           };
         }
+      }
+
+      try {
+        await submitDocuments(propertyId);
+      } catch (failure) {
+        // 매물·사진은 이미 저장됐고 반영되지 않은 서류만 슬롯에 남아 있다
+        setFormVersion((version) => version + 1);
+        return {
+          errors: {
+            submit: `매물은 저장됐지만 서류 반영에 실패했어요.${
+              isApiError(failure) ? ` (${failure.message})` : ""
+            } 저장을 다시 누르면 남은 서류만 다시 시도합니다`,
+          },
+          values,
+        };
       }
 
       navigate(
@@ -984,6 +1076,16 @@ function PropertyForm({ property }: PropertyFormProps) {
         {photoError && (
           <p className="text-xs text-destructive sm:col-span-2">{photoError}</p>
         )}
+      </FormSection>
+
+      <FormSection title="서류">
+        <PropertyDocumentFields
+          documents={documents}
+          drafts={documentDrafts}
+          isLoading={property !== null && isLoadingDocuments}
+          error={documentError}
+          onChange={handleDocumentChange}
+        />
       </FormSection>
 
       {errors?.submit ? (

@@ -1,16 +1,20 @@
-// 원격 파일을 받아 지정한 이름으로 저장 — 교차 출처 URL은 download 속성이 무시되므로 blob을 경유한다
-export async function downloadFileFromUrl(url: string, fileName: string) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`다운로드 실패 (${response.status})`);
-  }
-  const blob = await response.blob();
+// 메모리에 있는 파일을 지정한 이름으로 내려받게 한다
+export function saveBlobAsFile(blob: Blob, fileName: string) {
   const objectUrl = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = objectUrl;
   anchor.download = fileName;
   anchor.click();
   URL.revokeObjectURL(objectUrl);
+}
+
+// 원격 파일을 받아 지정한 이름으로 저장 — 교차 출처 URL은 download 속성이 무시되므로 blob을 경유한다
+export async function downloadFileFromUrl(url: string, fileName: string) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`다운로드 실패 (${response.status})`);
+  }
+  saveBlobAsFile(await response.blob(), fileName);
 }
 
 // 업로드한 파일을 data URL로 변환 — 이미지 미리보기·목데이터 저장용
