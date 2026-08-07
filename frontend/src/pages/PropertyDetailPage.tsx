@@ -24,6 +24,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 import "swiper/css";
 
+import PropertyDocumentSection from "@/components/PropertyDocumentSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1154,6 +1155,13 @@ function PropertyDetailPage({
                 </Button>
               )}
             </div>
+
+            <PropertyDocumentSection
+              propertyId={property.propertyId}
+              propertyTitle={property.title}
+              canManage={canManage}
+              isLoggedIn={user !== null}
+            />
 
             <NearbyFacilitiesSection
               facilities={property.nearbyFacilities ?? []}

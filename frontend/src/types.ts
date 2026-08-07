@@ -154,6 +154,24 @@ export interface PropertyCreateInput {
 // PROP-08 매물 수정(PATCH) — 등록 요청과 같은 필드를 받되 environment는 받지 않는다
 export type PropertyUpdateInput = Omit<PropertyCreateInput, "environment">;
 
+// ── 매물 서류 API 계약 (Swagger /api/properties/{id}/documents) ──────────
+// documentType·riskLevel은 백엔드 enum의 한글 value, status는 enum name이 그대로 온다
+export const DOCUMENT_TYPES = ["등기부등본", "건축물대장"] as const;
+
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+export type DocumentStatus = "PROCESSING" | "COMPLETED" | "FAILED";
+export type RiskLevel = "안전" | "주의" | "위험";
+
+// riskLevel·summary는 AI 분석이 끝나야 채워진다 (분석 중·실패 시 없음)
+export interface PropertyDocument {
+  documentId: number;
+  documentType: DocumentType;
+  status: DocumentStatus;
+  riskLevel?: RiskLevel;
+  summary?: string;
+  downloadable: boolean;
+}
+
 // ── 회의 API 계약 (Swagger /api/meetings) ────────────────────────────────
 export type MeetingStatus =
   "OPEN" | "REQUESTED" | "CONFIRMED" | "COMPLETED" | "REJECTED" | "CANCELED";

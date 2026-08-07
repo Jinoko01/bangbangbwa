@@ -6,6 +6,7 @@ import {
   Circle,
   ClipboardCheck,
   Clock3,
+  Download,
   MapPin,
   Sparkles,
   TriangleAlert,
@@ -17,7 +18,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { ReportCapture, ReportDefect } from "@/api/report";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useReportDetail } from "@/hooks/queries/reportQueries";
+import {
+  useDownloadReport,
+  useReportDetail,
+} from "@/hooks/queries/reportQueries";
 import { usePropertyDetail } from "@/hooks/queries/propertyQueries";
 import { formatDateTime } from "@/lib/format";
 import type { ChecklistItem } from "@/types";
@@ -357,6 +361,11 @@ function ReportDetailPage() {
     report?.propertyId ?? -1,
     report !== undefined,
   );
+  const {
+    mutate: downloadReport,
+    isPending: isDownloading,
+    isError: isDownloadError,
+  } = useDownloadReport();
 
   if (isPending) {
     return (
@@ -403,7 +412,7 @@ function ReportDetailPage() {
 
         <header className="overflow-hidden rounded-2xl border bg-background shadow-sm">
           <div className="border-b px-5 py-6 sm:px-8 sm:py-8">
-            <div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                   {property?.title ?? `매물 #${report.propertyId}`}
@@ -414,6 +423,27 @@ function ReportDetailPage() {
                     ? `${property.sigungu} ${property.dong}`
                     : "매물 위치 확인 중"}
                 </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
+                <Button
+                  variant="outline"
+                  className="min-h-11"
+                  disabled={isDownloading}
+                  onClick={() =>
+                    downloadReport({
+                      reportId: report.reportId,
+                      fallbackFileName: `${property?.title ?? `매물_${report.propertyId}`}_점검리포트.pdf`,
+                    })
+                  }
+                >
+                  <Download className="size-4" />
+                  {isDownloading ? "받는 중..." : "PDF 다운로드"}
+                </Button>
+                {isDownloadError && (
+                  <p role="alert" className="text-xs text-destructive">
+                    리포트를 받지 못했어요. 잠시 후 다시 시도해 주세요
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -541,8 +571,11 @@ function ReportDetailPage() {
                           {formatDateTime(capture.capturedAt)}
                         </p>
                         {capture.defects.length === 0 ? (
-                          <p className="mt-2 flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-                            <CheckCircle2 className="size-4" /> 발견된 이상 없음
+                          // AI가 이상을 찾지 못한 사진 — 사용자가 직접 남긴 기록이라
+                          // 안전하다는 판정처럼 읽히지 않게 사실만 적는다
+                          <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                            <Camera className="size-4" /> 사용자가 캡쳐한
+                            사진입니다.
                           </p>
                         ) : (
                           <div className="mt-2 space-y-2">

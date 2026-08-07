@@ -41,7 +41,7 @@ client.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     if (isApiError(error)) {
       return Promise.reject(error);
     }
@@ -56,7 +56,13 @@ client.interceptors.response.use(
       clearAccessToken();
     }
 
-    const body = error.response.data as ApiResponse<never> | undefined;
+    // 파일 다운로드(responseType: "blob")는 실패 응답의 envelope까지 Blob으로 받는다 —
+    // 텍스트로 풀어야 백엔드가 준 code·message를 살릴 수 있다
+    const body =
+      error.response.data instanceof Blob
+        ? await readErrorBlob(error.response.data)
+        : (error.response.data as ApiResponse<never> | undefined);
+
     return Promise.reject(
       new ApiError(
         error.response.status,
@@ -66,6 +72,31 @@ client.interceptors.response.use(
     );
   },
 );
+
+async function readErrorBlob(blob: Blob) {
+  try {
+    return JSON.parse(await blob.text()) as ApiResponse<never>;
+  } catch {
+    // PDF·HTML 등 JSON이 아닌 오류 본문 — 상태 코드 기반 기본 메시지로 넘긴다
+    return undefined;
+  }
+}
+
+// Content-Disposition의 filename*(RFC 5987) → filename 순으로 서버가 정한 파일명을 읽는다
+function parseFileName(disposition: unknown) {
+  if (typeof disposition !== "string") {
+    return undefined;
+  }
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1]);
+    } catch {
+      return undefined;
+    }
+  }
+  return /filename="?([^";]+)"?/i.exec(disposition)?.[1];
+}
 
 type FetcherConfig = Pick<AxiosRequestConfig, "params" | "signal">;
 type FetcherHeaders = AxiosRequestConfig["headers"];
@@ -107,6 +138,31 @@ export const api = {
     headers?: FetcherHeaders;
     config?: FetcherConfig;
   }) => client.get<ApiResponse<T>>(path, { ...config, headers }).then(unwrap),
+  /**
+   * 파일 다운로드용 GET. 공통 envelope 대신 바이너리를 그대로 받는다 —
+   * 인증이 필요한 파일은 `<a download>`이나 생 `fetch`로 받을 수 없어 이 fetcher를 쓴다.
+   * @returns 응답 본문 `blob`과 `Content-Disposition`에서 읽은 `fileName`(없으면 `undefined`)
+   * @throws {ApiError} 실패 응답은 Blob 본문을 JSON으로 풀어 메시지를 담는다
+   * @example
+   * const { blob, fileName } = await api.getBlob({
+   *   path: `/api/properties/${propertyId}/documents/${documentId}/download`,
+   * });
+   */
+  getBlob: ({
+    path,
+    headers,
+    config,
+  }: {
+    path: string;
+    headers?: FetcherHeaders;
+    config?: FetcherConfig;
+  }) =>
+    client
+      .get<Blob>(path, { ...config, headers, responseType: "blob" })
+      .then((response) => ({
+        blob: response.data,
+        fileName: parseFileName(response.headers["content-disposition"]),
+      })),
   /**
    * POST 요청. `body`는 JSON으로 직렬화되며 `FormData`면 multipart로 전송된다.
    * @returns envelope의 `data` — 응답에 data가 없으면 `T = void`로 호출

@@ -79,3 +79,8 @@ export function getReportStatus(reportId: number) {
     path: `${REPORTS_PATH}/${reportId}/status`,
   });
 }
+
+// 인증이 필요한 바이너리 응답이라 envelope를 벗기지 않는 getBlob을 쓴다
+export function downloadReport(reportId: number) {
+  return api.getBlob({ path: `${REPORTS_PATH}/${reportId}/download` });
+}
