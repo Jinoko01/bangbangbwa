@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock3,
   Home,
+  ImageIcon,
   MapPin,
   Pencil,
   ShieldCheck,
@@ -466,7 +467,7 @@ function MeetingListItem({
       )}
       onClick={onSelect}
     >
-      <PropertyTitle propertyId={meeting.propertyId} />
+      <PropertySnippet propertyId={meeting.propertyId} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <MeetingStatusBadge status={meeting.status} />
         <Badge variant="outline">
@@ -483,14 +484,31 @@ function MeetingListItem({
   );
 }
 
-// 매물 제목은 회의 응답에 없어 매물 상세로 따로 채운다
-function PropertyTitle({ propertyId }: { propertyId: number }) {
+// 매물 썸네일과 제목은 회의 응답에 없어 매물 상세로 따로 채운다
+function PropertySnippet({ propertyId }: { propertyId: number }) {
   const { data: property } = usePropertyDetail(propertyId);
+  const thumbnailUrl = property?.imageUrls?.[0] ?? property?.imageUrl;
 
   return (
-    <strong className="block truncate text-sm">
-      {property?.title ?? `매물 #${propertyId}`}
-    </strong>
+    <span className="flex items-center gap-2.5">
+      {thumbnailUrl ? (
+        <img
+          src={thumbnailUrl}
+          alt=""
+          className="size-10 shrink-0 rounded-lg object-cover"
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted"
+        >
+          <ImageIcon className="size-4 text-muted-foreground" />
+        </span>
+      )}
+      <strong className="min-w-0 truncate text-sm">
+        {property?.title ?? `매물 #${propertyId}`}
+      </strong>
+    </span>
   );
 }
 
@@ -664,14 +682,18 @@ function PropertyBrief({
     );
   }
 
+  const thumbnailUrl = property.imageUrls?.[0] ?? property.imageUrl;
+
   return (
     <div className="grid overflow-hidden rounded-xl border sm:grid-cols-[220px_1fr]">
-      {property.imageUrl ? (
-        <img
-          src={property.imageUrl}
-          alt={`${property.title} 매물 사진`}
-          className="h-44 w-full object-cover sm:h-full"
-        />
+      {thumbnailUrl ? (
+        <div className="relative h-44 sm:h-auto sm:min-h-44">
+          <img
+            src={thumbnailUrl}
+            alt={`${property.title} 매물 사진`}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
       ) : (
         <div className="hidden bg-slate-100 sm:block" />
       )}

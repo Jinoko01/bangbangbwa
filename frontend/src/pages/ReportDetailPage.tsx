@@ -12,8 +12,10 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import type { ReportCapture, ReportDefect } from "@/api/report";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -240,6 +242,110 @@ function ReportSummaryDocument({ summary }: { summary: string }) {
   );
 }
 
+const DEFECT_TYPE_LABEL: Record<ReportDefect["type"], string> = {
+  MOLD: "곰팡이",
+  WALLPAPER_DAMAGE: "벽지 손상",
+};
+
+const CAPTURE_FRAME_RATIO = 16 / 9;
+
+interface DefectBox {
+  defectId: number;
+  label: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function toDefectBox(defect: ReportDefect): DefectBox | null {
+  const { bboxXCenter, bboxYCenter, bboxWidth, bboxHeight } = defect;
+  if (
+    bboxXCenter === undefined ||
+    bboxYCenter === undefined ||
+    bboxWidth === undefined ||
+    bboxHeight === undefined
+  ) {
+    return null;
+  }
+
+  const clamp = (value: number) => Math.min(1, Math.max(0, value));
+  const left = clamp(bboxXCenter - bboxWidth / 2);
+  const top = clamp(bboxYCenter - bboxHeight / 2);
+
+  return {
+    defectId: defect.defectId,
+    label: `${DEFECT_TYPE_LABEL[defect.type]} ${Math.round(defect.confidence * 100)}%`,
+    left,
+    top,
+    width: clamp(bboxXCenter + bboxWidth / 2) - left,
+    height: clamp(bboxYCenter + bboxHeight / 2) - top,
+  };
+}
+
+// bbox 좌표는 원본 이미지 기준 비율이라, object-contain으로 생기는 레터박스
+// 여백을 제외한 실제 이미지 영역 위에 오버레이를 얹어야 좌표가 맞는다
+function CaptureImageWithDefects({ capture }: { capture: ReportCapture }) {
+  const [naturalRatio, setNaturalRatio] = useState<number | null>(null);
+  const boxes = capture.defects.map(toDefectBox).filter((box) => box !== null);
+
+  let content = { left: 0, top: 0, width: 1, height: 1 };
+  if (naturalRatio !== null && naturalRatio !== CAPTURE_FRAME_RATIO) {
+    if (naturalRatio > CAPTURE_FRAME_RATIO) {
+      const height = CAPTURE_FRAME_RATIO / naturalRatio;
+      content = { left: 0, top: (1 - height) / 2, width: 1, height };
+    } else {
+      const width = naturalRatio / CAPTURE_FRAME_RATIO;
+      content = { left: (1 - width) / 2, top: 0, width, height: 1 };
+    }
+  }
+
+  return (
+    <div className="relative">
+      <img
+        src={capture.imageUrl}
+        alt={`${formatDateTime(capture.capturedAt)} 현장 캡처`}
+        className="aspect-video w-full bg-slate-900 object-contain"
+        onLoad={(event) => {
+          const { naturalWidth, naturalHeight } = event.currentTarget;
+          if (naturalWidth && naturalHeight) {
+            setNaturalRatio(naturalWidth / naturalHeight);
+          }
+        }}
+      />
+      {naturalRatio !== null && boxes.length > 0 && (
+        <div
+          className="absolute"
+          style={{
+            left: `${content.left * 100}%`,
+            top: `${content.top * 100}%`,
+            width: `${content.width * 100}%`,
+            height: `${content.height * 100}%`,
+          }}
+          aria-hidden="true"
+        >
+          {boxes.map((box) => (
+            <div
+              key={box.defectId}
+              className="absolute rounded-sm border-2 border-amber-400 bg-amber-400/10"
+              style={{
+                left: `${box.left * 100}%`,
+                top: `${box.top * 100}%`,
+                width: `${box.width * 100}%`,
+                height: `${box.height * 100}%`,
+              }}
+            >
+              <span className="absolute top-0.5 left-0.5 rounded-sm bg-amber-400 px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-slate-900">
+                {box.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReportDetailPage() {
   const { reportId: reportIdParam } = useParams();
   const navigate = useNavigate();
@@ -459,11 +565,7 @@ function ReportDetailPage() {
                       key={capture.captureId}
                       className="overflow-hidden rounded-xl border bg-muted/20"
                     >
-                      <img
-                        src={capture.imageUrl}
-                        alt={`${formatDateTime(capture.capturedAt)} 현장 캡처`}
-                        className="aspect-video w-full bg-slate-900 object-contain"
-                      />
+                      <CaptureImageWithDefects capture={capture} />
                       <figcaption className="px-4 py-3">
                         <p className="text-xs text-muted-foreground">
                           {formatDateTime(capture.capturedAt)}

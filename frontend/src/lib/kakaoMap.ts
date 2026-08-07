@@ -344,8 +344,8 @@ const SPREAD_ANGLE_RADIAN = 2.399963;
 const SPREAD_RADIUS_DEGREE = 0.00045;
 
 /**
- * 매물 목록 응답에는 개별 위경도가 없어 같은 동의 매물이 동일 좌표에 겹친다.
- * 같은 주소의 두 번째 매물부터 가까운 반경에 펼쳐, 확대 시 모든 핀이 보이게 한다.
+ * 같은 건물의 매물들(실좌표 동일)이나 좌표가 없어 동 중심으로 대신 찍힌 매물들처럼
+ * 완전히 겹친 핀을, 두 번째부터 가까운 반경에 펼쳐 확대 시 모든 핀이 보이게 한다.
  */
 export function spreadOverlappingPosition(
   latitude: number,
