@@ -8,10 +8,12 @@ import {
 import {
   createReport,
   deleteReport,
+  downloadReport,
   getMyReports,
   getReport,
   getReportStatus,
 } from "@/api/report";
+import { saveBlobAsFile } from "@/lib/file";
 
 const REPORT_STATUS_INTERVAL_MS = 1_000;
 const REPORT_STATUS_ATTEMPTS = 15;
@@ -71,6 +73,22 @@ export function useCreateReport() {
     mutationFn: (sessionId: number) => createReportAndWait(sessionId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: reportKeys.lists() }),
+  });
+}
+
+// 파일 저장까지가 한 동작이라 mutation으로 둔다 — isPending으로 중복 클릭을 막는다
+export function useDownloadReport() {
+  return useMutation({
+    mutationFn: async ({
+      reportId,
+      fallbackFileName,
+    }: {
+      reportId: number;
+      fallbackFileName: string;
+    }) => {
+      const { blob, fileName } = await downloadReport(reportId);
+      saveBlobAsFile(blob, fileName ?? fallbackFileName);
+    },
   });
 }
 
