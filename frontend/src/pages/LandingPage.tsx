@@ -989,7 +989,6 @@ function getActiveSnapIndex() {
 
 function LandingPage() {
   const reducedMotion = useReducedMotion();
-  const isDesktop = useIsDesktop();
   // 요청 섹션의 투어 장면 확대 모달 (모바일 썸네일 전용)
   const [tourPhotoOpen, setTourPhotoOpen] = useState(false);
   const activeSnapIndex = useSyncExternalStore(
@@ -1133,8 +1132,7 @@ function LandingPage() {
       >
         <div className="relative isolate h-full overflow-hidden bg-slate-900">
           <video
-            key={isDesktop ? "desktop" : "mobile"}
-            src={isDesktop ? "/hero-tour.mp4" : "/hero-tour-mobile.mp4"}
+            src="/hero-tour.mp4"
             poster="/hero-poster.webp"
             autoPlay
             muted
