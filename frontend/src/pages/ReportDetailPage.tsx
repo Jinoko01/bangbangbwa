@@ -469,8 +469,11 @@ function ReportDetailPage() {
                           {formatDateTime(capture.capturedAt)}
                         </p>
                         {capture.defects.length === 0 ? (
-                          <p className="mt-2 flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-                            <CheckCircle2 className="size-4" /> 발견된 이상 없음
+                          // AI가 이상을 찾지 못한 사진 — 사용자가 직접 남긴 기록이라
+                          // 안전하다는 판정처럼 읽히지 않게 사실만 적는다
+                          <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                            <Camera className="size-4" /> 사용자가 캡쳐한
+                            사진입니다.
                           </p>
                         ) : (
                           <div className="mt-2 space-y-2">
