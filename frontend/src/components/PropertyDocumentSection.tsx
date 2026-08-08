@@ -54,21 +54,13 @@ function DocumentSlot({
   documentType,
   document,
   propertyId,
-  propertyTitle,
   canManage,
 }: {
   documentType: DocumentType;
   document?: PropertyDocument;
   propertyId: number;
-  propertyTitle: string;
   canManage: boolean;
 }) {
-  const {
-    mutate: download,
-    isPending: isDownloading,
-    isError: isDownloadError,
-  } = useDownloadPropertyDocument();
-
   return (
     <div className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 gap-3">
@@ -90,40 +82,67 @@ function DocumentSlot({
           <p aria-live="polite" className="mt-1 text-sm text-muted-foreground">
             {describeDocument(document, canManage)}
           </p>
-          {isDownloadError && (
-            <p role="alert" className="mt-1 text-xs text-destructive">
-              분석 PDF를 받지 못했어요. 잠시 후 다시 시도해 주세요
-            </p>
-          )}
         </div>
       </div>
 
       <div className="shrink-0">
-        {document?.downloadable ? (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isDownloading}
-            onClick={() =>
-              download({
-                propertyId,
-                documentId: document.documentId,
-                fallbackFileName: `${propertyTitle}_${documentType}_분석.pdf`,
-              })
-            }
-          >
-            <Download />
-            {isDownloading ? "받는 중..." : "분석 PDF"}
+        {!document && canManage && (
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/properties/${propertyId}/edit`}>서류 등록</Link>
           </Button>
-        ) : (
-          !document &&
-          canManage && (
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/properties/${propertyId}/edit`}>서류 등록</Link>
-            </Button>
-          )
         )}
       </div>
+    </div>
+  );
+}
+
+// 분석 결과는 두 서류를 합친 PDF 한 부로 내려온다 — 둘 다 분석이 끝나야 받을 수 있다
+function DocumentReportDownload({
+  documents,
+  propertyId,
+  propertyTitle,
+}: {
+  documents: PropertyDocument[];
+  propertyId: number;
+  propertyTitle: string;
+}) {
+  const {
+    mutate: download,
+    isPending: isDownloading,
+    isError: isDownloadError,
+  } = useDownloadPropertyDocument();
+
+  const isReady =
+    documents.length === DOCUMENT_TYPES.length &&
+    documents.every((document) => document.downloadable);
+
+  return (
+    <div className="flex flex-col gap-2 border-t pt-3">
+      {!isReady && (
+        <p className="text-xs text-muted-foreground">
+          두 서류의 분석이 모두 끝나면 통합 분석 PDF를 받을 수 있어요
+        </p>
+      )}
+      {isDownloadError && (
+        <p role="alert" className="text-xs text-destructive">
+          분석 PDF를 받지 못했어요. 잠시 후 다시 시도해 주세요
+        </p>
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        className="cursor-pointer sm:self-end"
+        disabled={!isReady || isDownloading}
+        onClick={() =>
+          download({
+            propertyId,
+            fallbackFileName: `${propertyTitle}_서류분석.pdf`,
+          })
+        }
+      >
+        <Download />
+        {isDownloading ? "받는 중..." : "분석 PDF"}
+      </Button>
     </div>
   );
 }
@@ -201,10 +220,14 @@ function PropertyDocumentSection({
             (document) => document.documentType === documentType,
           )}
           propertyId={propertyId}
-          propertyTitle={propertyTitle}
           canManage={canManage}
         />
       ))}
+      <DocumentReportDownload
+        documents={documents}
+        propertyId={propertyId}
+        propertyTitle={propertyTitle}
+      />
     </SectionCard>
   );
 }

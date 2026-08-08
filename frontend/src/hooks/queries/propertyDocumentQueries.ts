@@ -104,17 +104,12 @@ export function useDownloadPropertyDocument() {
   return useMutation({
     mutationFn: async ({
       propertyId,
-      documentId,
       fallbackFileName,
     }: {
       propertyId: number;
-      documentId: number;
       fallbackFileName: string;
     }) => {
-      const { blob, fileName } = await downloadPropertyDocument(
-        propertyId,
-        documentId,
-      );
+      const { blob, fileName } = await downloadPropertyDocument(propertyId);
       saveBlobAsFile(blob, fileName ?? fallbackFileName);
     },
   });

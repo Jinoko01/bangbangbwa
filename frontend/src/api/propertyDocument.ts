@@ -101,11 +101,8 @@ export function deletePropertyDocument(
 }
 
 // 분석 완료(downloadable) 서류만 받을 수 있다. 인증이 필요한 바이너리라 api.getBlob을 쓴다
-export function downloadPropertyDocument(
-  propertyId: number,
-  documentId: number,
-) {
+export function downloadPropertyDocument(propertyId: number) {
   return api.getBlob({
-    path: `${documentsPath(propertyId)}/${documentId}/download`,
+    path: `${documentsPath(propertyId)}/download`,
   });
 }
