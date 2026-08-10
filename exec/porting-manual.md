@@ -160,4 +160,16 @@ spring:
 | RunPod | AI 분석 서버 호스팅 (`*-8000.proxy.runpod.net`) | runpod.io |
 | AWS EC2 | `i15a504.p.ssafy.io`, 보안 그룹 관리 | SSAFY 제공 계정 |
 
+## 2. 프로젝트에서 사용하는 외부 서비스 정보를 정리한 문서
+| # | 서비스 | 용도 | 사용 위치 |
+|---|--------|------|-----------|
+| 1 | 카카오 디벨로퍼스 | 카카오 소셜 로그인(OAuth), 카카오맵(지도·주변 편의시설) | BE / FE |
+| 2 | Google Cloud Console | 구글 소셜 로그인(OAuth) | BE / FE |
+| 3 | AWS S3 | 매물 이미지, 중개사 인증 서류, 라이브 세션 캡처 저장 | BE |
+| 4 | RunPod | YOLO 하자 탐지 AI 추론 서버(FastAPI) 호스팅 | AI / FE |
+| 5 | SSAFY GMS | Claude API(claude-sonnet-4-6) 호출 게이트웨이 | BE |
+| 6 | 서울 열린데이터광장 | 부동산 중개업소 공공데이터 — 중개업 등록번호 검증 | BE |
+| 7 | (참고) STUN/TURN | WebRTC 연결용 — 공개 STUN + 자체 호스팅 coturn | FE / Infra |
+| 8 | (개발용) ngrok | 로컬 서버 외부 노출(터널링) | 개발 편의 |
+
 > ⚠️ 이 문서와 저장소에 포함된 키·비밀번호(TURN credential, Google client secret 등)는 팀 외부에 공개될 경우 즉시 교체할 것.
