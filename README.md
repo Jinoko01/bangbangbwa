@@ -140,30 +140,7 @@ flowchart LR
 
 ## 🏗️ 시스템 아키텍처
 
-```mermaid
-flowchart TB
-    subgraph Client[Client]
-        TENANT["세입자<br/>React Client"]
-        AGENT["공인중개사<br/>React Client"]
-    end
-
-    TENANT <-->|"WebRTC 영상·음성"| AGENT
-    TENANT -. "P2P 연결 실패 시 relay" .-> TURN["coturn<br/>STUN / TURN"]
-    AGENT -. "P2P 연결 실패 시 relay" .-> TURN
-
-    TENANT <-->|"WebSocket signaling"| SIGNAL["시그널링 서버"]
-    AGENT <-->|"WebSocket signaling"| SIGNAL
-    TENANT -->|"REST API"| API["Spring Boot API"]
-    AGENT -->|"REST API"| API
-
-    TENANT --> MAP["Kakao Maps / Local API"]
-    TENANT -->|"라이브 프레임"| VISION["FastAPI + YOLO<br/>RunPod"]
-
-    API --> DB[(PostgreSQL)]
-    API --> S3[(Amazon S3)]
-    API --> AUTH["Kakao / Google OAuth"]
-    API --> LLM["Claude API"]
-```
+<img width="2454" height="1415" alt="image" src="https://github.com/user-attachments/assets/0daa0a85-bf00-4017-9e9f-dadf3ef81f54" />
 
 - React 클라이언트는 Spring Boot REST API 및 WebSocket 시그널링 서버와 통신합니다.
 - 세입자와 중개사의 영상·음성은 WebRTC로 직접 전달되며, 연결이 어려울 때 coturn이 중계합니다.
