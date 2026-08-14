@@ -120,21 +120,84 @@ flowchart LR
 
 ## 🖥️ 주요 화면
 
-| 화면           | 경로                                      | 주요 기능                                    |
-| -------------- | ----------------------------------------- | -------------------------------------------- |
-| 랜딩           | `/`                                       | 서비스 소개, 매물 미리보기, 이용 흐름 안내   |
-| 로그인         | `/login`                                  | Kakao·Google 소셜 로그인                     |
-| 매물 목록      | `/properties`                             | 검색·필터, Kakao 지도, 매물 카드, 찜         |
-| 매물 상세      | `/properties/:id`                         | 매물·중개사·주변 시설·서류 정보, 예약 진입   |
-| 매물 등록·수정 | `/properties/new`, `/properties/:id/edit` | 중개사 매물 정보·이미지 관리                 |
-| 관심 매물      | `/saved`                                  | 찜한 매물 목록 조회·비교                     |
-| 예약 신청      | `/booking/:id`                            | 1~3순위 희망 시간 선택 및 예약 요청          |
-| 예약 관리      | `/reservations`                           | 보낸·받은 예약의 상태 확인과 확정·거절·취소  |
-| 라이브 투어    | `/reservation/:slug`                      | WebRTC 화상 통화, 체크리스트, 캡처, AI 탐지  |
-| 캡처 검토      | `/sessions/:sessionId/captures/review`    | 리포트에 포함할 캡처와 탐지 결과 선별        |
-| 리포트         | `/reports/:reportId`                      | 체크리스트·하자·AI 총평 확인 및 PDF 다운로드 |
-| 마이페이지     | `/mypage`                                 | 프로필, 중개사 인증, 등록 매물, 리포트 관리  |
-| 관리자         | `/admin`                                  | 공인중개사 인증 신청 검토                    |
+### 1. 랜딩과 매물 검색 진입
+
+<img width="1000" height="512" alt="랜딩페이지" src="https://github.com/user-attachments/assets/80459e30-7495-48fd-8c64-8d6c896f99b5" />
+
+### 2. 지도 기반 매물 탐색과 상세 확인
+
+#### 지도 탐색
+
+<img width="1000" height="509" alt="매물지도" src="https://github.com/user-attachments/assets/9c7800f5-c759-4497-98c2-88720202e8d7" />
+
+#### 매물 상세 1
+
+<img width="2878" height="1462" alt="매물상세1" src="https://github.com/user-attachments/assets/7d7b0691-0f36-41ee-bd9f-46e6e261c5fe" />
+
+#### 매물 상세 2
+
+<img width="2852" height="1458" alt="매물상세2" src="https://github.com/user-attachments/assets/75c9e5a8-1a32-40f1-b0ea-374e4b53df6c" />
+
+
+사용자는 Kakao 지도와 다중 필터로 조건에 맞는 매물을 찾고, 상세 페이지에서 매물·중개사·주변 환경을 한 번에 비교할 수 있습니다.
+
+### 3. 공인중개사 인증과 매물 등록
+
+#### 공인중개사 인증 신청
+
+<img width="1752" height="996" alt="중개사인증신청" src="https://github.com/user-attachments/assets/200591f0-1c99-470d-bdcf-f1e0bdb9af6c" />
+
+공인중개사 번호는 공공 데이터의 국세청_사업자등록정보 진위확인 및 상태조회 서비스 API를 활용하여 실제 영업중인 중개사의 번호인지 인증하도록 했습니다.
+
+#### 공인중개사 인증 확인
+
+<img width="2850" height="1458" alt="중개사인증확인" src="https://github.com/user-attachments/assets/ee8d26a0-4ffc-4b99-82db-fefae844b4f9" />
+
+
+중개사는 자격 증빙을 제출하고 관리자 승인을 받은 뒤 매물을 등록·수정하며, 세입자는 검증된 중개사의 매물만 확인할 수 있습니다.
+
+### 4. 희망 시간 예약과 일정 확정
+
+#### 예약 신청
+
+<img width="1000" height="511" alt="예약 신청" src="https://github.com/user-attachments/assets/bbe0bba4-ed0c-4873-a25e-2aee6272513b" />
+
+#### 예약 확인
+
+<img width="1000" height="514" alt="예약 확정" src="https://github.com/user-attachments/assets/15aff24f-7d48-40b6-8dca-2a71d2c413c8" />
+
+세입자는 최대 3개의 희망 시간을 제안하고, 중개사는 일정을 확인해 투어를 확정하거나 거절합니다. 예약 현황은 보낸 예약과 받은 예약으로 나누어 관리합니다.
+
+### 5. WebRTC 실시간 비대면 투어
+
+> **추가할 GIF — `docs/screenshots/05-live-tour.gif`**<br>
+> 세입자와 중개사 화면을 같이 보여 주고, 영상 연결 → 체크리스트 갱신 → 장면 캡처 → AI 하자 탐지 표시 순서를 담아 주세요. 두 계정을 좌우로 배치하면 실시간 상호작용을 가장 잘 보여 줄 수 있습니다.
+
+예약 시간이 되면 세입자와 중개사가 브라우저에서 연결됩니다. 세입자는 영상으로 매물을 확인하며 체크리스트를 작성하고, 필요한 장면을 직접 캡처하거나 AI 하자 탐지 결과로 남길 수 있습니다.
+
+### 6. 캡처 검토와 AI 리포트
+
+> **추가할 GIF — `docs/screenshots/06-report-flow.gif`**<br>
+> 투어 종료 → 사용자 캡처·AI 탐지 결과 선별 → 리포트 생성 요청 → 생성 완료 순서를 담아 주세요.
+>
+> **추가할 스크린샷 — `docs/screenshots/06-report-detail.png`**<br>
+> 매물 정보, 체크리스트, 캡처, 하자 탐지 결과, AI 총평과 PDF 다운로드 버튼이 보이는 리포트 상세 화면을 담아 주세요.
+
+투어가 끝나면 리포트에 남길 캡처와 AI 탐지 결과를 선별합니다. 방방봐는 선택한 장면과 체크리스트를 기반으로 AI 총평을 생성하고, 결과를 웹과 PDF로 제공합니다.
+
+### 7. 매물 서류 AI 분석
+
+> **추가할 GIF — `docs/screenshots/07-document-analysis.gif`**<br>
+> 등기부등본·건축물대장 업로드 → 분석 중 상태 → 분석 완료 → 요약·위험도 확인 → 통합 PDF 다운로드 과정을 담아 주세요.
+
+공인중개사가 등기부등본과 건축물대장을 등록하면 AI가 주요 정보와 위험 요소를 분석합니다. 사용자는 매물 상세에서 분석 상태와 결과를 확인하고 서류를 PDF로 내려받을 수 있습니다.
+
+### 8. 마이페이지
+
+> **추가할 스크린샷 — `docs/screenshots/08-mypage.png`**<br>
+> 프로필, 중개사 인증 상태, 등록한 매물과 생성된 리포트를 관리하는 마이페이지 화면을 담아 주세요.
+
+세입자와 중개사는 마이페이지에서 자신의 활동 내역을 확인합니다.
 
 ---
 
