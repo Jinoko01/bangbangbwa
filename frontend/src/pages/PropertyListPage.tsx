@@ -1,6 +1,9 @@
 import {
+  useCallback,
   useEffect,
+  useEffectEvent,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -224,10 +227,10 @@ function focusOffsetPixel(
 }
 
 // setLevel은 즉시 반영하고 이동만 애니메이션한다 — 확대 도중 좌표 투영이 흔들리지 않게 한다
-function focusPlacedMarker(
+function focusMapPosition(
   maps: KakaoMapsSdk,
   map: KakaoMap,
-  target: PlacedMarker,
+  position: KakaoLatLng,
   container: HTMLElement | null,
   hasBottomSheet: boolean,
 ) {
@@ -235,7 +238,7 @@ function focusPlacedMarker(
   panToAboveCenter(
     maps,
     map,
-    target.position,
+    position,
     focusOffsetPixel(container, hasBottomSheet),
   );
 }
@@ -336,9 +339,12 @@ function PropertyMap({
   const hasBottomSheetRef = useRef(hasBottomSheet);
   // 마커 없는 매물을 상세로 보내는 콜백도 리스너·프로미스 콜백에서 최신 값을 읽어야 한다
   const onDetailUnavailableRef = useRef(onDetailUnavailable);
-  useEffect(() => {
+  useLayoutEffect(() => {
     selectHandlersRef.current = { onSelectMarker, onSelectCluster };
     hasBottomSheetRef.current = hasBottomSheet;
+    if (selectedPropertyIdRef.current !== selectedPropertyId) {
+      focusRequestVersionRef.current += 1;
+    }
     selectedPropertyIdRef.current = selectedPropertyId;
     onDetailUnavailableRef.current = onDetailUnavailable;
   });
@@ -353,10 +359,7 @@ function PropertyMap({
   const [detailOverlayElement, setDetailOverlayElement] =
     useState<HTMLDivElement | null>(null);
   const selectedPropertyIdRef = useRef(selectedPropertyId);
-  // "아직 지오코딩 중이라 마커가 없다"와 "끝났는데 마커가 없다"를 구분하는 데 쓴다
-  const placementSettledRef = useRef(false);
-  // 지오코딩이 끝나기 전에 고른 매물 — 핀이 놓이는 즉시 한 번 이동한다
-  const pendingFocusIdRef = useRef<number | null>(null);
+  const focusRequestVersionRef = useRef(0);
   // 목록에서 고른 매물의 상세 보기 버튼으로 포커스를 옮긴다 — 어떤 매물이 요청했는지 들고 있어야
   // 그 사이 지도 핀 클릭 등으로 다른 매물이 선택되면 낡은 요청을 버릴 수 있다
   const focusRequestedPropertyIdRef = useRef<number | null>(null);
@@ -476,6 +479,7 @@ function PropertyMap({
 
     return () => {
       cancelled = true;
+      focusRequestVersionRef.current += 1;
       cancelAnimationFrame(relayoutFrame);
       resizeObserver?.disconnect();
       clustererRef.current = null;
@@ -495,7 +499,6 @@ function PropertyMap({
       return;
     }
 
-    placementSettledRef.current = false;
     let cancelled = false;
     const exactPositionById = new Map(
       (mapPins ?? []).map((pin) => [
@@ -593,12 +596,11 @@ function PropertyMap({
       }
       propertyByMarkerRef.current = propertyByMarker;
       placedMarkersRef.current = placed;
-      placementSettledRef.current = true;
 
       // 이전 마커 참조는 새 목록에서 의미가 없다 — clustered가 다시 채운다
       clusteredMarkersRef.current = new Set();
       clusterer.clear();
-      // 핀이 하나도 없어도 아래 오버레이 정리와 보류 포커스 처리는 그대로 거쳐야 한다
+      // 핀이 하나도 없어도 아래 오버레이 정리는 그대로 거쳐야 한다
       if (placed.length > 0) {
         clusterer.addMarkers(placed.map(({ marker }) => marker));
         // 고른 매물이 있으면 사용자가 직접 맞춘 화면이다 — 저장 토글 같은 배경 갱신으로 이 이펙트가
@@ -620,33 +622,6 @@ function PropertyMap({
         selectedPropertyIdRef.current,
       );
 
-      const pendingFocusId = pendingFocusIdRef.current;
-      if (pendingFocusId === null) {
-        return;
-      }
-      pendingFocusIdRef.current = null;
-      // 지오코딩이 끝나기 전에 선택이 풀렸다면(Esc 등) 지금 와서 카메라를 튀길 이유가 없다
-      if (selectedPropertyIdRef.current !== pendingFocusId) {
-        return;
-      }
-
-      const pendingTarget = placed.find(
-        ({ property }) => property.id === pendingFocusId,
-      );
-      if (!pendingTarget) {
-        // 지오코딩이 끝났는데도 핀이 없다 — 지도로는 영영 열 수 없으니 상세로 바로 보낸다
-        focusRequestedPropertyIdRef.current = null;
-        onDetailUnavailableRef.current(pendingFocusId);
-        return;
-      }
-
-      focusPlacedMarker(
-        maps,
-        map,
-        pendingTarget,
-        mapContainerRef.current,
-        hasBottomSheetRef.current,
-      );
       // 방금 syncDetailOverlay가 오버레이를 다시 붙였을 수 있다 — 그때만 버튼이 문서에 존재한다
       focusDetailButtonIfReady(
         focusRequestedPropertyIdRef,
@@ -685,52 +660,102 @@ function PropertyMap({
     );
   }, [map, selectedPropertyId]);
 
+  const focusProperty = useCallback(
+    async (propertyId: number) => {
+      const requestVersion = ++focusRequestVersionRef.current;
+      const openDetail = () => {
+        focusRequestedPropertyIdRef.current = null;
+        onDetailUnavailableRef.current(propertyId);
+      };
+
+      if (!appKey || mapError) {
+        openDetail();
+        return;
+      }
+
+      const maps = getKakaoMaps();
+      if (!map || !maps) {
+        return;
+      }
+
+      const moveTo = (position: KakaoLatLng) => {
+        focusMapPosition(
+          maps,
+          map,
+          position,
+          mapContainerRef.current,
+          hasBottomSheetRef.current,
+        );
+      };
+      const target = placedMarkersRef.current.find(
+        ({ property }) => property.id === propertyId,
+      );
+      if (target) {
+        moveTo(target.position);
+        return;
+      }
+
+      const pin = mapPins?.find((pin) => pin.propertyId === propertyId);
+      if (pin) {
+        moveTo(new maps.LatLng(pin.latitude, pin.longitude));
+        return;
+      }
+      if (isMapPinsPending) {
+        return;
+      }
+
+      const property = properties.find(
+        (property) => property.id === propertyId,
+      );
+      if (!property) {
+        return;
+      }
+      const position = await lookupAddress(
+        `${property.region} ${property.dong}`,
+      );
+      if (
+        requestVersion !== focusRequestVersionRef.current ||
+        selectedPropertyIdRef.current !== propertyId
+      ) {
+        return;
+      }
+      if (!position) {
+        openDetail();
+        return;
+      }
+      moveTo(new maps.LatLng(position.latitude, position.longitude));
+    },
+    [appKey, mapError, map, mapPins, isMapPinsPending, properties],
+  );
+
+  const focusCurrentSelection = useEffectEvent(() => {
+    const propertyId = selectedPropertyIdRef.current;
+    if (propertyId !== null) {
+      void focusProperty(propertyId);
+    }
+  });
+
+  useEffect(() => {
+    focusCurrentSelection();
+  }, [map, isMapPinsPending, mapError]);
+
   useImperativeHandle(
     ref,
     () => ({
       focusProperty: (propertyId: number) => {
-        // 키가 없거나 SDK 로드가 실패했으면 지도는 영영 만들어지지 않는다 — 기다려도 배치 이펙트가
-        // 돌지 않으므로 보류하지 않고, 지도로 열 수 없는 매물과 같은 길(상세 이동)로 보낸다
-        if (!appKey || mapError) {
-          pendingFocusIdRef.current = null;
-          focusRequestedPropertyIdRef.current = null;
-          onDetailUnavailableRef.current(propertyId);
-          return;
-        }
-
-        // 지도가 아직 없어도(SDK 로딩 중) 클릭을 흘리지 않는다 — 지도가 뜨면 배치 이펙트가 이 값을 집어간다
-        pendingFocusIdRef.current = propertyId;
+        selectedPropertyIdRef.current = propertyId;
         focusRequestedPropertyIdRef.current = propertyId;
-
-        const maps = getKakaoMaps();
-        if (!map || !maps) {
-          return;
+        void focusProperty(propertyId);
+        if (selectedPropertyId === propertyId) {
+          focusDetailButtonIfReady(
+            focusRequestedPropertyIdRef,
+            propertyId,
+            detailButtonRef,
+          );
         }
-
-        const target = placedMarkersRef.current.find(
-          ({ property }) => property.id === propertyId,
-        );
-        if (!target) {
-          // placementSettledRef가 true면 지오코딩이 이미 끝난 뒤라는 뜻 — 이 매물은 핀이 영영 없다
-          if (placementSettledRef.current) {
-            pendingFocusIdRef.current = null;
-            focusRequestedPropertyIdRef.current = null;
-            onDetailUnavailableRef.current(propertyId);
-          }
-          return;
-        }
-
-        pendingFocusIdRef.current = null;
-        focusPlacedMarker(
-          maps,
-          map,
-          target,
-          mapContainerRef.current,
-          hasBottomSheetRef.current,
-        );
       },
     }),
-    [map, appKey, mapError],
+    [focusProperty, selectedPropertyId],
   );
 
   // 목록 클릭이 더 이상 상세로 가지 않으므로, 키보드 사용자가 지도까지 Tab으로 넘어가지 않게 한다.
